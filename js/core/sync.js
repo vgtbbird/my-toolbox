@@ -249,7 +249,6 @@ const GitHubSync = {
 
             if (putRes.ok) {
                 console.log('✅ 同步成功！');
-                // 同步后查询云端数据
                 const checkResult = await this.checkCloudData();
                 return { 
                     success: true, 
@@ -297,13 +296,11 @@ const GitHubSync = {
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
-            // 统计云端数据
             const cloudStats = this.countData(content.modules || {});
 
             if (content.modules) {
                 Storage.mergeAll(content.modules);
                 
-                // 统计本地数据
                 const localStats = this.countData(Storage.getAll());
                 
                 if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
