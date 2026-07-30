@@ -1,5 +1,5 @@
 // ============================================================
-//  📦 存储核心 - 统一排序版
+//  📦 存储核心 - 修复合并空数据问题
 // ============================================================
 const Storage = {
     set(moduleKey, data) {
@@ -48,7 +48,6 @@ const Storage = {
         }
     },
 
-    // ===== 去重方法 =====
     deduplicateHistory(items) {
         if (!Array.isArray(items) || items.length === 0) return items;
         const seen = new Set();
@@ -69,7 +68,6 @@ const Storage = {
         return unique;
     },
 
-    // ===== 排序方法 =====
     sortHistory(items) {
         if (!Array.isArray(items) || items.length === 0) return items;
         return items.sort((a, b) => {
@@ -80,7 +78,7 @@ const Storage = {
         });
     },
 
-    // ===== 合并数据 =====
+    // ===== 合并数据（修复版） =====
     mergeAll(data) {
         console.log('🔄 开始合并云端数据...');
         
@@ -91,7 +89,8 @@ const Storage = {
             console.log(`  └─ 本地 history: ${localData.history?.length || 0} 条`);
             console.log(`  └─ 云端 history: ${cloudData.history?.length || 0} 条`);
             
-            if (!localData || Object.keys(localData).length === 0) {
+            // ✅ 修复：如果本地没有数据，或者本地 history 为空，直接使用云端数据
+            if (!localData || Object.keys(localData).length === 0 || localData.history?.length === 0) {
                 if (cloudData.history && Array.isArray(cloudData.history)) {
                     cloudData.history = this.sortHistory(cloudData.history);
                 }
@@ -99,13 +98,12 @@ const Storage = {
                     cloudData.records = this.sortHistory(cloudData.records);
                 }
                 this.set(moduleKey, cloudData);
-                console.log(`  └─ ✅ 本地无数据，直接使用云端数据`);
+                console.log(`  └─ ✅ 本地无数据或为空，直接使用云端数据 (history: ${cloudData.history?.length || 0} 条)`);
                 continue;
             }
             
             const merged = { ...localData };
             
-            // 处理 history
             if (cloudData.history && Array.isArray(cloudData.history)) {
                 const localHistory = localData.history || [];
                 const combined = [...localHistory, ...cloudData.history];
@@ -114,7 +112,6 @@ const Storage = {
                 console.log(`  └─ 合并后 history: ${merged.history.length} 条`);
             }
             
-            // 处理 records
             if (cloudData.records && Array.isArray(cloudData.records)) {
                 const localRecords = localData.records || [];
                 const combined = [...localRecords, ...cloudData.records];
@@ -122,7 +119,6 @@ const Storage = {
                 merged.records = this.sortHistory(uniqueRecords);
             }
             
-            // 合并其他字段
             for (let [key, value] of Object.entries(cloudData)) {
                 if (key !== 'history' && key !== 'records') {
                     merged[key] = value;
