@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 修复中文乱码
+//  ☁️ 同步核心 - 终极修复版
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -37,7 +37,6 @@ const GitHubSync = {
         return `https://gitee.com/api/v5/repos/${this.repoOwner}/${this.repoName}/contents/${this.filePath}`;
     },
 
-    // ===== 统计模块数据条数 =====
     countData(data) {
         const counts = {};
         let total = 0;
@@ -52,7 +51,6 @@ const GitHubSync = {
         return { total, details: counts };
     },
 
-    // ===== 查询云端数据总数 =====
     async checkCloudData() {
         const token = this.getToken();
         if (!token) {
@@ -79,7 +77,6 @@ const GitHubSync = {
                 return { success: false, message: '❌ 数据格式错误', total: 0 };
             }
 
-            // ✅ 使用正确的解码方式
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
@@ -97,21 +94,15 @@ const GitHubSync = {
         }
     },
 
-    // ===== Base64 编码 =====
     encodeBase64(str) {
-        // 使用 btoa 处理 UTF-8 字符串
         return btoa(unescape(encodeURIComponent(str)));
     },
 
-    // ===== Base64 解码（修复中文乱码） =====
     decodeBase64(base64Str) {
         try {
-            // 使用 decodeURIComponent + atob 正确处理 UTF-8
             return decodeURIComponent(escape(atob(base64Str)));
         } catch (e) {
-            console.error('解码失败，尝试备用方法:', e);
             try {
-                // 备用方法：使用 TextDecoder
                 const binaryStr = atob(base64Str);
                 const bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) {
@@ -119,13 +110,11 @@ const GitHubSync = {
                 }
                 return new TextDecoder('utf-8').decode(bytes);
             } catch (e2) {
-                console.error('所有解码方法都失败:', e2);
                 return atob(base64Str);
             }
         }
     },
 
-    // ===== 同步到云端 =====
     async syncToCloud() {
         const token = this.getToken();
         if (!token) {
@@ -271,7 +260,6 @@ const GitHubSync = {
         }
     },
 
-    // ===== 从云端拉取 =====
     async syncFromCloud() {
         const token = this.getToken();
         if (!token) {
@@ -300,7 +288,6 @@ const GitHubSync = {
                 return { success: false, message: '❌ 数据格式错误' };
             }
 
-            // ✅ 使用正确的解码方式
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
@@ -308,23 +295,20 @@ const GitHubSync = {
             console.log('☁️ 云端数据:', cloudStats.total, '条');
 
             if (content.modules) {
+                // 直接覆盖本地数据
                 Storage.mergeAll(content.modules);
                 
+                // 统计拉取后数据
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
                 
-                // 强制刷新
-                if (typeof App !== 'undefined' && App.refreshAll) {
-                    App.refreshAll();
-                }
-                if (typeof PetRingModule !== 'undefined') {
-                    if (PetRingModule.render) PetRingModule.render();
-                    if (PetRingModule.updateHistoryTable) PetRingModule.updateHistoryTable();
-                }
-                if (typeof TreePlantModule !== 'undefined') {
-                    if (TreePlantModule.render) TreePlantModule.render();
-                    if (TreePlantModule.updateHistory) TreePlantModule.updateHistory();
-                }
+                // ============================================================
+                //  🚀 强制刷新：延迟后刷新页面
+                // ============================================================
+                setTimeout(() => {
+                    console.log('🔄 强制刷新页面...');
+                    location.reload();
+                }, 500);
                 
                 return { 
                     success: true, 
