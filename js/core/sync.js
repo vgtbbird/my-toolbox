@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 统一排序版
+//  ☁️ 同步核心 - 修复 CSP 问题
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -37,6 +37,28 @@ const GitHubSync = {
         return `https://gitee.com/api/v5/repos/${this.repoOwner}/${this.repoName}/contents/${this.filePath}`;
     },
 
+    // ===== Base64 编码（安全版本） =====
+    encodeBase64(str) {
+        const encoder = new TextEncoder();
+        const dataBytes = encoder.encode(str);
+        let binary = '';
+        for (let i = 0; i < dataBytes.length; i++) {
+            binary += String.fromCharCode(dataBytes[i]);
+        }
+        return btoa(binary);
+    },
+
+    // ===== Base64 解码（安全版本） =====
+    decodeBase64(base64Str) {
+        const binaryStr = atob(base64Str);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const decoder = new TextDecoder('utf-8');
+        return decoder.decode(bytes);
+    },
+
     // ===== 同步到云端 =====
     async syncToCloud() {
         const token = this.getToken();
@@ -44,10 +66,8 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
-        // 获取所有数据
         let allData = Storage.getAll();
         
-        // ===== 上传前统一排序所有模块的数据 =====
         for (let [key, value] of Object.entries(allData)) {
             if (value && typeof value === 'object') {
                 if (value.history && Array.isArray(value.history)) {
@@ -99,7 +119,9 @@ const GitHubSync = {
                 sha = info.sha;
             }
 
-            const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+            const jsonStr = JSON.stringify(data, null, 2);
+            const content = this.encodeBase64(jsonStr);
+
             const putRes = await fetch(url, {
                 method: 'PUT',
                 headers: {
@@ -153,12 +175,13 @@ const GitHubSync = {
             }
 
             const data = await res.json();
-            let content;
-            if (data.content) {
-                content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            } else {
+            
+            if (!data.content) {
                 return { success: false, message: '❌ 数据格式错误' };
             }
+
+            const jsonStr = this.decodeBase64(data.content);
+            const content = JSON.parse(jsonStr);
 
             console.log('📥 云端数据模块:', Object.keys(content.modules || {}));
             
@@ -174,7 +197,6 @@ const GitHubSync = {
                 Storage.mergeAll(content.modules);
                 console.log('✅ 拉取合并完成！');
                 
-                // ===== 强制刷新所有模块显示 =====
                 if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
                     PetRingModule.render();
                 }
