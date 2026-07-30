@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 带数据核对
+//  ☁️ 同步核心 - 完整版（含查询功能）
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -37,7 +37,7 @@ const GitHubSync = {
         return `https://gitee.com/api/v5/repos/${this.repoOwner}/${this.repoName}/contents/${this.filePath}`;
     },
 
-    // ===== 统计数据条数 =====
+    // ===== 统计模块数据条数 =====
     countData(data) {
         const counts = {};
         let total = 0;
@@ -50,6 +50,50 @@ const GitHubSync = {
             }
         }
         return { total, details: counts };
+    },
+
+    // ===== 查询云端数据总数 =====
+    async checkCloudData() {
+        const token = this.getToken();
+        if (!token) {
+            return { success: false, message: '❌ 请先设置 Gitee Token', total: 0 };
+        }
+
+        const url = this.getApiUrl();
+
+        try {
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                return { success: false, message: '❌ 查询失败：' + (err.message || '文件不存在'), total: 0 };
+            }
+
+            const data = await res.json();
+            if (!data.content) {
+                return { success: false, message: '❌ 数据格式错误', total: 0 };
+            }
+
+            const jsonStr = this.decodeBase64(data.content);
+            const content = JSON.parse(jsonStr);
+
+            const stats = this.countData(content.modules || {});
+            return { 
+                success: true, 
+                message: `✅ 云端共有 ${stats.total} 条数据`,
+                total: stats.total,
+                details: stats.details,
+                timestamp: content.timestamp
+            };
+        } catch (error) {
+            console.error('❌ 查询云端数据失败:', error);
+            return { success: false, message: '❌ 网络错误：' + error.message, total: 0 };
+        }
     },
 
     // ===== Base64 编码（安全版本） =====
@@ -81,52 +125,8 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
-        // 获取所有数据
         let allData = Storage.getAll();
         
-        // 统计本地数据
-        const localStats = this.countData(allData);
-        console.log('📊 本地数据统计:');
-        for (let [key, val] of Object.entries(localStats.details)) {
-            console.log(`  └─ ${key}: history ${val.history} 条, records ${val.records} 条`);
-        }
-        console.log(`  └─ 📌 本地总计: ${localStats.total} 条`);
-
-        // 获取云端当前数据
-        let cloudStats = { total: 0, details: {} };
-        let cloudData = null;
-        try {
-            const checkRes = await fetch(this.getApiUrl(), {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            if (checkRes.ok) {
-                const checkData = await checkRes.json();
-                if (checkData.content) {
-                    const jsonStr = this.decodeBase64(checkData.content);
-                    cloudData = JSON.parse(jsonStr);
-                    if (cloudData.modules) {
-                        cloudStats = this.countData(cloudData.modules);
-                    }
-                }
-            }
-        } catch(e) {
-            console.log('⚠️ 无法读取云端数据，将创建新文件');
-        }
-
-        console.log('☁️ 云端数据统计:');
-        if (cloudStats.total > 0) {
-            for (let [key, val] of Object.entries(cloudStats.details)) {
-                console.log(`  └─ ${key}: history ${val.history} 条, records ${val.records} 条`);
-            }
-            console.log(`  └─ 📌 云端总计: ${cloudStats.total} 条`);
-        } else {
-            console.log('  └─ 云端暂无数据');
-        }
-
-        // 上传前排序
         for (let [key, value] of Object.entries(allData)) {
             if (value && typeof value === 'object') {
                 if (value.history && Array.isArray(value.history)) {
@@ -148,55 +148,65 @@ const GitHubSync = {
             }
         }
 
-        // 合并云端和本地数据（如果云端有数据）
-        if (cloudData && cloudData.modules) {
-            for (let [key, cloudValue] of Object.entries(cloudData.modules)) {
-                if (allData[key]) {
-                    // 合并 history
-                    if (cloudValue.history && allData[key].history) {
-                        const combined = [...cloudValue.history, ...allData[key].history];
-                        const seen = new Set();
-                        const unique = [];
-                        for (let item of combined) {
-                            const key2 = item.date || JSON.stringify(item);
-                            if (!seen.has(key2)) {
-                                seen.add(key2);
-                                unique.push(item);
+        // 合并云端和本地数据
+        try {
+            const checkRes = await fetch(this.getApiUrl(), {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                if (checkData.content) {
+                    const jsonStr = this.decodeBase64(checkData.content);
+                    const cloudData = JSON.parse(jsonStr);
+                    if (cloudData.modules) {
+                        for (let [key, cloudValue] of Object.entries(cloudData.modules)) {
+                            if (allData[key]) {
+                                if (cloudValue.history && allData[key].history) {
+                                    const combined = [...cloudValue.history, ...allData[key].history];
+                                    const seen = new Set();
+                                    const unique = [];
+                                    for (let item of combined) {
+                                        const key2 = item.date || JSON.stringify(item);
+                                        if (!seen.has(key2)) {
+                                            seen.add(key2);
+                                            unique.push(item);
+                                        }
+                                    }
+                                    unique.sort((a, b) => {
+                                        if (a.date && b.date) {
+                                            return new Date(b.date) - new Date(a.date);
+                                        }
+                                        return 0;
+                                    });
+                                    allData[key].history = unique;
+                                }
+                                if (cloudValue.records && allData[key].records) {
+                                    const combined = [...cloudValue.records, ...allData[key].records];
+                                    const seen = new Set();
+                                    const unique = [];
+                                    for (let item of combined) {
+                                        const key2 = item.date || JSON.stringify(item);
+                                        if (!seen.has(key2)) {
+                                            seen.add(key2);
+                                            unique.push(item);
+                                        }
+                                    }
+                                    allData[key].records = unique;
+                                }
                             }
                         }
-                        unique.sort((a, b) => {
-                            if (a.date && b.date) {
-                                return new Date(b.date) - new Date(a.date);
-                            }
-                            return 0;
-                        });
-                        allData[key].history = unique;
-                    }
-                    // 合并 records
-                    if (cloudValue.records && allData[key].records) {
-                        const combined = [...cloudValue.records, ...allData[key].records];
-                        const seen = new Set();
-                        const unique = [];
-                        for (let item of combined) {
-                            const key2 = item.date || JSON.stringify(item);
-                            if (!seen.has(key2)) {
-                                seen.add(key2);
-                                unique.push(item);
-                            }
-                        }
-                        allData[key].records = unique;
                     }
                 }
             }
+        } catch(e) {
+            console.log('⚠️ 无法读取云端数据，将创建新文件');
         }
 
-        // 重新统计合并后的数据
-        const mergedStats = this.countData(allData);
-        console.log('📊 合并后数据统计:');
-        for (let [key, val] of Object.entries(mergedStats.details)) {
-            console.log(`  └─ ${key}: history ${val.history} 条, records ${val.records} 条`);
-        }
-        console.log(`  └─ 📌 合并后总计: ${mergedStats.total} 条`);
+        const stats = this.countData(allData);
+        console.log(`📊 上传数据总计: ${stats.total} 条`);
 
         const data = {
             version: '2.0',
@@ -238,20 +248,20 @@ const GitHubSync = {
             });
 
             if (putRes.ok) {
-                console.log(`✅ 同步成功！云端数据总计: ${mergedStats.total} 条`);
+                console.log('✅ 同步成功！');
+                // 同步后查询云端数据
+                const checkResult = await this.checkCloudData();
                 return { 
                     success: true, 
-                    message: `✅ 同步成功！云端总计 ${mergedStats.total} 条数据`,
-                    total: mergedStats.total,
-                    details: mergedStats.details
+                    message: checkResult.success ? `✅ 同步成功！云端共 ${checkResult.total} 条数据` : '✅ 同步成功！',
+                    total: checkResult.total || stats.total,
+                    details: checkResult.details || stats.details
                 };
             } else {
                 const err = await putRes.json();
-                console.error('❌ 同步失败:', err);
                 return { success: false, message: '❌ 同步失败：' + (err.message || '未知错误') };
             }
         } catch (error) {
-            console.error('❌ 网络错误:', error);
             return { success: false, message: '❌ 网络错误：' + error.message };
         }
     },
@@ -266,7 +276,6 @@ const GitHubSync = {
         const url = this.getApiUrl();
 
         try {
-            console.log('📥 开始拉取数据...');
             const res = await fetch(url, {
                 headers: {
                     'Authorization': `token ${token}`,
@@ -276,7 +285,6 @@ const GitHubSync = {
 
             if (!res.ok) {
                 const err = await res.json();
-                console.error('❌ 拉取失败:', err);
                 return { success: false, message: '❌ 拉取失败：' + (err.message || '文件不存在') };
             }
 
@@ -291,23 +299,12 @@ const GitHubSync = {
 
             // 统计云端数据
             const cloudStats = this.countData(content.modules || {});
-            console.log('☁️ 云端数据统计:');
-            for (let [key, val] of Object.entries(cloudStats.details)) {
-                console.log(`  └─ ${key}: history ${val.history} 条, records ${val.records} 条`);
-            }
-            console.log(`  └─ 📌 云端总计: ${cloudStats.total} 条`);
 
             if (content.modules) {
                 Storage.mergeAll(content.modules);
-                console.log('✅ 拉取合并完成！');
                 
                 // 统计本地数据
                 const localStats = this.countData(Storage.getAll());
-                console.log('📊 本地数据统计:');
-                for (let [key, val] of Object.entries(localStats.details)) {
-                    console.log(`  └─ ${key}: history ${val.history} 条, records ${val.records} 条`);
-                }
-                console.log(`  └─ 📌 本地总计: ${localStats.total} 条`);
                 
                 if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
                     PetRingModule.render();
@@ -321,16 +318,15 @@ const GitHubSync = {
                 
                 return { 
                     success: true, 
-                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地总计 ${localStats.total} 条`,
+                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${localStats.total} 条`,
                     cloudTotal: cloudStats.total,
                     localTotal: localStats.total,
-                    data: content 
+                    details: cloudStats.details
                 };
             } else {
                 return { success: false, message: '❌ 数据格式不兼容' };
             }
         } catch (error) {
-            console.error('❌ 网络错误:', error);
             return { success: false, message: '❌ 网络错误：' + error.message };
         }
     }
