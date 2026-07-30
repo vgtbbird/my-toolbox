@@ -670,56 +670,60 @@ const TreePlantModule = {
     },
 
     updateHistory() {
-        console.log('📜 更新种树历史表格, 共', this.history.length, '条');
-        
-        const tbody = document.getElementById('trHistoryBody');
-        const countEl = document.getElementById('trHistoryCount');
-        if (countEl) countEl.textContent = `共 ${this.history.length} 棵`;
+    console.log('📜 更新种树历史表格, 共', this.history.length, '条');
+    
+    const tbody = document.getElementById('trHistoryBody');
+    const countEl = document.getElementById('trHistoryCount');
+    if (countEl) countEl.textContent = `共 ${this.history.length} 棵`;
 
-        if (this.history.length === 0) {
-            if (tbody) tbody.innerHTML =
-                '<tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr>';
-            return;
+    if (this.history.length === 0) {
+        if (tbody) tbody.innerHTML =
+            '<tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr>';
+        return;
+    }
+
+    let html = '';
+    const list = this.history.slice().reverse();
+    for (let i = 0; i < list.length; i++) {
+        const h = list[i];
+        const row = list.length - i;
+        const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+        const idx = this.history.indexOf(h);
+        let lootStr = h.lootDetails ? h.lootDetails.join('; ') : '-';
+        // 如果产出太长，截断显示
+        if (lootStr.length > 50) {
+            lootStr = lootStr.substring(0, 50) + '...';
         }
 
-        let html = '';
-        const list = this.history.slice().reverse();
-        for (let i = 0; i < list.length; i++) {
-            const h = list[i];
-            const row = list.length - i;
-            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
-            const idx = this.history.indexOf(h);
-            const lootStr = h.lootDetails ? h.lootDetails.join('; ') : '-';
+        html += `<tr>
+            <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+            <td>${h.date || '未知'}</td>
+            <td>${(h.cost || 0).toFixed(1)}</td>
+            <td>${(h.income || 0).toFixed(1)}</td>
+            <td class="${pc}">${(h.profit || 0).toFixed(1)}</td>
+            <td>${h.shakes || 0}</td>
+            <td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${h.lootDetails ? h.lootDetails.join('; ') : '-'}">${lootStr}</td>
+            <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
+        </tr>`;
+    }
+    if (tbody) tbody.innerHTML = html;
 
-            html += `<tr>
-                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
-                <td>${h.date || '未知'}</td>
-                <td>${(h.cost || 0).toFixed(1)}</td>
-                <td>${(h.income || 0).toFixed(1)}</td>
-                <td class="${pc}">${(h.profit || 0).toFixed(1)}</td>
-                <td>${h.shakes || 0}</td>
-               <td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr}">${lootStr}</td>
-                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-            </tr>`;
-        }
-        if (tbody) tbody.innerHTML = html;
-
-        if (tbody) {
-            tbody.querySelectorAll('.del-btn').forEach(b => {
-                b.removeEventListener('click', b._delHandler);
-                b._delHandler = () => {
-                    const idx = parseInt(b.dataset.idx);
-                    if (idx >= 0 && idx < this.history.length) {
-                        this.history.splice(idx, 1);
-                        this.saveData();
-                        this.render();
-                    }
-                };
-                b.addEventListener('click', b._delHandler);
-            });
-        }
-        console.log('✅ 种树历史表格更新完成');
-    },
+    if (tbody) {
+        tbody.querySelectorAll('.del-btn').forEach(b => {
+            b.removeEventListener('click', b._delHandler);
+            b._delHandler = () => {
+                const idx = parseInt(b.dataset.idx);
+                if (idx >= 0 && idx < this.history.length) {
+                    this.history.splice(idx, 1);
+                    this.saveData();
+                    this.render();
+                }
+            };
+            b.addEventListener('click', b._delHandler);
+        });
+    }
+    console.log('✅ 种树历史表格更新完成');
+},
 
     updateAnalysis() {
         const stats = this.calcStats();
