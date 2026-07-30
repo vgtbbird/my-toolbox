@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 完整版（含查询功能）
+//  ☁️ 同步核心 - 修复拉取统计
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -124,6 +124,10 @@ const GitHubSync = {
         if (!token) {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
+
+        // 统计本地数据（上传前）
+        const beforeStats = this.countData(Storage.getAll());
+        console.log('📊 上传前本地数据:', beforeStats.total, '条');
 
         let allData = Storage.getAll();
         
@@ -272,6 +276,10 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
+        // 统计拉取前的本地数据
+        const beforeStats = this.countData(Storage.getAll());
+        console.log('📊 拉取前本地数据:', beforeStats.total, '条');
+
         const url = this.getApiUrl();
 
         try {
@@ -297,11 +305,15 @@ const GitHubSync = {
             const content = JSON.parse(jsonStr);
 
             const cloudStats = this.countData(content.modules || {});
+            console.log('☁️ 云端数据:', cloudStats.total, '条');
 
             if (content.modules) {
                 Storage.mergeAll(content.modules);
                 
-                const localStats = this.countData(Storage.getAll());
+                // ✅ 统计拉取后本地数据（合并后的总数）
+                const afterStats = this.countData(Storage.getAll());
+                console.log('📊 拉取后本地数据:', afterStats.total, '条');
+                console.log(`✅ 合并新增: ${afterStats.total - beforeStats.total} 条`);
                 
                 if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
                     PetRingModule.render();
@@ -315,9 +327,10 @@ const GitHubSync = {
                 
                 return { 
                     success: true, 
-                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${localStats.total} 条`,
+                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条已合并，本地共 ${afterStats.total} 条`,
                     cloudTotal: cloudStats.total,
-                    localTotal: localStats.total,
+                    localTotal: afterStats.total,
+                    beforeTotal: beforeStats.total,
                     details: cloudStats.details
                 };
             } else {
