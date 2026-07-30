@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>卡符卡专用工具箱 v2.0</title>
+    <link rel="stylesheet" href="css/common.css">
+
+    <!-- PWA支持 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="工具箱">
+    <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+    <div class="card">
+        <!-- ===== 顶部导航 ===== -->
+        <div class="header">
+            <div class="header-top">
+                <h1>🃏 卡符卡专用工具箱 <small>v2.0</small></h1>
+                <span class="badge-active">✅ 已激活</span>
+            </div>
+            <div class="sync-status">
+                <span><span class="status-dot online" id="statusDot"></span> <span id="statusText">已就绪</span></span>
+                <button class="sync-btn" id="syncToCloudBtn">☁️ 同步到云端</button>
+                <button class="sync-btn" id="syncFromCloudBtn">📥 从云端拉取</button>
+                <span class="sync-info" id="syncInfo">数据存于 Gitee</span>
+            </div>
+        </div>
+
+        <!-- ===== Tab 导航 ===== -->
+        <div class="tab-nav" id="tabNav">
+            <button class="tab-btn active" data-tab="petRing">🏃 跑宠环统计</button>
+            <button class="tab-btn" data-tab="treePlant">🌳 种树统计 <span class="new-badge">NEW</span></button>
+            <button class="tab-btn" data-tab="shiMen">📋 师门统计 <span class="coming-badge">开发中</span></button>
+        </div>
+
+        <!-- ===== 各Tab内容容器 ===== -->
+        <div class="tab-content active" id="tab-petRing">
+            <div id="petRingContainer"></div>
+        </div>
+
+        <div class="tab-content" id="tab-treePlant">
+            <div id="treePlantContainer"></div>
+        </div>
+
+        <div class="tab-content" id="tab-shiMen">
+            <div id="shiMenContainer" style="text-align:center;padding:60px 20px;color:#5a7a94;">
+                <div style="font-size:3rem;margin-bottom:16px;">📋</div>
+                <h2 style="color:#1f3b53;margin-bottom:8px;">师门统计</h2>
+                <p>🔜 开发中，即将上线</p>
+            </div>
+        </div>
+
+        <div class="footer-note">⚡ 数据保存在本地 · 点击「同步到云端」备份到 Gitee</div>
+    </div>
+
+    <!-- ===== 通用结算弹窗 ===== -->
+    <div class="modal-overlay" id="settleModal">
+        <div class="modal-box">
+            <h3 id="settleModalTitle">🎯 结算报告</h3>
+            <div class="modal-desc" id="settleModalDesc"></div>
+            <div id="settleModalBody"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="settleModalCancel">取消</button>
+                <button class="btn-confirm" id="settleModalConfirm">✅ 确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 跑宠环导入弹窗 ===== -->
+    <div class="modal-overlay" id="prImportModal">
+        <div class="modal-box">
+            <h3>📥 手动导入一轮数据</h3>
+            <div class="modal-desc">填写下方信息，点击「导入此轮」添加到历史统计中。可只填成本利润，或填写完整任务类型。</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;grid-column:1/-1;">
+                    <label style="font-weight:500;min-width:60px;">📅 日期</label>
+                    <input type="text" id="prImpDate" placeholder="自动生成" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">📌 环数</label>
+                    <input type="number" id="prImpRings" value="100" min="1" step="1" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">💰 总成本</label>
+                    <input type="number" id="prImpCost" value="0" step="0.1" min="0" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">📈 利润</label>
+                    <input type="number" id="prImpProfit" value="0" step="0.1" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;grid-column:1/-1;">
+                    <label style="font-weight:500;min-width:60px;">📦 获得物品描述</label>
+                    <input type="text" id="prImpRewards" placeholder="如: 130项链*1 + 修炼果*2" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;">
+                </div>
+
+                <div style="grid-column:1/-1;background:#f0f5fb;border-radius:16px;padding:10px 14px;margin-top:4px;border:1px solid #dce5ef;">
+                    <div style="font-weight:600;font-size:0.85rem;color:#1f3b53;margin-bottom:6px;">🎁 奖励自动计算</div>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;">
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <label style="font-weight:500;font-size:0.75rem;white-space:nowrap;">📘 书铁价值</label>
+                            <input type="number" id="prImpBookValue" value="0" step="0.1" min="0" style="width:55px;padding:3px 5px;border:1px solid #bccad9;border-radius:16px;font-size:0.75rem;text-align:center;">
+                            <span style="font-size:0.65rem;">万</span>
+                            <button class="btn-small" id="prImpAddBookBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;font-weight:600;color:#1f3b53;">+添加</button>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <label style="font-weight:500;font-size:0.75rem;white-space:nowrap;">📦 已加</label>
+                            <span class="fixed-val" id="prImpBookList" style="font-size:0.7rem;color:#5a7a94;min-width:35px;">无</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <button class="btn-small" id="prImpAdd200Btn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;font-weight:600;color:#1f3b53;">⚡ +获得</button>
+                            <span style="font-size:0.6rem;color:#5a7a94;">(=1.176果)</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <button class="btn-small" id="prImpAddFruitBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;font-weight:600;color:#1f3b53;">🍎 +1个</button>
+                            <span style="font-size:0.6rem;color:#5a7a94;">(170点)</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <button class="btn-small" id="prImpAddFurnitureBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;font-weight:600;color:#1f3b53;">📐 +1个</button>
+                            <span style="font-size:0.6rem;color:#5a7a94;">(自动计价)</span>
+                        </div>
+                    </div>
+                    <div class="reward-summary" id="prImpRewardSummary" style="font-size:0.7rem;color:#5a7a94;margin-top:6px;padding-top:6px;border-top:1px dashed #d0dce8;">
+                        📊 当前奖励合计: 书铁0万 + 修炼果0万 + 家具0万 = 0万
+                    </div>
+                </div>
+
+                <div class="form-divider" style="grid-column:1/-1;border-top:1px dashed #d0dce8;margin:4px 0;padding-top:6px;font-size:0.8rem;color:#5a7a94;text-align:center;">
+                    ——— 任务类型次数（选填） ———
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🔍 找人</label>
+                    <input type="number" id="prImpFind" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🔵 60环</label>
+                    <input type="number" id="prImpRing60" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🟠 70环</label>
+                    <input type="number" id="prImpRing70" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🟣 80环</label>
+                    <input type="number" id="prImpRing80" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🌸 花卉乐器</label>
+                    <input type="number" id="prImpFlower" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🍳 烹饪三药</label>
+                    <input type="number" id="prImpCook" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🪑 1级家具</label>
+                    <input type="number" id="prImpFurn1" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🛋️ 2级家具</label>
+                    <input type="number" id="prImpFurn2" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">🐉 非指定变异</label>
+                    <input type="number" id="prImpVarCommon" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                    <label style="font-weight:500;min-width:60px;">⭐ 指定变异</label>
+                    <input type="number" id="prImpVarSpec" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
+                </div>
+
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" id="prImportCancel">取消</button>
+                <button class="btn-simple" id="prImportSimpleBtn" style="background:#b48b5f;color:white;border:none;padding:8px 24px;border-radius:40px;font-weight:600;cursor:pointer;font-size:0.85rem;">📊 仅导入成本利润</button>
+                <button class="btn-confirm" id="prImportConfirm">📥 导入此轮</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  ★★★ JS文件加载顺序 ★★★          -->
+    <!-- ============================================================ -->
+
+    <!-- 1️⃣ 核心 - 存储 -->
+    <script src="js/core/storage.js"></script>
+
+    <!-- 2️⃣ 核心 - 同步 -->
+    <script src="js/core/sync.js"></script>
+
+    <!-- 3️⃣ 核心 - 应用 -->
+    <script src="js/core/app.js"></script>
+
+    <!-- 4️⃣ 模块 - 跑宠环 -->
+    <script src="js/modules/pet-ring.js"></script>
+
+    <!-- 5️⃣ 模块 - 种树 -->
+    <script src="js/modules/tree-plant.js"></script>
+
+    <!-- 6️⃣ 启动 -->
+    <script>
+        // ============================================================
+        //  配置 Gitee（Token 从 localStorage 读取）
+        // ============================================================
+        GitHubSync.config({
+            token: localStorage.getItem('gitee_token') || '',
+            repoOwner: 'FFzelda',
+            repoName: 'my-data',
+            filePath: 'db.json'
+        });
+
+        // ============================================================
+        //  检查是否有 Token
+        // ============================================================
+        if (!GitHubSync.hasToken()) {
+            setTimeout(() => {
+                const token = prompt('🔑 请输入你的 Gitee Token：\n\n获取方式：\n1. Gitee → 设置 → 私人令牌\n2. 生成新令牌，勾选 projects 权限\n3. 复制生成的 token');
+                if (token && token.trim()) {
+                    GitHubSync.setToken(token.trim());
+                    alert('✅ Token 已保存到本地！');
+                    document.getElementById('statusDot').className = 'status-dot online';
+                    document.getElementById('statusText').textContent = '✅ Token 已设置';
+                }
+            }, 500);
+        } else {
+            document.getElementById('statusDot').className = 'status-dot online';
+            document.getElementById('statusText').textContent = '✅ 已就绪';
+        }
+
+        // ============================================================
+        //  同步到云端
+        // ============================================================
+        document.getElementById('syncToCloudBtn').addEventListener('click', async function() {
+            if (!GitHubSync.hasToken()) {
+                const token = prompt('🔑 请先输入 Gitee Token：');
+                if (token && token.trim()) {
+                    GitHubSync.setToken(token.trim());
+                } else {
+                    alert('❌ 取消操作');
+                    return;
+                }
+            }
+
+            this.textContent = '⏳ 同步中...';
+            this.disabled = true;
+
+            const result = await GitHubSync.syncToCloud();
+            alert(result.message);
+
+            this.textContent = '☁️ 同步到云端';
+            this.disabled = false;
+
+            if (result.success) {
+                document.getElementById('statusDot').className = 'status-dot online';
+                document.getElementById('statusText').textContent = '✅ 已同步';
+            }
+        });
+
+        // ============================================================
+        //  从云端拉取
+        // ============================================================
+        document.getElementById('syncFromCloudBtn').addEventListener('click', async function() {
+            if (!GitHubSync.hasToken()) {
+                const token = prompt('🔑 请先输入 Gitee Token：');
+                if (token && token.trim()) {
+                    GitHubSync.setToken(token.trim());
+                } else {
+                    alert('❌ 取消操作');
+                    return;
+                }
+            }
+
+            this.textContent = '⏳ 拉取中...';
+            this.disabled = true;
+
+            const result = await GitHubSync.syncFromCloud();
+            alert(result.message);
+
+            this.textContent = '📥 从云端拉取';
+            this.disabled = false;
+
+            if (result.success) {
+                document.getElementById('statusDot').className = 'status-dot online';
+                document.getElementById('statusText').textContent = '✅ 已拉取';
+                App.refreshAll();
+            }
+        });
+
+        // ============================================================
+        //  通用弹窗控制
+        // ============================================================
+        document.getElementById('settleModalCancel').addEventListener('click', function() {
+            document.getElementById('settleModal').classList.remove('show');
+        });
+
+        document.getElementById('settleModalConfirm').addEventListener('click', function() {
+            document.getElementById('settleModal').classList.remove('show');
+        });
+
+        document.getElementById('settleModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+
+        // ============================================================
+        //  导入弹窗控制
+        // ============================================================
+        document.getElementById('prImportCancel')?.addEventListener('click', function() {
+            document.getElementById('prImportModal').classList.remove('show');
+        });
+
+        document.getElementById('prImportModal')?.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+
+        // ============================================================
+        //  🚀 启动应用！
+        // ============================================================
+        App.init();
+
+        // ============================================================
+        //  注册 Service Worker
+        // ============================================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(function(registration) {
+                    console.log('Service Worker 注册成功');
+                })
+                .catch(function(err) {
+                    console.log('Service Worker 注册失败:', err);
+                });
+        }
+    </script>
+
+</body>
+</html>
