@@ -281,7 +281,6 @@
 
             const result = await GitHubSync.syncToCloud();
             
-            // 显示核对结果
             const display = document.getElementById('cloudDataCount');
             const msg = document.getElementById('syncResultMsg');
             if (result.success && result.total !== undefined) {
@@ -332,7 +331,6 @@
 
             const result = await GitHubSync.syncFromCloud();
             
-            // 显示核对结果
             const display = document.getElementById('cloudDataCount');
             const msg = document.getElementById('syncResultMsg');
             if (result.success && result.cloudTotal !== undefined) {
@@ -361,7 +359,21 @@
             if (result.success) {
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已拉取';
-                App.refreshAll();
+                
+                // ✅ 强制刷新页面显示
+                setTimeout(() => {
+                    console.log('🔄 强制刷新页面...');
+                    App.refreshAll();
+                    setTimeout(() => {
+                        if (typeof PetRingModule !== 'undefined' && PetRingModule.updateHistoryTable) {
+                            PetRingModule.updateHistoryTable();
+                        }
+                        if (typeof TreePlantModule !== 'undefined' && TreePlantModule.updateHistory) {
+                            TreePlantModule.updateHistory();
+                        }
+                        console.log('✅ 页面刷新完成');
+                    }, 300);
+                }, 500);
             }
         });
 
