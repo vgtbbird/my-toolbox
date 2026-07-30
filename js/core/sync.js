@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 完整版（含强制刷新）
+//  ☁️ 同步核心 - 终极修复版（拉取后强制刷新页面）
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -124,9 +124,6 @@ const GitHubSync = {
         if (!token) {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
-
-        const beforeStats = this.countData(Storage.getAll());
-        console.log('📊 上传前本地数据:', beforeStats.total, '条');
 
         let allData = Storage.getAll();
         
@@ -274,12 +271,10 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
-        const beforeStats = this.countData(Storage.getAll());
-        console.log('📊 拉取前本地数据:', beforeStats.total, '条');
-
         const url = this.getApiUrl();
 
         try {
+            console.log('📥 开始拉取数据...');
             const res = await fetch(url, {
                 headers: {
                     'Authorization': `token ${token}`,
@@ -305,64 +300,30 @@ const GitHubSync = {
             console.log('☁️ 云端数据:', cloudStats.total, '条');
 
             if (content.modules) {
+                // ✅ 直接覆盖本地数据
                 Storage.mergeAll(content.modules);
                 
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
-                console.log(`✅ 合并新增: ${afterStats.total - beforeStats.total} 条`);
                 
                 // ============================================================
-                //  🔄 强制刷新页面显示
+                //  🚀 终极强制刷新：直接重载页面
                 // ============================================================
-                console.log('🔄 强制刷新页面显示...');
-                
-                // 方法1：刷新所有模块
-                if (typeof App !== 'undefined' && App.refreshAll) {
-                    App.refreshAll();
-                }
-                
-                // 方法2：直接调用模块渲染
-                if (typeof PetRingModule !== 'undefined') {
-                    if (PetRingModule.render) PetRingModule.render();
-                    if (PetRingModule.updateStats) PetRingModule.updateStats();
-                    if (PetRingModule.updateHistory) PetRingModule.updateHistory();
-                    if (PetRingModule.updateHistoryTable) PetRingModule.updateHistoryTable();
-                }
-                
-                if (typeof TreePlantModule !== 'undefined') {
-                    if (TreePlantModule.render) TreePlantModule.render();
-                    if (TreePlantModule.updateStats) TreePlantModule.updateStats();
-                    if (TreePlantModule.updateHistory) TreePlantModule.updateHistory();
-                    if (TreePlantModule.updateCurrent) TreePlantModule.updateCurrent();
-                }
-                
-                // 方法3：延迟再次刷新（确保 DOM 完全更新）
-                setTimeout(() => {
-                    console.log('🔄 延迟二次刷新...');
-                    if (typeof PetRingModule !== 'undefined' && PetRingModule.updateHistoryTable) {
-                        PetRingModule.updateHistoryTable();
-                    }
-                    if (typeof TreePlantModule !== 'undefined' && TreePlantModule.updateHistory) {
-                        TreePlantModule.updateHistory();
-                    }
-                    if (typeof App !== 'undefined' && App.refreshAll) {
-                        App.refreshAll();
-                    }
-                    console.log('✅ 二次刷新完成');
-                }, 500);
+                console.log('🔄 页面即将刷新以显示最新数据...');
                 
                 return { 
                     success: true, 
-                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条已合并，本地共 ${afterStats.total} 条`,
+                    message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${afterStats.total} 条`,
                     cloudTotal: cloudStats.total,
                     localTotal: afterStats.total,
-                    beforeTotal: beforeStats.total,
-                    details: cloudStats.details
+                    details: cloudStats.details,
+                    needReload: true  // 标记需要刷新
                 };
             } else {
                 return { success: false, message: '❌ 数据格式不兼容' };
             }
         } catch (error) {
+            console.error('❌ 拉取失败:', error);
             return { success: false, message: '❌ 网络错误：' + error.message };
         }
     }
