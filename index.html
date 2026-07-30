@@ -41,6 +41,8 @@
                 <span><span class="status-dot online" id="statusDot"></span> <span id="statusText">已就绪</span></span>
                 <button class="sync-btn" id="syncToCloudBtn">☁️ 同步到云端</button>
                 <button class="sync-btn" id="syncFromCloudBtn">📥 从云端拉取</button>
+                <button class="sync-btn" id="clearLocalBtn" style="background:#b45f5f;">🗑️ 清空本地</button>
+                <button class="sync-btn" id="clearCloudBtn" style="background:#b45f5f;">🗑️ 清空云端</button>
                 <span class="sync-info" id="syncInfo">数据存于 Gitee</span>
             </div>
         </div>
@@ -313,7 +315,7 @@
         });
 
         // ============================================================
-        //  从云端拉取（完整修复版）
+        //  从云端拉取
         // ============================================================
         document.getElementById('syncFromCloudBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
@@ -360,10 +362,105 @@
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已拉取';
                 
-                // 🚀 强制刷新页面
                 setTimeout(() => {
                     location.reload();
-                }, 1000);
+                }, 500);
+            }
+        });
+
+        // ============================================================
+        //  清空本地数据（只清本地，不影响云端）
+        // ============================================================
+        document.getElementById('clearLocalBtn').addEventListener('click', function() {
+            if (confirm('⚠️ 确定要清空本地所有数据吗？\n（不会影响云端数据）')) {
+                const keys = Object.keys(localStorage);
+                let count = 0;
+                for (let key of keys) {
+                    if (key.startsWith('toolbox_')) {
+                        localStorage.removeItem(key);
+                        count++;
+                    }
+                }
+                // 也清空 Token
+                localStorage.removeItem('gitee_token');
+                alert(`✅ 已清空 ${count} 条本地数据！\n页面将刷新。`);
+                location.reload();
+            }
+        });
+
+        // ============================================================
+        //  清空云端数据（只清云端，不影响本地）
+        // ============================================================
+        document.getElementById('clearCloudBtn').addEventListener('click', async function() {
+            if (!GitHubSync.hasToken()) {
+                alert('❌ 请先设置 Gitee Token');
+                return;
+            }
+            
+            if (confirm('⚠️ 确定要清空服务器上的所有数据吗？\n（此操作不可恢复！）')) {
+                if (!confirm('⚠️⚠️ 再次确认：真的要清空云端数据吗？')) {
+                    return;
+                }
+                
+                this.textContent = '⏳ 清空中...';
+                this.disabled = true;
+                
+                try {
+                    const token = GitHubSync.getToken();
+                    const getRes = await fetch(GitHubSync.getApiUrl(), {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+                    
+                    let sha = null;
+                    if (getRes.ok) {
+                        const info = await getRes.json();
+                        sha = info.sha;
+                    }
+                    
+                    const emptyData = {
+                        version: '2.0',
+                        timestamp: new Date().toISOString(),
+                        modules: {
+                            petRing: { records: [], history: [], prices: {}, deductSettings: {}, bookRewards: [], extraRewards: { points: 0, fruits: 0, furnitures: 0 }, uiSettings: {}, pendingSettle: null, exchangeRate: 0.08 },
+                            treePlant: { history: [], prices: {}, current: { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {} }, uiSettings: {} }
+                        }
+                    };
+                    
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(emptyData, null, 2))));
+                    
+                    const putRes = await fetch(GitHubSync.getApiUrl(), {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `清空数据 - ${new Date().toLocaleString()}`,
+                            content: content,
+                            sha: sha
+                        })
+                    });
+                    
+                    if (putRes.ok) {
+                        alert('✅ 云端数据已清空！\n（本地数据不受影响）');
+                        // 刷新云端显示
+                        const display = document.getElementById('cloudDataCount');
+                        display.textContent = '☁️ 云端已清空 (0条)';
+                        location.reload();
+                    } else {
+                        const err = await putRes.json();
+                        alert('❌ 清空失败：' + (err.message || '未知错误'));
+                    }
+                } catch (error) {
+                    alert('❌ 清空失败：' + error.message);
+                }
+                
+                this.textContent = '🗑️ 清空云端';
+                this.disabled = false;
             }
         });
 
