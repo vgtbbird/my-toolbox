@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 修复拉取统计
+//  ☁️ 同步核心 - 完整版（含强制刷新）
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -125,7 +125,6 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
-        // 统计本地数据（上传前）
         const beforeStats = this.countData(Storage.getAll());
         console.log('📊 上传前本地数据:', beforeStats.total, '条');
 
@@ -152,7 +151,6 @@ const GitHubSync = {
             }
         }
 
-        // 合并云端和本地数据
         try {
             const checkRes = await fetch(this.getApiUrl(), {
                 headers: {
@@ -276,7 +274,6 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
-        // 统计拉取前的本地数据
         const beforeStats = this.countData(Storage.getAll());
         console.log('📊 拉取前本地数据:', beforeStats.total, '条');
 
@@ -310,20 +307,49 @@ const GitHubSync = {
             if (content.modules) {
                 Storage.mergeAll(content.modules);
                 
-                // ✅ 统计拉取后本地数据（合并后的总数）
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
                 console.log(`✅ 合并新增: ${afterStats.total - beforeStats.total} 条`);
                 
-                if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
-                    PetRingModule.render();
-                }
-                if (typeof TreePlantModule !== 'undefined' && TreePlantModule.render) {
-                    TreePlantModule.render();
-                }
+                // ============================================================
+                //  🔄 强制刷新页面显示
+                // ============================================================
+                console.log('🔄 强制刷新页面显示...');
+                
+                // 方法1：刷新所有模块
                 if (typeof App !== 'undefined' && App.refreshAll) {
                     App.refreshAll();
                 }
+                
+                // 方法2：直接调用模块渲染
+                if (typeof PetRingModule !== 'undefined') {
+                    if (PetRingModule.render) PetRingModule.render();
+                    if (PetRingModule.updateStats) PetRingModule.updateStats();
+                    if (PetRingModule.updateHistory) PetRingModule.updateHistory();
+                    if (PetRingModule.updateHistoryTable) PetRingModule.updateHistoryTable();
+                }
+                
+                if (typeof TreePlantModule !== 'undefined') {
+                    if (TreePlantModule.render) TreePlantModule.render();
+                    if (TreePlantModule.updateStats) TreePlantModule.updateStats();
+                    if (TreePlantModule.updateHistory) TreePlantModule.updateHistory();
+                    if (TreePlantModule.updateCurrent) TreePlantModule.updateCurrent();
+                }
+                
+                // 方法3：延迟再次刷新（确保 DOM 完全更新）
+                setTimeout(() => {
+                    console.log('🔄 延迟二次刷新...');
+                    if (typeof PetRingModule !== 'undefined' && PetRingModule.updateHistoryTable) {
+                        PetRingModule.updateHistoryTable();
+                    }
+                    if (typeof TreePlantModule !== 'undefined' && TreePlantModule.updateHistory) {
+                        TreePlantModule.updateHistory();
+                    }
+                    if (typeof App !== 'undefined' && App.refreshAll) {
+                        App.refreshAll();
+                    }
+                    console.log('✅ 二次刷新完成');
+                }, 500);
                 
                 return { 
                     success: true, 
