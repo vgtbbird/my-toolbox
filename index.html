@@ -29,6 +29,14 @@
                 <h1>🃏 卡符卡专用工具箱 <small>v2.0</small></h1>
                 <span class="badge-active">✅ 已激活</span>
             </div>
+
+            <!-- ⭐ 数据统计栏 -->
+            <div class="data-stats-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:6px 12px;background:#f0f5fb;border-radius:12px;margin-top:6px;font-size:0.75rem;color:#1f3b53;border:1px solid #d0dce8;">
+                <span>📊 <span id="cloudDataCount">点击「查询云端数据」查看</span></span>
+                <button class="btn-small" id="checkCloudDataBtn" style="background:#4c7a5c;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">🔍 查询云端数据</button>
+                <span id="syncResultMsg" style="color:#5a7a94;font-size:0.7rem;"></span>
+            </div>
+
             <div class="sync-status">
                 <span><span class="status-dot online" id="statusDot"></span> <span id="statusText">已就绪</span></span>
                 <button class="sync-btn" id="syncToCloudBtn">☁️ 同步到云端</button>
@@ -272,6 +280,28 @@
             this.disabled = true;
 
             const result = await GitHubSync.syncToCloud();
+            
+            // 显示核对结果
+            const display = document.getElementById('cloudDataCount');
+            const msg = document.getElementById('syncResultMsg');
+            if (result.success && result.total !== undefined) {
+                let detailText = '';
+                if (result.details) {
+                    const parts = [];
+                    for (let [key, val] of Object.entries(result.details)) {
+                        const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key;
+                        parts.push(`${label}: ${val.history}条`);
+                    }
+                    detailText = parts.join(' | ');
+                }
+                display.textContent = `☁️ 云端共 ${result.total} 条数据 (${detailText})`;
+                msg.textContent = `✅ 同步成功！云端共 ${result.total} 条`;
+                msg.style.color = '#2d6b2d';
+            } else {
+                msg.textContent = result.message;
+                msg.style.color = '#c0392b';
+            }
+            
             alert(result.message);
 
             this.textContent = '☁️ 同步到云端';
@@ -301,6 +331,28 @@
             this.disabled = true;
 
             const result = await GitHubSync.syncFromCloud();
+            
+            // 显示核对结果
+            const display = document.getElementById('cloudDataCount');
+            const msg = document.getElementById('syncResultMsg');
+            if (result.success && result.cloudTotal !== undefined) {
+                let detailText = '';
+                if (result.details) {
+                    const parts = [];
+                    for (let [key, val] of Object.entries(result.details)) {
+                        const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key;
+                        parts.push(`${label}: ${val.history}条`);
+                    }
+                    detailText = parts.join(' | ');
+                }
+                display.textContent = `☁️ 云端共 ${result.cloudTotal} 条数据 (${detailText})`;
+                msg.textContent = `✅ 拉取成功！本地共 ${result.localTotal || 0} 条`;
+                msg.style.color = '#2d6b2d';
+            } else {
+                msg.textContent = result.message;
+                msg.style.color = '#c0392b';
+            }
+            
             alert(result.message);
 
             this.textContent = '📥 从云端拉取';
@@ -312,6 +364,70 @@
                 App.refreshAll();
             }
         });
+
+        // ============================================================
+        //  查询云端数据按钮
+        // ============================================================
+        document.getElementById('checkCloudDataBtn').addEventListener('click', async function() {
+            if (!GitHubSync.hasToken()) {
+                alert('❌ 请先设置 Gitee Token');
+                return;
+            }
+
+            this.textContent = '⏳ 查询中...';
+            this.disabled = true;
+            
+            const result = await GitHubSync.checkCloudData();
+            
+            this.textContent = '🔍 查询云端数据';
+            this.disabled = false;
+            
+            const display = document.getElementById('cloudDataCount');
+            const msg = document.getElementById('syncResultMsg');
+            
+            if (result.success) {
+                let detailText = '';
+                if (result.details) {
+                    const parts = [];
+                    for (let [key, val] of Object.entries(result.details)) {
+                        const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key;
+                        parts.push(`${label}: ${val.history}条`);
+                    }
+                    detailText = parts.join(' | ');
+                }
+                display.textContent = `☁️ 云端共 ${result.total} 条数据 (${detailText})`;
+                msg.textContent = `✅ 查询成功`;
+                msg.style.color = '#2d6b2d';
+            } else {
+                display.textContent = '❌ ' + result.message;
+                msg.textContent = '❌ 查询失败';
+                msg.style.color = '#c0392b';
+            }
+        });
+
+        // ============================================================
+        //  页面加载时自动查询云端数据
+        // ============================================================
+        setTimeout(async function() {
+            if (GitHubSync.hasToken()) {
+                const result = await GitHubSync.checkCloudData();
+                const display = document.getElementById('cloudDataCount');
+                if (result.success) {
+                    let detailText = '';
+                    if (result.details) {
+                        const parts = [];
+                        for (let [key, val] of Object.entries(result.details)) {
+                            const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key;
+                            parts.push(`${label}: ${val.history}条`);
+                        }
+                        detailText = parts.join(' | ');
+                    }
+                    display.textContent = `☁️ 云端共 ${result.total} 条数据 (${detailText})`;
+                } else {
+                    display.textContent = '☁️ 云端暂无数据';
+                }
+            }
+        }, 1000);
 
         // ============================================================
         //  通用弹窗控制
