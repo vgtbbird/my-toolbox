@@ -77,7 +77,6 @@ const GitHubSync = {
                         }
                         return 0;
                     });
-                    console.log(`  └─ ${key}.history 已排序，共 ${value.history.length} 条`);
                 }
                 if (value.records && Array.isArray(value.records)) {
                     value.records.sort((a, b) => {
@@ -95,13 +94,6 @@ const GitHubSync = {
             timestamp: new Date().toISOString(),
             modules: allData
         };
-
-        console.log('📤 准备上传的数据:');
-        for (let [key, value] of Object.entries(data.modules)) {
-            if (value && typeof value === 'object') {
-                console.log(`  └─ ${key}.history: ${value.history?.length || 0} 条`);
-            }
-        }
 
         const url = this.getApiUrl();
         let sha = null;
@@ -137,15 +129,12 @@ const GitHubSync = {
             });
 
             if (putRes.ok) {
-                console.log('✅ 同步成功！');
                 return { success: true, message: '✅ 同步成功！' };
             } else {
                 const err = await putRes.json();
-                console.error('❌ 同步失败:', err);
                 return { success: false, message: '❌ 同步失败：' + (err.message || '未知错误') };
             }
         } catch (error) {
-            console.error('❌ 网络错误:', error);
             return { success: false, message: '❌ 网络错误：' + error.message };
         }
     },
@@ -160,7 +149,6 @@ const GitHubSync = {
         const url = this.getApiUrl();
 
         try {
-            console.log('📥 开始拉取数据...');
             const res = await fetch(url, {
                 headers: {
                     'Authorization': `token ${token}`,
@@ -170,7 +158,6 @@ const GitHubSync = {
 
             if (!res.ok) {
                 const err = await res.json();
-                console.error('❌ 拉取失败:', err);
                 return { success: false, message: '❌ 拉取失败：' + (err.message || '文件不存在') };
             }
 
@@ -183,19 +170,8 @@ const GitHubSync = {
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
-            console.log('📥 云端数据模块:', Object.keys(content.modules || {}));
-            
-            if (content.modules) {
-                for (let [key, value] of Object.entries(content.modules)) {
-                    if (value && typeof value === 'object') {
-                        console.log(`  └─ ${key}.history: ${value.history?.length || 0} 条`);
-                    }
-                }
-            }
-
             if (content.modules) {
                 Storage.mergeAll(content.modules);
-                console.log('✅ 拉取合并完成！');
                 
                 if (typeof PetRingModule !== 'undefined' && PetRingModule.render) {
                     PetRingModule.render();
@@ -212,7 +188,6 @@ const GitHubSync = {
                 return { success: false, message: '❌ 数据格式不兼容' };
             }
         } catch (error) {
-            console.error('❌ 网络错误:', error);
             return { success: false, message: '❌ 网络错误：' + error.message };
         }
     }
