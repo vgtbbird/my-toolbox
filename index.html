@@ -369,10 +369,10 @@
         });
 
         // ============================================================
-        //  清空本地数据（只清本地，不影响云端）
+        //  清空本地数据（保留 Token）
         // ============================================================
         document.getElementById('clearLocalBtn').addEventListener('click', function() {
-            if (confirm('⚠️ 确定要清空本地所有数据吗？\n（不会影响云端数据）')) {
+            if (confirm('⚠️ 确定要清空本地所有数据吗？\n（不会影响云端数据，Token 会保留）')) {
                 const keys = Object.keys(localStorage);
                 let count = 0;
                 for (let key of keys) {
@@ -381,9 +381,8 @@
                         count++;
                     }
                 }
-                // 也清空 Token
-                localStorage.removeItem('gitee_token');
-                alert(`✅ 已清空 ${count} 条本地数据！\n页面将刷新。`);
+                // ✅ 保留 Token，不清除 gitee_token
+                alert(`✅ 已清空 ${count} 条本地数据！\nToken 已保留，页面将刷新。`);
                 location.reload();
             }
         });
@@ -447,7 +446,6 @@
                     
                     if (putRes.ok) {
                         alert('✅ 云端数据已清空！\n（本地数据不受影响）');
-                        // 刷新云端显示
                         const display = document.getElementById('cloudDataCount');
                         display.textContent = '☁️ 云端已清空 (0条)';
                         location.reload();
