@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 终极修复版
+//  ☁️ 同步核心 - 最终修复版
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -260,6 +260,7 @@ const GitHubSync = {
         }
     },
 
+    // ===== 从云端拉取 =====
     async syncFromCloud() {
         const token = this.getToken();
         if (!token) {
@@ -293,20 +294,19 @@ const GitHubSync = {
 
             const cloudStats = this.countData(content.modules || {});
             console.log('☁️ 云端数据:', cloudStats.total, '条');
+            console.log('☁️ treePlant.history:', content.modules?.treePlant?.history?.length || 0, '条');
+            console.log('☁️ petRing.history:', content.modules?.petRing?.history?.length || 0, '条');
 
             if (content.modules) {
-                // 直接覆盖本地数据
+                // ✅ 直接覆盖本地
                 Storage.mergeAll(content.modules);
                 
-                // 统计拉取后数据
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
                 
-                // ============================================================
-                //  🚀 强制刷新：延迟后刷新页面
-                // ============================================================
+                // ✅ 强制刷新页面
                 setTimeout(() => {
-                    console.log('🔄 强制刷新页面...');
+                    console.log('🔄 页面刷新...');
                     location.reload();
                 }, 500);
                 
