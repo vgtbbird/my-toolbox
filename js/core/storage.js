@@ -1,5 +1,5 @@
 // ============================================================
-//  📦 存储核心 - 覆盖模式（最稳定）
+//  📦 存储核心 - 修复版
 // ============================================================
 const Storage = {
     set(moduleKey, data) {
@@ -42,24 +42,22 @@ const Storage = {
         return all;
     },
 
-    // ===== 导入数据（覆盖模式） =====
     importAll(data) {
         for (let [key, value] of Object.entries(data)) {
             localStorage.setItem(`toolbox_${key}`, JSON.stringify(value));
         }
     },
 
-    // ===== 合并数据（覆盖模式 - 最稳定） =====
-   mergeAll(data) {
-    console.log('🔄 开始合并云端数据...');
-    for (let [moduleKey, cloudData] of Object.entries(data)) {
-        console.log(`📦 处理模块: ${moduleKey}`);
-        // 直接覆盖本地数据，保留所有字段
-        this.set(moduleKey, cloudData);
-        console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
+    // ✅ 修复：直接覆盖，不丢数据
+    mergeAll(data) {
+        console.log('🔄 开始合并云端数据...');
+        for (let [moduleKey, cloudData] of Object.entries(data)) {
+            console.log(`📦 处理模块: ${moduleKey}`);
+            this.set(moduleKey, cloudData);
+            console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
+        }
+        console.log('✅ 合并完成！');
     }
-    console.log('✅ 合并完成！');
-}
 };
 
 window.Storage = Storage;
