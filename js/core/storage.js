@@ -1,5 +1,5 @@
 // ============================================================
-//  📦 存储核心 - 修复版
+//  📦 存储核心 - 终极修复版
 // ============================================================
 const Storage = {
     set(moduleKey, data) {
@@ -48,7 +48,7 @@ const Storage = {
         }
     },
 
-    // ✅ 修复：直接覆盖，不丢数据
+    // 覆盖模式
     mergeAll(data) {
         console.log('🔄 开始合并云端数据...');
         for (let [moduleKey, cloudData] of Object.entries(data)) {
