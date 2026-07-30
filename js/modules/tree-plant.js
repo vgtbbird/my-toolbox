@@ -698,7 +698,7 @@ const TreePlantModule = {
                 <td>${(h.income || 0).toFixed(1)}</td>
                 <td class="${pc}">${(h.profit || 0).toFixed(1)}</td>
                 <td>${h.shakes || 0}</td>
-                <td style="font-size:0.7rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${lootStr}</td>
+               <td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr}">${lootStr}</td>
                 <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
             </tr>`;
         }
