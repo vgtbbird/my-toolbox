@@ -1,0 +1,6 @@
+{
+  "name": "卡符卡专用工具箱",
+  "short_name": "工具箱",
+  "start_url": "/toolbox/index.html",
+  "display": "standalone"
+}
