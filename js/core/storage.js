@@ -54,7 +54,7 @@ const Storage = {
     console.log('🔄 开始合并云端数据...');
     for (let [moduleKey, cloudData] of Object.entries(data)) {
         console.log(`📦 处理模块: ${moduleKey}`);
-        // ✅ 直接覆盖，不丢数据
+        // 直接覆盖本地数据，保留所有字段
         this.set(moduleKey, cloudData);
         console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
     }
