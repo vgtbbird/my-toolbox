@@ -313,7 +313,7 @@
         });
 
         // ============================================================
-        //  从云端拉取
+        //  从云端拉取（完整修复版）
         // ============================================================
         document.getElementById('syncFromCloudBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
@@ -360,20 +360,10 @@
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已拉取';
                 
-                // ✅ 强制刷新页面显示
+                // 🚀 强制刷新页面
                 setTimeout(() => {
-                    console.log('🔄 强制刷新页面...');
-                    App.refreshAll();
-                    setTimeout(() => {
-                        if (typeof PetRingModule !== 'undefined' && PetRingModule.updateHistoryTable) {
-                            PetRingModule.updateHistoryTable();
-                        }
-                        if (typeof TreePlantModule !== 'undefined' && TreePlantModule.updateHistory) {
-                            TreePlantModule.updateHistory();
-                        }
-                        console.log('✅ 页面刷新完成');
-                    }, 300);
-                }, 500);
+                    location.reload();
+                }, 1000);
             }
         });
 
