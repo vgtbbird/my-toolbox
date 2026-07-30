@@ -107,16 +107,27 @@ const GitHubSync = {
         return btoa(binary);
     },
 
-    // ===== Base64 解码（安全版本） =====
-    decodeBase64(base64Str) {
-        const binaryStr = atob(base64Str);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
+ // ===== Base64 解码（修复中文乱码） =====
+decodeBase64(base64Str) {
+    try {
+        // 方法1：使用 atob 和 decodeURIComponent
+        const decoded = atob(base64Str);
+        const bytes = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            bytes[i] = decoded.charCodeAt(i);
         }
         const decoder = new TextDecoder('utf-8');
         return decoder.decode(bytes);
-    },
+    } catch (e) {
+        // 方法2：如果上面失败，尝试传统方式
+        try {
+            return decodeURIComponent(escape(atob(base64Str)));
+        } catch (e2) {
+            console.error('解码失败:', e2);
+            return atob(base64Str);
+        }
+    }
+},
 
     // ===== 同步到云端 =====
     async syncToCloud() {
