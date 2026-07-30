@@ -1,10 +1,9 @@
 // ============================================================
-//  🌳 种树模块 - 完整版（添加金柳露 + 卡片）
+//  🌳 种树模块 - 完整版（金柳露 + 卡片）
 // ============================================================
 const TreePlantModule = {
     id: 'treePlant',
 
-    // ========== 数据 ==========
     storageKey: 'treePlant',
     history: [],
     prices: {},
@@ -19,15 +18,12 @@ const TreePlantModule = {
     },
 
     LOOT_TYPES: [
-        // 二药
         { key: 'eryao', label: '二药', defaultPrice: 1.5 },
-        // 五宝
         { key: 'bishui', label: '避水珠', defaultPrice: 5 },
         { key: 'dinghun', label: '定魂珠', defaultPrice: 18 },
         { key: 'jingang', label: '金刚石', defaultPrice: 18 },
         { key: 'yeguang', label: '夜光珠', defaultPrice: 12 },
         { key: 'longlin', label: '龙鳞', defaultPrice: 8 },
-        // 宝石（8种）
         { key: 'baoshi_hl', label: '黑宝石', defaultPrice: 8 },
         { key: 'baoshi_tys', label: '太阳石', defaultPrice: 6 },
         { key: 'baoshi_yls', label: '月亮石', defaultPrice: 10 },
@@ -36,7 +32,6 @@ const TreePlantModule = {
         { key: 'baoshi_hmm', label: '红玛瑙', defaultPrice: 10 },
         { key: 'baoshi_fcs', label: '翡翠石', defaultPrice: 5 },
         { key: 'baoshi_xys', label: '神秘石', defaultPrice: 3 },
-        // 其他奖励
         { key: 'money', label: '金钱(万)', defaultPrice: 2.75 },
         { key: 'exp', label: '经验', defaultPrice: 0 },
         { key: 'shoujue', label: '兽决', defaultPrice: 80 },
@@ -47,12 +42,10 @@ const TreePlantModule = {
         { key: 'zhenzhu', label: '珍珠', defaultPrice: 20 },
         { key: 'fushi', label: '符石', defaultPrice: 10 },
         { key: 'fushi_juanzhou', label: '符石卷轴', defaultPrice: 5 },
-        // ✅ 新增
         { key: 'jinliu', label: '金柳露', defaultPrice: 8 },
         { key: 'kapian', label: '卡片', defaultPrice: 5 },
     ],
 
-    // ========== 生命周期 ==========
     init() {
         this.loadData();
         this.buildUI();
@@ -82,7 +75,6 @@ const TreePlantModule = {
         console.log('✅ 种树模块渲染完成');
     },
 
-    // ========== 数据操作 ==========
     loadData() {
         const data = Storage.get(this.storageKey, {});
         this.history = data.history || [];
@@ -114,7 +106,6 @@ const TreePlantModule = {
         });
     },
 
-    // ========== 应用UI设置 ==========
     applyUISettings() {
         const s = this.uiSettings;
         const container = document.getElementById('treePlantContainer');
@@ -170,7 +161,6 @@ const TreePlantModule = {
         });
     },
 
-    // ========== 计算 ==========
     calcStats() {
         let totalCost = 0, totalIncome = 0, totalProfit = 0, winCount = 0;
         for (let h of this.history) {
@@ -205,13 +195,11 @@ const TreePlantModule = {
         return { total, details };
     },
 
-    // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('treePlantContainer');
         if (!container) return;
 
         container.innerHTML = `
-            <!-- 🎨 界面设置 -->
             <div class="module" id="trModuleUISettings" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
                 <div class="module-header">
                     <div class="title">🎨 界面设置 <span class="hint">— 自定义颜色和字体</span></div>
@@ -251,7 +239,6 @@ const TreePlantModule = {
                 </div>
             </div>
 
-            <!-- 统计卡片 -->
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="trTotalCost">0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="trTotalIncome">0</div><div class="label">📊 总收入(万)</div></div>
@@ -261,7 +248,6 @@ const TreePlantModule = {
                 <div class="stat-item" id="trRateStat"><div class="num" id="trWinRate">0%</div><div class="label">🏆 盈利率</div></div>
             </div>
 
-            <!-- 当前种树 -->
             <div class="module">
                 <div class="module-header">
                     <div class="title">🌳 记录当前种树 <span class="hint" id="trCurrentLabel">第 1 棵</span></div>
@@ -283,10 +269,8 @@ const TreePlantModule = {
                         <button class="evt-btn" data-event="none">⏭️ 无事件 <span class="sub">(重置)</span></button>
                     </div>
 
-                    <!-- 元宝产出 -->
                     <div style="font-weight:600;font-size:0.8rem;color:#1f3b53;margin:10px 0 4px;">💎 元宝产出 (点击记录)</div>
 
-                    <!-- 第1行: 二药 + 五宝 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;" id="trLootGrid">
                         <button class="loot-btn" data-loot="eryao">💊 二药 <span class="count" id="tl-eryao">0</span></button>
                         <button class="loot-btn" data-loot="bishui">💧 避水珠 <span class="count" id="tl-bishui">0</span></button>
@@ -295,7 +279,6 @@ const TreePlantModule = {
                         <button class="loot-btn" data-loot="yeguang">🌙 夜光珠 <span class="count" id="tl-yeguang">0</span></button>
                     </div>
 
-                    <!-- 第2行: 龙鳞 + 宝石前4种 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="longlin">🐉 龙鳞 <span class="count" id="tl-longlin">0</span></button>
                         <button class="loot-btn" data-loot="baoshi_hl">🖤 黑宝石 <span class="count" id="tl-baoshi_hl">0</span></button>
@@ -304,7 +287,6 @@ const TreePlantModule = {
                         <button class="loot-btn" data-loot="baoshi_gms">💛 光芒石 <span class="count" id="tl-baoshi_gms">0</span></button>
                     </div>
 
-                    <!-- 第3行: 宝石后4种 + 海马 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="baoshi_sls">💠 舍利子 <span class="count" id="tl-baoshi_sls">0</span></button>
                         <button class="loot-btn" data-loot="baoshi_hmm">❤️ 红玛瑙 <span class="count" id="tl-baoshi_hmm">0</span></button>
@@ -313,7 +295,6 @@ const TreePlantModule = {
                         <button class="loot-btn" data-loot="haima">🐴 海马 <span class="count" id="tl-haima">0</span></button>
                     </div>
 
-                    <!-- 第4行: 金钱 + 经验 + 兽决 + 令牌 + 彩果 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="money">💰 金钱(万) <span class="count" id="tl-money">0</span></button>
                         <button class="loot-btn" data-loot="exp">📈 经验 <span class="count" id="tl-exp">0</span></button>
@@ -322,7 +303,6 @@ const TreePlantModule = {
                         <button class="loot-btn" data-loot="caiguo">🍎 彩果 <span class="count" id="tl-caiguo">0</span></button>
                     </div>
 
-                    <!-- 第5行: 超级金柳露 + 珍珠 + 符石 + 符石卷轴 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="c66">🧪 超级金柳露 <span class="count" id="tl-c66">0</span></button>
                         <button class="loot-btn" data-loot="zhenzhu">🐚 珍珠 <span class="count" id="tl-zhenzhu">0</span></button>
@@ -331,7 +311,6 @@ const TreePlantModule = {
                         <button class="loot-btn" data-loot="jinliu">🧪 金柳露 <span class="count" id="tl-jinliu">0</span></button>
                     </div>
 
-                    <!-- 第6行: 卡片 + 4个空白占位 -->
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="kapian">🃏 卡片 <span class="count" id="tl-kapian">0</span></button>
                         <button class="loot-btn" data-loot="none" style="visibility:hidden;"></button>
@@ -346,7 +325,6 @@ const TreePlantModule = {
                 </div>
             </div>
 
-            <!-- 掉落物价值 -->
             <div class="module">
                 <div class="module-header"><div class="title">⚙️ 掉落物价值 (万) <span class="hint">— 根据物价调整</span></div></div>
                 <div class="module-body">
@@ -354,7 +332,6 @@ const TreePlantModule = {
                 </div>
             </div>
 
-            <!-- 操作按钮 -->
             <div class="flex-between">
                 <span style="font-size:0.7rem;color:#3a5f7a;">🌳 记录完整产出后点击「结算此树」</span>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -363,7 +340,6 @@ const TreePlantModule = {
                 </div>
             </div>
 
-            <!-- 种树记录 -->
             <div class="module" style="margin-top:14px;">
                 <div class="module-header">
                     <div class="title">📜 种树记录 <span class="hint" id="trHistoryCount">共 0 棵</span></div>
@@ -394,12 +370,10 @@ const TreePlantModule = {
         console.log('✅ 种树UI构建完成');
     },
 
-    // ========== 绑定事件 ==========
     bindEvents() {
         const container = document.getElementById('treePlantContainer');
         if (!container) return;
 
-        // ===== UI设置 =====
         document.getElementById('trBgColor').addEventListener('input', function() {
             TreePlantModule.uiSettings.bgColor = this.value;
             TreePlantModule.applyUISettings();
@@ -454,7 +428,6 @@ const TreePlantModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 事件按钮 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('#trEventsGrid .evt-btn');
             if (btn) {
@@ -463,7 +436,6 @@ const TreePlantModule = {
             }
         });
 
-        // ===== Loot按钮 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.loot-btn');
             if (btn) {
@@ -475,7 +447,6 @@ const TreePlantModule = {
             }
         });
 
-        // ===== 价格变化 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('#trPriceGrid input');
             if (input) {
@@ -488,12 +459,10 @@ const TreePlantModule = {
             }
         });
 
-        // ===== 按钮 =====
         document.getElementById('trCompleteBtn').addEventListener('click', () => this.settle());
         document.getElementById('trResetBtn').addEventListener('click', () => this.reset());
         document.getElementById('trUndoBtn').addEventListener('click', () => this.undo());
 
-        // ===== 数据分析 =====
         let analysisVisible = false;
         document.getElementById('trAnalysisToggleBtn').addEventListener('click', function() {
             analysisVisible = !analysisVisible;
@@ -504,7 +473,6 @@ const TreePlantModule = {
         });
     },
 
-    // ========== 核心业务 ==========
     addLoot(key) {
         if (this.current.isSettled) {
             alert('这棵树已结算，请开始新的记录！');
@@ -538,4 +506,258 @@ const TreePlantModule = {
             }
             if (hasZaoshu) {
                 this.current.shakes = 6;
-           
+            }
+        }
+        this.saveData();
+        this.render();
+    },
+
+    undo() {
+        let hasLoot = false;
+        for (let key of this.LOOT_TYPES.map(t => t.key)) {
+            if (this.current.loot[key] > 0) {
+                this.current.loot[key]--;
+                hasLoot = true;
+                break;
+            }
+        }
+        if (!hasLoot) {
+            if (this.current.events.length > 0) {
+                const lastEvt = this.current.events.pop();
+                this.current.shakes = this.current.baseShakes;
+                let hasZaoshu = false;
+                for (let e of this.current.events) {
+                    if (e === 'xiaozai') this.current.shakes += 1;
+                    else if (e === 'chongzai') this.current.shakes += 2;
+                    else if (e === 'zaoshu') {
+                        hasZaoshu = true;
+                    }
+                }
+                if (hasZaoshu) {
+                    this.current.shakes = 6;
+                }
+                alert(`已撤销事件: ${lastEvt}`);
+            } else {
+                alert('没有可撤销的操作');
+                return;
+            }
+        }
+        this.saveData();
+        this.render();
+    },
+
+    reset() {
+        if (confirm('重置当前种树记录？（不会删除已结算的历史）')) {
+            this.current = { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {}, isSettled: false };
+            this.LOOT_TYPES.forEach(t => {
+                if (this.current.loot[t.key] === undefined) this.current.loot[t.key] = 0;
+            });
+            this.saveData();
+            this.render();
+        }
+    },
+
+    settle() {
+        const income = this.calcCurrentIncome();
+        const totalLoot = Object.values(this.current.loot).reduce((a, b) => a + b, 0);
+        if (totalLoot === 0 && !confirm('当前没有产出记录，确认结算此树？')) return;
+
+        const profit = income.total - this.current.seedCost;
+        const lootDetails = [];
+        for (let [key, count] of Object.entries(this.current.loot)) {
+            if (count > 0) {
+                const label = this.LOOT_TYPES.find(t => t.key === key)?.label || key;
+                lootDetails.push(`${label}×${count}`);
+            }
+        }
+
+        const entry = {
+            date: new Date().toLocaleString(),
+            cost: this.current.seedCost,
+            income: income.total,
+            profit: profit,
+            shakes: this.current.shakes,
+            events: [...this.current.events],
+            loot: { ...this.current.loot },
+            lootDetails: lootDetails,
+        };
+
+        this.history.push(entry);
+        this.saveData();
+
+        this.current = { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {}, isSettled: false };
+        this.LOOT_TYPES.forEach(t => {
+            if (this.current.loot[t.key] === undefined) this.current.loot[t.key] = 0;
+        });
+        this.saveData();
+        this.render();
+
+        document.getElementById('settleModalTitle').textContent = '🌳 种树结算报告';
+        document.getElementById('settleModalDesc').textContent =
+            `🌱 成本 ${entry.cost}万 | 📊 收入 ${entry.income.toFixed(1)}万 | 📈 利润 ${entry.profit.toFixed(1)}万 | 🔄 摇树 ${entry.shakes}次`;
+        document.getElementById('settleModalBody').innerHTML =
+            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;padding:8px 0;">
+                <span>🌱 树苗成本: <strong>${entry.cost}万</strong></span>
+                <span>🔄 摇树次数: <strong>${entry.shakes}次</strong></span>
+                <span>📦 产出物品: <strong>${lootDetails.length > 0 ? lootDetails.join('; ') : '无'}</strong></span>
+                <span>📊 总收入: <strong>${entry.income.toFixed(1)}万</strong></span>
+                <span style="grid-column:1/-1;text-align:center;font-size:1.1rem;padding:6px 0;border-top:1px solid #dce5ef;color:${entry.profit>=0?'#2d6b2d':'#c0392b'};">
+                    ${entry.profit >= 0 ? '✅' : '❌'} 利润: <strong>${entry.profit.toFixed(1)}万</strong>
+                </span>
+            </div>`;
+        document.getElementById('settleModal').classList.add('show');
+    },
+
+    updateStats() {
+        const stats = this.calcStats();
+        const el = (id) => document.getElementById(id);
+        const setText = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+        setText('trTotalCost', stats.totalCost.toFixed(1));
+        setText('trTotalIncome', stats.totalIncome.toFixed(1));
+        setText('trTotalProfit', stats.totalProfit.toFixed(1));
+        setText('trTotalCount', stats.count);
+        setText('trAvgProfit', stats.avgProfit.toFixed(1));
+        setText('trWinRate', stats.winRate.toFixed(0) + '%');
+
+        const ps = document.getElementById('trProfitStat');
+        if (ps) ps.className = 'stat-item' + (stats.totalProfit > 0 ? ' profit' : stats.totalProfit < 0 ? ' loss' : '');
+        const rs = document.getElementById('trRateStat');
+        if (rs) rs.className = 'stat-item' + (stats.winRate >= 50 ? ' profit' : stats.winRate > 0 ? '' : '');
+
+        this.buildPriceInputs();
+    },
+
+    buildPriceInputs() {
+        const grid = document.getElementById('trPriceGrid');
+        if (!grid || grid.children.length > 0) return;
+
+        let html = '';
+        this.LOOT_TYPES.forEach(t => {
+            const v = this.prices[t.key] ?? t.defaultPrice;
+            html +=
+                `<div class="tree-price-item"><label>${t.label}</label><input type="number" step="0.1" min="0" value="${v}" data-key="${t.key}" style="border-radius:20px;padding:2px 6px;width:52px;text-align:center;border:1px solid #bccad9;"></div>`;
+        });
+        grid.innerHTML = html;
+    },
+
+    updateCurrent() {
+        const stats = this.calcStats();
+        const totalTrees = stats.count;
+        const el = (id) => document.getElementById(id);
+        const setText = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+        setText('trCurrentLabel', `第 ${totalTrees + 1} 棵`);
+        setText('trSeedCost', this.current.seedCost);
+        setText('trBaseShakes', this.current.baseShakes);
+        setText('trCurrentShakes', this.current.shakes);
+        setText('trEventsDisplay', this.current.events.length > 0 ? this.current.events.join(' + ') : '无');
+
+        this.LOOT_TYPES.forEach(t => {
+            const e = document.getElementById(`tl-${t.key}`);
+            if (e) e.textContent = this.current.loot[t.key] || 0;
+        });
+
+        const income = this.calcCurrentIncome();
+        const summary = document.getElementById('trCurrentLootSummary');
+        if (summary) summary.textContent = income.details.length > 0 ? income.details.join('; ') : '无';
+    },
+
+    updateHistory() {
+        console.log('📜 更新种树历史表格, 共', this.history.length, '条');
+        
+        const tbody = document.getElementById('trHistoryBody');
+        const countEl = document.getElementById('trHistoryCount');
+        if (countEl) countEl.textContent = `共 ${this.history.length} 棵`;
+
+        if (this.history.length === 0) {
+            if (tbody) tbody.innerHTML =
+                '<tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr>';
+            return;
+        }
+
+        let html = '';
+        const list = this.history.slice().reverse();
+        for (let i = 0; i < list.length; i++) {
+            const h = list[i];
+            const row = list.length - i;
+            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            const idx = this.history.indexOf(h);
+            
+            let lootStr = '-';
+            if (h.lootDetails && Array.isArray(h.lootDetails) && h.lootDetails.length > 0) {
+                lootStr = h.lootDetails.join('; ');
+            } else if (h.loot) {
+                const parts = [];
+                for (let [key, count] of Object.entries(h.loot)) {
+                    if (count > 0) {
+                        const label = this.LOOT_TYPES.find(t => t.key === key)?.label || key;
+                        parts.push(`${label}×${count}`);
+                    }
+                }
+                lootStr = parts.join('; ') || '-';
+            }
+            
+            let displayStr = lootStr;
+            if (displayStr.length > 50) {
+                displayStr = displayStr.substring(0, 50) + '...';
+            }
+
+            html += `<tr>
+                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+                <td>${h.date || '未知'}</td>
+                <td>${(h.cost || 0).toFixed(1)}</td>
+                <td>${(h.income || 0).toFixed(1)}</td>
+                <td class="${pc}">${(h.profit || 0).toFixed(1)}</td>
+                <td>${h.shakes || 0}</td>
+                <td style="font-size:0.7rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr.replace(/"/g, '&quot;')}">${displayStr}</td>
+                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
+            </tr>`;
+        }
+        if (tbody) tbody.innerHTML = html;
+
+        if (tbody) {
+            tbody.querySelectorAll('.del-btn').forEach(b => {
+                b.removeEventListener('click', b._delHandler);
+                b._delHandler = () => {
+                    const idx = parseInt(b.dataset.idx);
+                    if (idx >= 0 && idx < this.history.length) {
+                        this.history.splice(idx, 1);
+                        this.saveData();
+                        this.render();
+                    }
+                };
+                b.addEventListener('click', b._delHandler);
+            });
+        }
+        console.log('✅ 种树历史表格更新完成');
+    },
+
+    updateAnalysis() {
+        const stats = this.calcStats();
+        const el = (id) => document.getElementById(id);
+        const setText = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+        setText('taTotal', stats.count);
+        setText('taCost', stats.totalCost.toFixed(1));
+        setText('taIncome', stats.totalIncome.toFixed(1));
+        setText('taProfit', stats.totalProfit.toFixed(1));
+        setText('taRate', stats.winRate.toFixed(0) + '%');
+
+        const wrap = document.getElementById('taProfitWrap');
+        if (wrap) wrap.className = 'a-item' + (stats.totalProfit >= 0 ? ' a-profit' : ' a-loss');
+
+        const summary = document.getElementById('taSummary');
+        if (summary) {
+            summary.textContent = stats.count === 0 ?
+                '总结: 尚未有种树记录，开始种树吧！' :
+                `总结: 共种植 ${stats.count} 棵，总利润 ${stats.totalProfit.toFixed(1)} 万，盈利率 ${stats.winRate.toFixed(0)}%，平均每棵 ${stats.avgProfit.toFixed(1)} 万。`;
+        }
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => TreePlantModule.init());
+} else {
+    TreePlantModule.init();
+}
