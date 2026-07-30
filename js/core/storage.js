@@ -1,5 +1,5 @@
 // ============================================================
-//  📦 存储核心 - 修复合并空数据问题
+//  📦 存储核心 - 覆盖模式（最稳定）
 // ============================================================
 const Storage = {
     set(moduleKey, data) {
@@ -42,91 +42,21 @@ const Storage = {
         return all;
     },
 
+    // ===== 导入数据（覆盖模式） =====
     importAll(data) {
         for (let [key, value] of Object.entries(data)) {
             localStorage.setItem(`toolbox_${key}`, JSON.stringify(value));
         }
     },
 
-    deduplicateHistory(items) {
-        if (!Array.isArray(items) || items.length === 0) return items;
-        const seen = new Set();
-        const unique = [];
-        for (let item of items) {
-            let key = item.date || JSON.stringify(item);
-            if (item.ringCount !== undefined && item.profit !== undefined) {
-                key = `${item.date}_${item.ringCount}_${item.profit}`;
-            }
-            if (item.shakes !== undefined && item.profit !== undefined) {
-                key = `${item.date}_${item.profit}_${item.shakes}`;
-            }
-            if (!seen.has(key)) {
-                seen.add(key);
-                unique.push(item);
-            }
-        }
-        return unique;
-    },
-
-    sortHistory(items) {
-        if (!Array.isArray(items) || items.length === 0) return items;
-        return items.sort((a, b) => {
-            if (a.date && b.date) {
-                return new Date(b.date) - new Date(a.date);
-            }
-            return 0;
-        });
-    },
-
-    // ===== 合并数据（修复版） =====
+    // ===== 合并数据（覆盖模式 - 最稳定） =====
     mergeAll(data) {
         console.log('🔄 开始合并云端数据...');
-        
         for (let [moduleKey, cloudData] of Object.entries(data)) {
             console.log(`📦 处理模块: ${moduleKey}`);
-            
-            let localData = this.get(moduleKey, {});
-            console.log(`  └─ 本地 history: ${localData.history?.length || 0} 条`);
-            console.log(`  └─ 云端 history: ${cloudData.history?.length || 0} 条`);
-            
-            // ✅ 修复：如果本地没有数据，或者本地 history 为空，直接使用云端数据
-            if (!localData || Object.keys(localData).length === 0 || localData.history?.length === 0) {
-                if (cloudData.history && Array.isArray(cloudData.history)) {
-                    cloudData.history = this.sortHistory(cloudData.history);
-                }
-                if (cloudData.records && Array.isArray(cloudData.records)) {
-                    cloudData.records = this.sortHistory(cloudData.records);
-                }
-                this.set(moduleKey, cloudData);
-                console.log(`  └─ ✅ 本地无数据或为空，直接使用云端数据 (history: ${cloudData.history?.length || 0} 条)`);
-                continue;
-            }
-            
-            const merged = { ...localData };
-            
-            if (cloudData.history && Array.isArray(cloudData.history)) {
-                const localHistory = localData.history || [];
-                const combined = [...localHistory, ...cloudData.history];
-                const uniqueHistory = this.deduplicateHistory(combined);
-                merged.history = this.sortHistory(uniqueHistory);
-                console.log(`  └─ 合并后 history: ${merged.history.length} 条`);
-            }
-            
-            if (cloudData.records && Array.isArray(cloudData.records)) {
-                const localRecords = localData.records || [];
-                const combined = [...localRecords, ...cloudData.records];
-                const uniqueRecords = this.deduplicateHistory(combined);
-                merged.records = this.sortHistory(uniqueRecords);
-            }
-            
-            for (let [key, value] of Object.entries(cloudData)) {
-                if (key !== 'history' && key !== 'records') {
-                    merged[key] = value;
-                }
-            }
-            
-            this.set(moduleKey, merged);
-            console.log(`  └─ ✅ 已保存，最终 history: ${merged.history?.length || 0} 条`);
+            // ✅ 直接覆盖本地数据（不合并，避免数据冲突）
+            this.set(moduleKey, cloudData);
+            console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
         }
         console.log('✅ 合并完成！');
     }
