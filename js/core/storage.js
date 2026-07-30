@@ -50,16 +50,16 @@ const Storage = {
     },
 
     // ===== 合并数据（覆盖模式 - 最稳定） =====
-    mergeAll(data) {
-        console.log('🔄 开始合并云端数据...');
-        for (let [moduleKey, cloudData] of Object.entries(data)) {
-            console.log(`📦 处理模块: ${moduleKey}`);
-            // ✅ 直接覆盖本地数据（不合并，避免数据冲突）
-            this.set(moduleKey, cloudData);
-            console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
-        }
-        console.log('✅ 合并完成！');
+   mergeAll(data) {
+    console.log('🔄 开始合并云端数据...');
+    for (let [moduleKey, cloudData] of Object.entries(data)) {
+        console.log(`📦 处理模块: ${moduleKey}`);
+        // ✅ 直接覆盖，不丢数据
+        this.set(moduleKey, cloudData);
+        console.log(`  └─ ✅ 已保存，history: ${cloudData.history?.length || 0} 条`);
     }
+    console.log('✅ 合并完成！');
+}
 };
 
 window.Storage = Storage;
