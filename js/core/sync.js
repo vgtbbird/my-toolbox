@@ -1,5 +1,5 @@
 // ============================================================
-//  ☁️ 同步核心 - 终极修复版（拉取后强制刷新页面）
+//  ☁️ 同步核心 - 修复中文乱码
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -79,6 +79,7 @@ const GitHubSync = {
                 return { success: false, message: '❌ 数据格式错误', total: 0 };
             }
 
+            // ✅ 使用正确的解码方式
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
@@ -96,38 +97,33 @@ const GitHubSync = {
         }
     },
 
-    // ===== Base64 编码（安全版本） =====
+    // ===== Base64 编码 =====
     encodeBase64(str) {
-        const encoder = new TextEncoder();
-        const dataBytes = encoder.encode(str);
-        let binary = '';
-        for (let i = 0; i < dataBytes.length; i++) {
-            binary += String.fromCharCode(dataBytes[i]);
-        }
-        return btoa(binary);
+        // 使用 btoa 处理 UTF-8 字符串
+        return btoa(unescape(encodeURIComponent(str)));
     },
 
- // ===== Base64 解码（修复中文乱码） =====
-decodeBase64(base64Str) {
-    try {
-        // 方法1：使用 atob 和 decodeURIComponent
-        const decoded = atob(base64Str);
-        const bytes = new Uint8Array(decoded.length);
-        for (let i = 0; i < decoded.length; i++) {
-            bytes[i] = decoded.charCodeAt(i);
-        }
-        const decoder = new TextDecoder('utf-8');
-        return decoder.decode(bytes);
-    } catch (e) {
-        // 方法2：如果上面失败，尝试传统方式
+    // ===== Base64 解码（修复中文乱码） =====
+    decodeBase64(base64Str) {
         try {
+            // 使用 decodeURIComponent + atob 正确处理 UTF-8
             return decodeURIComponent(escape(atob(base64Str)));
-        } catch (e2) {
-            console.error('解码失败:', e2);
-            return atob(base64Str);
+        } catch (e) {
+            console.error('解码失败，尝试备用方法:', e);
+            try {
+                // 备用方法：使用 TextDecoder
+                const binaryStr = atob(base64Str);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                return new TextDecoder('utf-8').decode(bytes);
+            } catch (e2) {
+                console.error('所有解码方法都失败:', e2);
+                return atob(base64Str);
+            }
         }
-    }
-},
+    },
 
     // ===== 同步到云端 =====
     async syncToCloud() {
@@ -304,6 +300,7 @@ decodeBase64(base64Str) {
                 return { success: false, message: '❌ 数据格式错误' };
             }
 
+            // ✅ 使用正确的解码方式
             const jsonStr = this.decodeBase64(data.content);
             const content = JSON.parse(jsonStr);
 
@@ -311,24 +308,30 @@ decodeBase64(base64Str) {
             console.log('☁️ 云端数据:', cloudStats.total, '条');
 
             if (content.modules) {
-                // ✅ 直接覆盖本地数据
                 Storage.mergeAll(content.modules);
                 
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
                 
-                // ============================================================
-                //  🚀 终极强制刷新：直接重载页面
-                // ============================================================
-                console.log('🔄 页面即将刷新以显示最新数据...');
+                // 强制刷新
+                if (typeof App !== 'undefined' && App.refreshAll) {
+                    App.refreshAll();
+                }
+                if (typeof PetRingModule !== 'undefined') {
+                    if (PetRingModule.render) PetRingModule.render();
+                    if (PetRingModule.updateHistoryTable) PetRingModule.updateHistoryTable();
+                }
+                if (typeof TreePlantModule !== 'undefined') {
+                    if (TreePlantModule.render) TreePlantModule.render();
+                    if (TreePlantModule.updateHistory) TreePlantModule.updateHistory();
+                }
                 
                 return { 
                     success: true, 
                     message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${afterStats.total} 条`,
                     cloudTotal: cloudStats.total,
                     localTotal: afterStats.total,
-                    details: cloudStats.details,
-                    needReload: true  // 标记需要刷新
+                    details: cloudStats.details
                 };
             } else {
                 return { success: false, message: '❌ 数据格式不兼容' };
