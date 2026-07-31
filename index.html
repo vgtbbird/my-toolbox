@@ -780,26 +780,49 @@
             if (e.target === this) this.classList.remove('show');
         });
 
-        // ============================================================
-        //  🚀 启动应用！（默认显示首页）
-        // ============================================================
-        // 先让首页可见，Tab导航隐藏
-        document.getElementById('homePage').classList.remove('hidden');
-        document.getElementById('tabNav').style.display = 'none';
+       // ============================================================
+//  🚀 启动应用！（默认显示首页）
+// ============================================================
 
-        // 初始化所有模块
-        App.init();
+// 1. 确保首页可见
+document.getElementById('homePage').classList.remove('hidden');
+document.getElementById('tabNav').style.display = 'none';
 
-        // 注册 Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(function(registration) {
-                    console.log('Service Worker 注册成功');
-                })
-                .catch(function(err) {
-                    console.log('Service Worker 注册失败:', err);
-                });
+// 2. 隐藏所有Tab内容
+document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.remove('active');
+});
+document.querySelectorAll('.tab-nav .tab-btn').forEach(el => {
+    el.classList.remove('active');
+});
+
+// 3. 初始化所有模块
+for (let [id, module] of Object.entries(App.modules)) {
+    if (typeof module.init === 'function') {
+        console.log(`📦 初始化模块: ${id}`);
+        try {
+            module.init();
+        } catch (e) {
+            console.error(`❌ 模块 ${id} 初始化失败:`, e);
         }
+    }
+}
+
+// 4. 构建首页卡片
+buildHomeCards();
+
+// 5. Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(function(registration) {
+            console.log('Service Worker 注册成功');
+        })
+        .catch(function(err) {
+            console.log('Service Worker 注册失败:', err);
+        });
+}
+
+console.log('✅ 首页启动完成！');
     </script>
 
 </body>
