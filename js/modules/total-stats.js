@@ -19,10 +19,9 @@ const TotalStatsModule = {
         const records = this.getAllRecords();
         let filterDate = document.getElementById('tsFilterDate').value;
         
-        // 如果没有选中日期，自动选最新有数据的日期
         if (!filterDate && records.length > 0) {
             const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
-            filterDate = sorted[0].date.split(' ')[0].replace(/\//g, '-');
+            filterDate = sorted[0].date.split(' ')[0];
             document.getElementById('tsFilterDate').value = filterDate;
         }
         
@@ -159,7 +158,6 @@ const TotalStatsModule = {
                     </div>
                     <div id="tsMonthSummary" style="background:#f0f5fb;border-radius:12px;padding:8px 14px;margin-bottom:10px;font-size:0.85rem;color:#1f3b53;text-align:center;border:1px solid #dce5ef;"></div>
                     <div id="tsCalendar" style="margin-bottom:10px;"></div>
-                    <!-- 只显示一个日期详情，不重复 -->
                     <div id="tsDateDetail" style="margin-bottom:10px;"></div>
                 </div>
             </div>
@@ -167,19 +165,8 @@ const TotalStatsModule = {
     },
 
     bindEvents() {
+        // 筛选按钮
         document.getElementById('tsFilterBtn').addEventListener('click', () => {
-            const date = document.getElementById('tsFilterDate').value;
-            if (date) {
-                const records = this.getAllRecords();
-                const hasData = records.some(r => {
-                    const d = r.date.split(' ')[0].replace(/\//g, '-');
-                    return d === date;
-                });
-                if (!hasData) {
-                    alert('该日期暂无数据');
-                    return;
-                }
-            }
             this.render();
         });
 
@@ -188,6 +175,7 @@ const TotalStatsModule = {
             this.render();
         });
 
+        // 月份切换
         document.getElementById('tsPrevMonth').addEventListener('click', () => {
             this.viewMonth--;
             if (this.viewMonth < 0) { this.viewMonth = 11; this.viewYear--; }
@@ -202,25 +190,26 @@ const TotalStatsModule = {
             this.render();
         });
 
-        document.getElementById('totalStatsContainer').addEventListener('click', (e) => {
+        // 日期点击 - 使用事件委托
+        document.getElementById('totalStatsContainer').addEventListener('click', function(e) {
             const dateBtn = e.target.closest('.ts-date-btn');
             if (dateBtn) {
                 const date = dateBtn.dataset.date;
+                console.log('点击日期:', date);
                 document.getElementById('tsFilterDate').value = date;
-                this.render();
+                TotalStatsModule.render();
             }
         });
     },
 
-    // ✅ 修复：日历高亮
     renderCalendar(year, month, records, selectedDate) {
         const container = document.getElementById('tsCalendar');
         if (!container) return;
 
-        // 收集有数据的日期（统一格式为 YYYY-MM-DD）
+        // 收集有数据的日期（使用原始格式，不转换）
         const dateKeys = new Set();
         for (let r of records) {
-            const d = r.date.split(' ')[0].replace(/\//g, '-');
+            const d = r.date.split(' ')[0];
             dateKeys.add(d);
         }
 
@@ -243,9 +232,10 @@ const TotalStatsModule = {
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            // 使用 / 格式，与数据一致
+            const dateStr = `${year}/${month + 1}/${d}`;
             const hasData = dateKeys.has(dateStr);
-            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const isToday = dateStr === new Date().toISOString().split('T')[0].replace(/-/g, '/');
             const isSelected = dateStr === selectedDate;
 
             let style = 'padding:6px 2px;border-radius:50%;cursor:pointer;font-size:0.75rem;';
@@ -271,16 +261,14 @@ const TotalStatsModule = {
         container.innerHTML = html;
     },
 
-    // ✅ 修复：只显示一个日期详情，不重复
     renderDateDetail(records, filterDate) {
         const container = document.getElementById('tsDateDetail');
         if (!container) return;
 
-        // 如果没有选中日期，自动选最新有数据的日期
         let activeDate = filterDate;
         if (!activeDate && records.length > 0) {
             const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
-            activeDate = sorted[0].date.split(' ')[0].replace(/\//g, '-');
+            activeDate = sorted[0].date.split(' ')[0];
         }
 
         if (!activeDate) {
@@ -288,9 +276,8 @@ const TotalStatsModule = {
             return;
         }
 
-        // 筛选该日期的记录
         const dayRecords = records.filter(r => {
-            const d = r.date.split(' ')[0].replace(/\//g, '-');
+            const d = r.date.split(' ')[0];
             return d === activeDate;
         });
 
@@ -299,7 +286,6 @@ const TotalStatsModule = {
             return;
         }
 
-        // 计算当天汇总
         let totalProfit = 0, totalRmb = 0, totalIncome = 0;
         for (let r of dayRecords) {
             totalProfit += r.profit || 0;
@@ -309,16 +295,16 @@ const TotalStatsModule = {
 
         const pc = totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
 
-        // 构建记录列表HTML
         let listHtml = '';
         for (let item of dayRecords) {
             const pc2 = item.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            const lootDisplay = item.lootStr && item.lootStr !== '无产出' ? item.lootStr : '';
             listHtml += `
                 <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:0.8rem;border-bottom:1px solid #f5f8fc;flex-wrap:wrap;">
                     <span style="font-size:1.1rem;">${item.icon}</span>
                     <span style="font-weight:600;color:#1f3b53;min-width:60px;">${item.module}</span>
                     <span style="color:#5a7a94;flex:1;font-size:0.75rem;">${item.detail}</span>
-                    ${item.lootStr ? `<span style="color:#5a7a94;font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.lootStr}</span>` : ''}
+                    ${lootDisplay ? `<span style="color:#5a7a94;font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${lootDisplay}</span>` : ''}
                     <span style="font-weight:600;white-space:nowrap;font-size:0.75rem;">
                         💰 ${(item.income || 0).toFixed(1)}万
                         | <span class="${pc2}">${item.profit >= 0 ? '+' : ''}${(item.profit || 0).toFixed(1)}万</span>
@@ -352,7 +338,7 @@ const TotalStatsModule = {
             filterDate = document.getElementById('tsFilterDate').value;
             if (!filterDate && records.length > 0) {
                 const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
-                filterDate = sorted[0].date.split(' ')[0].replace(/\//g, '-');
+                filterDate = sorted[0].date.split(' ')[0];
                 document.getElementById('tsFilterDate').value = filterDate;
             }
         }
@@ -384,7 +370,6 @@ const TotalStatsModule = {
         `;
 
         this.renderCalendar(this.viewYear, this.viewMonth, records, filterDate);
-        // ✅ 只调用一次日期详情，不重复
         this.renderDateDetail(records, filterDate);
     },
 
