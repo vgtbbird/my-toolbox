@@ -194,6 +194,7 @@
             <button class="tab-btn" data-tab="treePlant">🌳 种树统计</button>
             <button class="tab-btn" data-tab="shiMen">📋 师门统计</button>
             <button class="tab-btn" data-tab="totalStats">📊 总收益</button>
+            <button class="tab-btn" data-tab="equipmentQuery">⚔️ 打造查询</button>
         </div>
 
         <!-- ============================================================ -->
@@ -230,7 +231,16 @@
                 <p>🔜 开发中，即将上线</p>
             </div>
         </div>
-
+        
+        <!-- 装备打造查询 -->
+        <div class="tab-content" id="tab-equipmentQuery">
+            <div class="back-header">
+                <button class="btn-back-home" data-target="home">← 返回首页</button>
+                <span style="font-size:0.9rem;font-weight:600;color:#1f3b53;">⚔️ 装备打造 & 熔炼查询</span>
+            </div>
+            <div id="equipmentQueryContainer"></div>
+        </div>
+        
 <!-- 总收益 -->
 <div class="tab-content" id="tab-totalStats">
     <div class="back-header">
@@ -373,6 +383,7 @@
     <script src="js/modules/pet-ring.js"></script>
     <script src="js/modules/tree-plant.js"></script>
     <script src="js/modules/total-stats.js"></script> 
+    <script src="js/modules/equipment-query.js"></script>
 
     <script>
         // ============================================================
