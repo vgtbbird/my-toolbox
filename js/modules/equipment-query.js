@@ -1,5 +1,5 @@
 // ============================================================
-//  ⚔️ 装备打造 & 熔炼查询模块 - 完整版
+//  ⚔️ 装备打造 & 熔炼查询模块 - 修复版
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -19,8 +19,6 @@ const EquipmentQueryModule = {
     currentLevel: 130,
     currentPart: '武器',
     currentType: '普通',
-
-    // 用户输入的装备属性
     inputValues: {},
 
     // ========== 装备数据 ==========
@@ -107,41 +105,15 @@ const EquipmentQueryModule = {
         }
     },
 
-    // ========== 熔炼数据 ==========
     meltData: {
-        "武器": {
-            "可熔炼": ["体质", "魔力", "力量", "耐力", "敏捷", "耐久"],
-            "不可熔炼": ["伤害", "命中"],
-            "说明": "武器必须带绿字属性才有效，白板武器熔炼只影响耐久"
-        },
-        "衣服": {
-            "可熔炼": ["防御", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"],
-            "不可熔炼": [],
-            "说明": "只熔炼已有的属性类型"
-        },
-        "项链": {
-            "可熔炼": ["灵力", "耐久"],
-            "不可熔炼": [],
-            "说明": ""
-        },
-        "腰带": {
-            "可熔炼": ["防御", "气血", "耐久"],
-            "不可熔炼": [],
-            "说明": ""
-        },
-        "鞋子": {
-            "可熔炼": ["防御", "敏捷", "耐久"],
-            "不可熔炼": [],
-            "说明": ""
-        },
-        "帽子": {
-            "可熔炼": ["防御", "魔法", "耐久"],
-            "不可熔炼": [],
-            "说明": ""
-        }
+        "武器": { "可熔炼": ["体质", "魔力", "力量", "耐力", "敏捷", "耐久"], "不可熔炼": ["伤害", "命中"], "说明": "武器必须带绿字属性才有效，白板武器熔炼只影响耐久" },
+        "衣服": { "可熔炼": ["防御", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"], "不可熔炼": [], "说明": "只熔炼已有的属性类型" },
+        "项链": { "可熔炼": ["灵力", "耐久"], "不可熔炼": [], "说明": "" },
+        "腰带": { "可熔炼": ["防御", "气血", "耐久"], "不可熔炼": [], "说明": "" },
+        "鞋子": { "可熔炼": ["防御", "敏捷", "耐久"], "不可熔炼": [], "说明": "" },
+        "帽子": { "可熔炼": ["防御", "魔法", "耐久"], "不可熔炼": [], "说明": "" }
     },
 
-    // ========== 强化国标值 ==========
     standardValues: {
         "60": { "灵力": 80, "防御": 36, "敏捷": 24, "气血": 136, "衣服防御": 105, "帽子防御": 36 },
         "70": { "灵力": 93, "防御": 42, "敏捷": 27, "气血": 157, "衣服防御": 120, "帽子防御": 42 },
@@ -167,7 +139,6 @@ const EquipmentQueryModule = {
 
     render() {
         this.updateQueryResult();
-        this.updateMeltInputs();
         this.calculateMelt();
         this.saveUISettings();
         setTimeout(() => this.applyUISettings(), 100);
@@ -272,7 +243,7 @@ const EquipmentQueryModule = {
             <!-- 装备信息输入 -->
             <div class="module">
                 <div class="module-header">
-                    <div class="title">📝 装备信息输入 <span class="hint">— 输入装备属性，自动对比打造范围</span></div>
+                    <div class="title">📝 装备信息输入 <span class="hint">— 选择装备，输入属性值自动对比</span></div>
                 </div>
                 <div class="module-body">
                     <div style="display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:10px;">
@@ -299,14 +270,13 @@ const EquipmentQueryModule = {
                         </div>
                     </div>
 
-                    <!-- 属性输入区域 -->
                     <div id="eqAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:8px 0;border-top:1px solid #eef2f7;">
-                        <!-- 由 JS 动态生成 -->
+                        <!-- 由 updateMeltInputs 动态生成 -->
                     </div>
                 </div>
             </div>
 
-            <!-- 打造属性范围（自动对比） -->
+            <!-- 打造属性范围 -->
             <div class="module" style="margin-top:14px;">
                 <div class="module-header">
                     <div class="title">📊 打造属性范围 <span class="hint">— 灰色=未达下限，绿色=达标，金色=满属性</span></div>
@@ -415,11 +385,14 @@ const EquipmentQueryModule = {
                 this.currentPart = parts[0] || '武器';
                 partSelect.value = this.currentPart;
             }
+            // 重新生成输入框
+            this.updateMeltInputs();
             this.render();
         });
 
         document.getElementById('eqPart').addEventListener('change', (e) => {
             this.currentPart = e.target.value;
+            this.updateMeltInputs();
             this.render();
         });
 
@@ -428,12 +401,46 @@ const EquipmentQueryModule = {
             this.render();
         });
 
-        // 属性输入变化时自动计算
+        // ✅ 属性输入变化时只更新结果，不重新渲染（避免死循环）
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
-                EquipmentQueryModule.render();
+                // 保存输入值
+                const attr = e.target.id.replace('eqAttr_', '');
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) {
+                    EquipmentQueryModule.inputValues[attr] = val;
+                }
+                EquipmentQueryModule.calculateMelt();
+                EquipmentQueryModule.updateQueryResult();
             }
         });
+    },
+
+    // ========== 更新输入框 ==========
+    updateMeltInputs() {
+        const container = document.getElementById('eqAttrInputArea');
+        if (!container) return;
+
+        const part = this.currentPart;
+        const meltInfo = this.meltData[part];
+        if (!meltInfo) {
+            container.innerHTML = '<div style="color:#6c87a0;">该部位暂无熔炼数据</div>';
+            return;
+        }
+
+        // 显示可输入的属性
+        const attrList = meltInfo.可熔炼;
+        let html = '';
+        for (let attr of attrList) {
+            const val = this.inputValues[attr] || '';
+            html += `
+                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;">
+                    <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}：</label>
+                    <input type="number" id="eqAttr_${attr}" class="eq-attr-input" step="0.1" min="0" value="${val}" placeholder="输入值" style="width:70px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;text-align:center;">
+                </div>
+            `;
+        }
+        container.innerHTML = html;
     },
 
     // ========== 更新装备查询结果 ==========
@@ -471,87 +478,63 @@ const EquipmentQueryModule = {
             const userVal = inputValues[attr];
             let status = '';
             let statusColor = '#5a7a94';
-            if (userVal !== undefined && !isNaN(userVal)) {
+            let statusText = '';
+            if (userVal !== undefined && !isNaN(userVal) && userVal > 0) {
                 if (userVal >= range[1]) {
-                    status = ' ✅ 满属性！';
+                    status = ' ⭐ 满属性！';
                     statusColor = '#dbbd7c';
                 } else if (userVal >= range[0]) {
                     status = ' ✅ 达标';
                     statusColor = '#2d6b2d';
-                } else if (userVal > 0) {
+                } else {
                     status = ' ⚠️ 未达下限';
                     statusColor = '#c0392b';
                 }
+                statusText = `(${userVal}${status})`;
             }
             html += `
                 <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;background:${userVal !== undefined && !isNaN(userVal) && userVal > 0 ? '#f8faff' : 'transparent'};border-radius:4px;">
                     <span>${attr}</span>
                     <span>
                         <span style="font-weight:600;color:#1f3b53;">${range[0]} - ${range[1]}</span>
-                        ${userVal !== undefined && !isNaN(userVal) && userVal > 0 ? `<span style="color:${statusColor};font-weight:600;margin-left:6px;">(${userVal}${status})</span>` : ''}
+                        ${statusText ? `<span style="color:${statusColor};font-weight:600;margin-left:6px;">${statusText}</span>` : ''}
                     </span>
                 </div>
             `;
         }
 
         // 耐久
-        const userDurability = inputValues['耐久'];
+        const userDur = inputValues['耐久'];
         let durStatus = '';
         let durColor = '#5a7a94';
-        if (userDurability !== undefined && !isNaN(userDurability)) {
-            if (userDurability >= 100) {
+        let durText = '';
+        if (userDur !== undefined && !isNaN(userDur) && userDur > 0) {
+            if (userDur >= 100) {
                 durStatus = ' ✅ 可熔炼';
                 durColor = '#2d6b2d';
-            } else if (userDurability > 0) {
+            } else {
                 durStatus = ' ⚠️ 耐久不足100';
                 durColor = '#c0392b';
             }
+            durText = `(${userDur}${durStatus})`;
         }
         html += `
-            <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;border-radius:4px;background:${userDurability !== undefined && !isNaN(userDurability) && userDurability > 0 ? '#f8faff' : 'transparent'};">
+            <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;border-radius:4px;background:${userDur !== undefined && !isNaN(userDur) && userDur > 0 ? '#f8faff' : 'transparent'};">
                 <span>耐久</span>
                 <span>
                     <span style="font-weight:600;color:#1f3b53;">${durability}</span>
-                    ${userDurability !== undefined && !isNaN(userDurability) && userDurability > 0 ? `<span style="color:${durColor};font-weight:600;margin-left:6px;">(${userDurability}${durStatus})</span>` : ''}
+                    ${durText ? `<span style="color:${durColor};font-weight:600;margin-left:6px;">${durText}</span>` : ''}
                 </span>
             </div>
         `;
 
         html += `</div>`;
 
-        // 添加熔炼条件提示
         if (meltInfo && meltInfo.说明) {
             html += `<div style="font-size:0.75rem;color:#5a7a94;margin-top:6px;padding-top:6px;border-top:1px solid #eef2f7;">💡 ${meltInfo.说明}</div>`;
         }
 
         el.innerHTML = html;
-    },
-
-    // ========== 更新熔炼输入 ==========
-    updateMeltInputs() {
-        const container = document.getElementById('eqAttrInputArea');
-        if (!container) return;
-
-        const part = this.currentPart;
-        const meltInfo = this.meltData[part];
-        if (!meltInfo) {
-            container.innerHTML = '<div style="color:#6c87a0;">该部位暂无熔炼数据</div>';
-            return;
-        }
-
-        // 显示可输入的属性（包括耐久）
-        const attrList = meltInfo.可熔炼;
-        let html = '';
-        for (let attr of attrList) {
-            const val = this.inputValues[attr] || '';
-            html += `
-                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;">
-                    <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}：</label>
-                    <input type="number" id="eqAttr_${attr}" class="eq-attr-input" step="0.1" min="0" value="${val}" placeholder="输入值" style="width:70px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;text-align:center;">
-                </div>
-            `;
-        }
-        container.innerHTML = html;
     },
 
     // ========== 熔炼计算 ==========
@@ -567,9 +550,9 @@ const EquipmentQueryModule = {
         for (let inp of inputs) {
             const attr = inp.id.replace('eqAttr_', '');
             const val = parseFloat(inp.value);
-            if (!isNaN(val) && val >= 0) {
+            if (!isNaN(val) && val > 0) {
                 values[attr] = val;
-                if (val > 0) hasValue = true;
+                hasValue = true;
             }
         }
 
@@ -603,7 +586,6 @@ const EquipmentQueryModule = {
             let stdVal = 0;
             let isStat = statAttrs.includes(attr);
 
-            // 确定国标值
             if (isStat) {
                 stdVal = part === '衣服' ? standard.衣服防御 : standard.防御;
             } else if (attr === '防御') {
@@ -617,7 +599,6 @@ const EquipmentQueryModule = {
             } else if (attr === '魔法') {
                 stdVal = standard.防御;
             } else if (attr === '耐久') {
-                // 耐久不计算熔炼上限，只提示
                 html += `
                     <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;">
                         <span>耐久</span>
@@ -629,12 +610,10 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            // 计算熔炼上限
             const maxValue = (stdVal * 1.3 - val) / 1.5;
             const canMelt = Math.max(0, Math.round(maxValue * 10) / 10);
             const maxFinal = val + canMelt;
 
-            // 判断单加双加
             let extraInfo = '';
             if (isStat) {
                 const statCount = Object.keys(values).filter(k => statAttrs.includes(k) && values[k] > 0).length;
