@@ -1118,7 +1118,20 @@ ITEM_TYPES: [
         const rmb = income.profit * this.exchangeRate;
 
         document.getElementById('prTotalCost').textContent = stats.totalCost.toFixed(1);
-        document.getElementById('prTotalScore').textContent = stats.totalScore;
+        const ringCount = stats.ringCount;
+        const benchmark = ringCount * 2;
+        const diff = stats.totalScore - benchmark;
+        let diffText = '';
+        if (ringCount > 0) {
+            if (diff > 0) {
+                diffText = ` 🟢 领先${diff}分`;
+            } else if (diff < 0) {
+                diffText = ` 🔴 落后${Math.abs(diff)}分`;
+            } else {
+                diffText = ` ⚪ 持平`;
+            }
+        }
+        document.getElementById('prTotalScore').textContent = stats.totalScore + diffText;
         document.getElementById('prRingCount').innerHTML = `${stats.ringCount} <span class="remaining">/${stats.remaining}剩</span>`;
         document.getElementById('prAvgCost').textContent = stats.avgCost.toFixed(1);
         document.getElementById('prTotalPoints').textContent = stats.totalPoints;
