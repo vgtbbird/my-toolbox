@@ -598,6 +598,7 @@ const TreePlantModule = {
             events: [...this.current.events],
             loot: { ...this.current.loot },
             lootDetails: lootDetails,
+            exchangeRate: this.exchangeRate  // ✅ 保存当时汇率
         };
 
         this.history.push(entry);
