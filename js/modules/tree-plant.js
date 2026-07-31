@@ -3,7 +3,7 @@
 // ============================================================
 const TreePlantModule = {
     id: 'treePlant',
-    ortState: { order: 'desc' },
+
     storageKey: 'treePlant',
     history: [],
     prices: {},
@@ -370,9 +370,7 @@ const TreePlantModule = {
                     </div>
                     <div class="table-wrap" style="max-height:300px;">
                         <table>
-                            <thead><tr><th>#</th><th style="min-width:100px;cursor:pointer;" id="trSortHeader">
-    📅 日期 <span id="trSortIcon">↓</span>
-</th>🌱 成本</th><th>💰 收入</th><th>📈 利润</th><th>🔄 摇树</th><th>📦 产出</th><th>⚙️</th></tr></thead>
+                            <thead><tr><th>#</th><th>📅 日期</th><th>🌱 成本</th><th>💰 收入</th><th>📈 利润</th><th>🔄 摇树</th><th>📦 产出</th><th>⚙️</th></tr></thead>
                             <tbody id="trHistoryBody"><tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr></tbody>
                         </table>
                     </div>
@@ -491,21 +489,6 @@ const TreePlantModule = {
             this.classList.toggle('active', analysisVisible);
             if (analysisVisible) TreePlantModule.updateAnalysis();
         });
-                let analysisVisible = false;
-        document.getElementById('trAnalysisToggleBtn').addEventListener('click', function() {
-            analysisVisible = !analysisVisible;
-            document.getElementById('trAnalysisPanel').style.display = analysisVisible ? 'block' : 'none';
-            this.textContent = analysisVisible ? '📊 隐藏分析' : '📊 数据分析';
-            this.classList.toggle('active', analysisVisible);
-            if (analysisVisible) TreePlantModule.updateAnalysis();
-        });
-
-        // ===== 排序按钮 =====
-        document.getElementById('trSortHeader')?.addEventListener('click', function() {
-            TreePlantModule.sortState.order = TreePlantModule.sortState.order === 'desc' ? 'asc' : 'desc';
-            TreePlantModule.updateHistory();
-        });
-    },
     },
 
     addLoot(key) {
@@ -700,88 +683,76 @@ const TreePlantModule = {
         if (summary) summary.textContent = income.details.length > 0 ? income.details.join('; ') : '无';
     },
 
-updateHistory() {
-    console.log('📜 更新种树历史表格, 共', this.history.length, '条');
+    updateHistory() {
+        console.log('📜 更新种树历史表格, 共', this.history.length, '条');
+        
+        const tbody = document.getElementById('trHistoryBody');
+        const countEl = document.getElementById('trHistoryCount');
+        if (countEl) countEl.textContent = `共 ${this.history.length} 棵`;
 
-    const tbody = document.getElementById('trHistoryBody');
-    const countEl = document.getElementById('trHistoryCount');
-    if (countEl) countEl.textContent = `共 ${this.history.length} 棵`;
+        if (this.history.length === 0) {
+            if (tbody) tbody.innerHTML =
+                '<tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr>';
+            return;
+        }
 
-    if (this.history.length === 0) {
-        if (tbody) tbody.innerHTML =
-            '<tr><td colspan="8" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无种树记录</td></tr>';
-        return;
-    }
-
-    // ===== 排序 =====
-    let data = [...this.history];
-    const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
-    data.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return (dateA - dateB) * sortOrder;
-    });
-
-    let html = '';
-    const total = data.length;
-    for (let i = 0; i < data.length; i++) {
-        const h = data[i];
-        const row = this.sortState.order === 'desc' ? total - i : i + 1;
-        const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
-        const idx = this.history.indexOf(h);
-        const rmb = h.profit * this.exchangeRate;
-
-        let lootStr = '-';
-        if (h.lootDetails && Array.isArray(h.lootDetails) && h.lootDetails.length > 0) {
-            lootStr = h.lootDetails.join('; ');
-        } else if (h.loot) {
-            const parts = [];
-            for (let [key, count] of Object.entries(h.loot)) {
-                if (count > 0) {
-                    const label = this.LOOT_TYPES.find(t => t.key === key)?.label || key;
-                    parts.push(`${label}×${count}`);
+        let html = '';
+        const list = this.history.slice().reverse();
+        for (let i = 0; i < list.length; i++) {
+            const h = list[i];
+            const row = list.length - i;
+            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            const idx = this.history.indexOf(h);
+            const rmb = h.profit * this.exchangeRate;
+            
+            let lootStr = '-';
+            if (h.lootDetails && Array.isArray(h.lootDetails) && h.lootDetails.length > 0) {
+                lootStr = h.lootDetails.join('; ');
+            } else if (h.loot) {
+                const parts = [];
+                for (let [key, count] of Object.entries(h.loot)) {
+                    if (count > 0) {
+                        const label = this.LOOT_TYPES.find(t => t.key === key)?.label || key;
+                        parts.push(`${label}×${count}`);
+                    }
                 }
+                lootStr = parts.join('; ') || '-';
             }
-            lootStr = parts.join('; ') || '-';
+            
+            let displayStr = lootStr;
+            if (displayStr.length > 50) {
+                displayStr = displayStr.substring(0, 50) + '...';
+            }
+
+            html += `<tr>
+                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+                <td>${h.date || '未知'}</td>
+                <td>${(h.cost || 0).toFixed(1)}</td>
+                <td>${(h.income || 0).toFixed(1)}</td>
+                <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
+                <td>${h.shakes || 0}</td>
+                <td style="font-size:0.7rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr.replace(/"/g, '&quot;')}">${displayStr}</td>
+                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
+            </tr>`;
         }
+        if (tbody) tbody.innerHTML = html;
 
-        let displayStr = lootStr;
-        if (displayStr.length > 50) {
-            displayStr = displayStr.substring(0, 50) + '...';
+        if (tbody) {
+            tbody.querySelectorAll('.del-btn').forEach(b => {
+                b.removeEventListener('click', b._delHandler);
+                b._delHandler = () => {
+                    const idx = parseInt(b.dataset.idx);
+                    if (idx >= 0 && idx < this.history.length) {
+                        this.history.splice(idx, 1);
+                        this.saveData();
+                        this.render();
+                    }
+                };
+                b.addEventListener('click', b._delHandler);
+            });
         }
-
-        html += `<tr>
-            <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
-            <td>${h.date || '未知'}</td>
-            <td>${(h.cost || 0).toFixed(1)}</td>
-            <td>${(h.income || 0).toFixed(1)}</td>
-            <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
-            <td>${h.shakes || 0}</td>
-            <td style="font-size:0.7rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr.replace(/"/g, '&quot;')}">${displayStr}</td>
-            <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-        </tr>`;
-    }
-    if (tbody) tbody.innerHTML = html;
-
-    const icon = document.getElementById('trSortIcon');
-    if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
-
-    if (tbody) {
-        tbody.querySelectorAll('.del-btn').forEach(b => {
-            b.removeEventListener('click', b._delHandler);
-            b._delHandler = () => {
-                const idx = parseInt(b.dataset.idx);
-                if (idx >= 0 && idx < this.history.length) {
-                    this.history.splice(idx, 1);
-                    this.saveData();
-                    this.render();
-                }
-            };
-            b.addEventListener('click', b._delHandler);
-        });
-    }
-    console.log('✅ 种树历史表格更新完成');
-},
+        console.log('✅ 种树历史表格更新完成');
+    },
 
     updateAnalysis() {
         const stats = this.calcStats();
