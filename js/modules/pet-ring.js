@@ -466,16 +466,17 @@ ITEM_TYPES: [
                             <label style="font-weight:600;">📝 文字色</label>
                             <input type="color" id="prTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                            <label style="font-weight:600;">⚠️ 扣分按钮</label>
-                            <input type="color" id="prDeductColor" value="${this.uiSettings.deductColor || '#d4a0a0'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
-                        </div>
+
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🔤 字体大小</label>
                             <div style="display:flex;align-items:center;gap:6px;">
                                 <input type="range" id="prFontSize" min="12" max="20" value="${this.uiSettings.fontSize}" style="width:80px;">
                                 <span id="prFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${this.uiSettings.fontSize}</span>
                             </div>
+                        </div>
+                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">⚠️ 扣分按钮</label>
+                            <input type="color" id="prDeductColor" value="${this.uiSettings.deductColor || '#d4a0a0'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;align-items:center;justify-content:center;">
                             <button class="btn-small" id="prResetUIBtn" style="background:#b48b5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">↩️ 重置</button>
