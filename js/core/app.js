@@ -1,5 +1,5 @@
 // ============================================================
-//  🚀 应用核心 - 修复版
+//  🚀 应用核心 - 修复版（支持首页）
 // ============================================================
 const App = {
     modules: {},
@@ -41,7 +41,6 @@ const App = {
         }
     },
 
-    // ===== 刷新所有模块 =====
     refreshAll() {
         console.log('🔄 刷新所有模块...');
         for (let [id, module] of Object.entries(this.modules)) {
@@ -79,13 +78,6 @@ const App = {
                     console.error(`❌ 模块 ${id} 初始化失败:`, e);
                 }
             }
-        }
-
-        const firstTab = document.querySelector('.tab-nav .tab-btn.active');
-        if (firstTab) {
-            this.switchTab(firstTab.dataset.tab);
-        } else {
-            this.switchTab('petRing');
         }
 
         console.log('✅ App 启动完成！');
