@@ -20,6 +20,135 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="工具箱">
     <meta name="mobile-web-app-capable" content="yes">
+
+    <style>
+        /* ===== 首页卡片样式 ===== */
+        .home-page {
+            display: block;
+            padding: 16px 18px 22px;
+            background: #eef2f7;
+        }
+        .home-page.hidden {
+            display: none;
+        }
+
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .home-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 16px 18px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        .home-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        .home-card:active {
+            transform: scale(0.96);
+        }
+        .home-card .icon {
+            font-size: 2.8rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .home-card .name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f3b53;
+        }
+        .home-card .desc {
+            font-size: 0.7rem;
+            color: #5a7a94;
+            margin-top: 4px;
+        }
+        .home-card .badge {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-size: 0.55rem;
+            padding: 2px 10px;
+            border-radius: 30px;
+            background: #dbbd7c;
+            color: #1f344b;
+            font-weight: 700;
+        }
+        .home-card .badge.soon {
+            background: #6b8baa;
+            color: white;
+        }
+        .home-card .badge.count {
+            background: #4c7a5c;
+            color: white;
+        }
+
+        .home-card.coming {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .home-card.coming:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .home-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #6b89a2;
+        }
+
+        /* ===== 返回按钮 ===== */
+        .back-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dce5ef;
+        }
+        .btn-back-home {
+            background: #dce5ef;
+            border: none;
+            border-radius: 30px;
+            padding: 4px 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #1f3b53;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-back-home:hover {
+            background: #c9d8ea;
+        }
+
+        @media (max-width: 768px) {
+            .home-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .home-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .home-card .icon {
+                font-size: 2rem;
+            }
+            .home-card .name {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="card">
@@ -47,26 +176,70 @@
             </div>
         </div>
 
-        <!-- ===== Tab 导航 ===== -->
-        <div class="tab-nav" id="tabNav">
-            <button class="tab-btn active" data-tab="petRing">🏃 跑宠环统计</button>
-            <button class="tab-btn" data-tab="treePlant">🌳 种树统计 <span class="new-badge">NEW</span></button>
-            <button class="tab-btn" data-tab="shiMen">📋 师门统计 <span class="coming-badge">开发中</span></button>
+        <!-- ============================================================ -->
+        <!--  🏠 首页（独立容器）                                          -->
+        <!-- ============================================================ -->
+        <div class="home-page" id="homePage">
+            <div class="home-grid" id="homeGrid">
+                <!-- 卡片由 JS 动态生成 -->
+            </div>
+            <div class="home-footer">⚡ 点击卡片进入对应功能 · 数据自动保存</div>
         </div>
 
-        <!-- ===== 各Tab内容容器 ===== -->
+        <!-- ============================================================ -->
+        <!--  📋 Tab 导航                                                -->
+        <!-- ============================================================ -->
+        <div class="tab-nav" id="tabNav" style="display:none;">
+            <button class="tab-btn active" data-tab="petRing">🏃 跑宠环统计</button>
+            <button class="tab-btn" data-tab="treePlant">🌳 种树统计</button>
+            <button class="tab-btn" data-tab="shiMen">📋 师门统计</button>
+            <button class="tab-btn" data-tab="totalStats">📊 总收益</button>
+        </div>
+
+        <!-- ============================================================ -->
+        <!--  📋 Tab 内容                                                -->
+        <!-- ============================================================ -->
+
+        <!-- 跑宠环 -->
         <div class="tab-content active" id="tab-petRing">
+            <div class="back-header">
+                <button class="btn-back-home" data-target="home">← 返回首页</button>
+                <span style="font-size:0.9rem;font-weight:600;color:#1f3b53;">🏃 跑宠环统计</span>
+            </div>
             <div id="petRingContainer"></div>
         </div>
 
+        <!-- 种树 -->
         <div class="tab-content" id="tab-treePlant">
+            <div class="back-header">
+                <button class="btn-back-home" data-target="home">← 返回首页</button>
+                <span style="font-size:0.9rem;font-weight:600;color:#1f3b53;">🌳 种树统计</span>
+            </div>
             <div id="treePlantContainer"></div>
         </div>
 
+        <!-- 师门（开发中） -->
         <div class="tab-content" id="tab-shiMen">
-            <div id="shiMenContainer" style="text-align:center;padding:60px 20px;color:#5a7a94;">
+            <div class="back-header">
+                <button class="btn-back-home" data-target="home">← 返回首页</button>
+                <span style="font-size:0.9rem;font-weight:600;color:#1f3b53;">📋 师门统计</span>
+            </div>
+            <div style="text-align:center;padding:60px 20px;color:#5a7a94;">
                 <div style="font-size:3rem;margin-bottom:16px;">📋</div>
                 <h2 style="color:#1f3b53;margin-bottom:8px;">师门统计</h2>
+                <p>🔜 开发中，即将上线</p>
+            </div>
+        </div>
+
+        <!-- 总收益（开发中） -->
+        <div class="tab-content" id="tab-totalStats">
+            <div class="back-header">
+                <button class="btn-back-home" data-target="home">← 返回首页</button>
+                <span style="font-size:0.9rem;font-weight:600;color:#1f3b53;">📊 总收益统计</span>
+            </div>
+            <div style="text-align:center;padding:60px 20px;color:#5a7a94;">
+                <div style="font-size:3rem;margin-bottom:16px;">📊</div>
+                <h2 style="color:#1f3b53;margin-bottom:8px;">总收益统计</h2>
                 <p>🔜 开发中，即将上线</p>
             </div>
         </div>
@@ -92,34 +265,27 @@
         <div class="modal-box">
             <h3>📥 手动导入一轮数据</h3>
             <div class="modal-desc">填写下方信息，点击「导入此轮」添加到历史统计中。可只填成本利润，或填写完整任务类型。</div>
-
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;grid-column:1/-1;">
                     <label style="font-weight:500;min-width:60px;">📅 日期</label>
                     <input type="text" id="prImpDate" placeholder="自动生成" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">📌 环数</label>
                     <input type="number" id="prImpRings" value="100" min="1" step="1" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">💰 总成本</label>
                     <input type="number" id="prImpCost" value="0" step="0.1" min="0" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">📈 利润</label>
                     <input type="number" id="prImpProfit" value="0" step="0.1" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;grid-column:1/-1;">
                     <label style="font-weight:500;min-width:60px;">📦 获得物品描述</label>
                     <input type="text" id="prImpRewards" placeholder="如: 130项链*1 + 修炼果*2" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;">
                 </div>
-
                 <div style="grid-column:1/-1;background:#f0f5fb;border-radius:16px;padding:10px 14px;margin-top:4px;border:1px solid #dce5ef;">
                     <div style="font-weight:600;font-size:0.85rem;color:#1f3b53;margin-bottom:6px;">🎁 奖励自动计算</div>
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;">
@@ -150,63 +316,50 @@
                         📊 当前奖励合计: 书铁0万 + 修炼果0万 + 家具0万 = 0万
                     </div>
                 </div>
-
                 <div class="form-divider" style="grid-column:1/-1;border-top:1px dashed #d0dce8;margin:4px 0;padding-top:6px;font-size:0.8rem;color:#5a7a94;text-align:center;">
                     ——— 任务类型次数（选填） ———
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🔍 找人</label>
                     <input type="number" id="prImpFind" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🔵 60环</label>
                     <input type="number" id="prImpRing60" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🟠 70环</label>
                     <input type="number" id="prImpRing70" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🟣 80环</label>
                     <input type="number" id="prImpRing80" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🌸 花卉乐器</label>
                     <input type="number" id="prImpFlower" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🍳 烹饪三药</label>
                     <input type="number" id="prImpCook" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🪑 1级家具</label>
                     <input type="number" id="prImpFurn1" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🛋️ 2级家具</label>
                     <input type="number" id="prImpFurn2" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">🐉 非指定变异</label>
                     <input type="number" id="prImpVarCommon" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
                     <label style="font-weight:500;min-width:60px;">⭐ 指定变异</label>
                     <input type="number" id="prImpVarSpec" value="0" min="0" step="1" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:16px;font-size:0.8rem;text-align:center;">
                 </div>
-
             </div>
-
             <div class="modal-actions">
                 <button class="btn-cancel" id="prImportCancel">取消</button>
                 <button class="btn-simple" id="prImportSimpleBtn" style="background:#b48b5f;color:white;border:none;padding:8px 24px;border-radius:40px;font-weight:600;cursor:pointer;font-size:0.85rem;">📊 仅导入成本利润</button>
@@ -219,25 +372,15 @@
     <!--  ★★★ JS文件加载顺序 ★★★          -->
     <!-- ============================================================ -->
 
-    <!-- 1️⃣ 核心 - 存储 -->
     <script src="js/core/storage.js"></script>
-
-    <!-- 2️⃣ 核心 - 同步 -->
     <script src="js/core/sync.js"></script>
-
-    <!-- 3️⃣ 核心 - 应用 -->
     <script src="js/core/app.js"></script>
-
-    <!-- 4️⃣ 模块 - 跑宠环 -->
     <script src="js/modules/pet-ring.js"></script>
-
-    <!-- 5️⃣ 模块 - 种树 -->
     <script src="js/modules/tree-plant.js"></script>
 
-    <!-- 6️⃣ 启动 -->
     <script>
         // ============================================================
-        //  配置 Gitee（Token 从 localStorage 读取）
+        //  配置 Gitee
         // ============================================================
         GitHubSync.config({
             token: localStorage.getItem('gitee_token') || '',
@@ -247,7 +390,7 @@
         });
 
         // ============================================================
-        //  检查是否有 Token
+        //  检查 Token
         // ============================================================
         if (!GitHubSync.hasToken()) {
             setTimeout(() => {
@@ -265,7 +408,98 @@
         }
 
         // ============================================================
-        //  同步到云端
+        //  构建首页卡片
+        // ============================================================
+        function buildHomeCards() {
+            const grid = document.getElementById('homeGrid');
+            const cards = [
+                { icon: '🏃', name: '跑宠环统计', desc: '记录跑环数据，分析收益', tab: 'petRing', badge: '已上线' },
+                { icon: '🌳', name: '种树统计', desc: '记录种树产出，计算利润', tab: 'treePlant', badge: '已上线' },
+                { icon: '📋', name: '师门统计', desc: '每日师门收益记录', tab: 'shiMen', badge: '开发中', coming: true },
+                { icon: '🎯', name: '活动收益', desc: '周末/节日活动统计', tab: 'activity', badge: '开发中', coming: true },
+                { icon: '📊', name: '总收益统计', desc: '所有模块汇总看板', tab: 'totalStats', badge: '开发中', coming: true },
+            ];
+
+            // 获取各模块数据条数
+            const petRing = Storage.get('petRing');
+            const treePlant = Storage.get('treePlant');
+            const petCount = petRing?.history?.length || 0;
+            const treeCount = treePlant?.history?.length || 0;
+
+            let html = '';
+            for (let card of cards) {
+                let badgeText = card.badge;
+                let badgeClass = 'badge';
+                if (card.coming) {
+                    badgeClass += ' soon';
+                } else if (card.tab === 'petRing') {
+                    badgeClass += ' count';
+                    badgeText = petCount + '轮';
+                } else if (card.tab === 'treePlant') {
+                    badgeClass += ' count';
+                    badgeText = treeCount + '棵';
+                }
+
+                const clickAttr = card.coming ? '' : `onclick="App.goToTab('${card.tab}')"`;
+                const comingClass = card.coming ? ' coming' : '';
+
+                html += `
+                    <div class="home-card${comingClass}" ${clickAttr}>
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                        <span class="icon">${card.icon}</span>
+                        <div class="name">${card.name}</div>
+                        <div class="desc">${card.desc}</div>
+                    </div>
+                `;
+            }
+            grid.innerHTML = html;
+        }
+
+        // ============================================================
+        //  App 扩展：首页和Tab切换
+        // ============================================================
+        const originalSwitchTab = App.switchTab;
+        App.switchTab = function(tabId) {
+            // 隐藏首页
+            document.getElementById('homePage').classList.add('hidden');
+            // 显示Tab导航
+            document.getElementById('tabNav').style.display = 'flex';
+            // 调用原来的切换逻辑
+            originalSwitchTab.call(this, tabId);
+        };
+
+        App.goToTab = function(tabId) {
+            this.switchTab(tabId);
+        };
+
+        App.goHome = function() {
+            // 显示首页
+            document.getElementById('homePage').classList.remove('hidden');
+            // 隐藏Tab导航
+            document.getElementById('tabNav').style.display = 'none';
+            // 隐藏所有Tab内容
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            // 取消所有Tab按钮高亮
+            document.querySelectorAll('.tab-nav .tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+            // 刷新首页卡片数据
+            buildHomeCards();
+        };
+
+        // ============================================================
+        //  绑定返回首页按钮
+        // ============================================================
+        document.querySelectorAll('.btn-back-home').forEach(btn => {
+            btn.addEventListener('click', function() {
+                App.goHome();
+            });
+        });
+
+        // ============================================================
+        //  同步按钮
         // ============================================================
         document.getElementById('syncToCloudBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
@@ -282,7 +516,7 @@
             this.disabled = true;
 
             const result = await GitHubSync.syncToCloud();
-            
+
             const display = document.getElementById('cloudDataCount');
             const msg = document.getElementById('syncResultMsg');
             if (result.success && result.total !== undefined) {
@@ -302,7 +536,7 @@
                 msg.textContent = result.message;
                 msg.style.color = '#c0392b';
             }
-            
+
             alert(result.message);
 
             this.textContent = '☁️ 同步到云端';
@@ -311,12 +545,10 @@
             if (result.success) {
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已同步';
+                buildHomeCards();
             }
         });
 
-        // ============================================================
-        //  从云端拉取
-        // ============================================================
         document.getElementById('syncFromCloudBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
                 const token = prompt('🔑 请先输入 Gitee Token：');
@@ -332,7 +564,7 @@
             this.disabled = true;
 
             const result = await GitHubSync.syncFromCloud();
-            
+
             const display = document.getElementById('cloudDataCount');
             const msg = document.getElementById('syncResultMsg');
             if (result.success && result.cloudTotal !== undefined) {
@@ -352,7 +584,7 @@
                 msg.textContent = result.message;
                 msg.style.color = '#c0392b';
             }
-            
+
             alert(result.message);
 
             this.textContent = '📥 从云端拉取';
@@ -361,7 +593,7 @@
             if (result.success) {
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已拉取';
-                
+                buildHomeCards();
                 setTimeout(() => {
                     location.reload();
                 }, 500);
@@ -369,7 +601,7 @@
         });
 
         // ============================================================
-        //  清空本地数据（保留 Token）
+        //  清空本地
         // ============================================================
         document.getElementById('clearLocalBtn').addEventListener('click', function() {
             if (confirm('⚠️ 确定要清空本地所有数据吗？\n（不会影响云端数据，Token 会保留）')) {
@@ -381,29 +613,28 @@
                         count++;
                     }
                 }
-                // ✅ 保留 Token，不清除 gitee_token
                 alert(`✅ 已清空 ${count} 条本地数据！\nToken 已保留，页面将刷新。`);
                 location.reload();
             }
         });
 
         // ============================================================
-        //  清空云端数据（只清云端，不影响本地）
+        //  清空云端
         // ============================================================
         document.getElementById('clearCloudBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
                 alert('❌ 请先设置 Gitee Token');
                 return;
             }
-            
+
             if (confirm('⚠️ 确定要清空服务器上的所有数据吗？\n（此操作不可恢复！）')) {
                 if (!confirm('⚠️⚠️ 再次确认：真的要清空云端数据吗？')) {
                     return;
                 }
-                
+
                 this.textContent = '⏳ 清空中...';
                 this.disabled = true;
-                
+
                 try {
                     const token = GitHubSync.getToken();
                     const getRes = await fetch(GitHubSync.getApiUrl(), {
@@ -412,13 +643,13 @@
                             'Accept': 'application/vnd.github.v3+json'
                         }
                     });
-                    
+
                     let sha = null;
                     if (getRes.ok) {
                         const info = await getRes.json();
                         sha = info.sha;
                     }
-                    
+
                     const emptyData = {
                         version: '2.0',
                         timestamp: new Date().toISOString(),
@@ -427,9 +658,9 @@
                             treePlant: { history: [], prices: {}, current: { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {} }, uiSettings: {} }
                         }
                     };
-                    
+
                     const content = btoa(unescape(encodeURIComponent(JSON.stringify(emptyData, null, 2))));
-                    
+
                     const putRes = await fetch(GitHubSync.getApiUrl(), {
                         method: 'PUT',
                         headers: {
@@ -443,11 +674,12 @@
                             sha: sha
                         })
                     });
-                    
+
                     if (putRes.ok) {
                         alert('✅ 云端数据已清空！\n（本地数据不受影响）');
                         const display = document.getElementById('cloudDataCount');
                         display.textContent = '☁️ 云端已清空 (0条)';
+                        buildHomeCards();
                         location.reload();
                     } else {
                         const err = await putRes.json();
@@ -456,14 +688,14 @@
                 } catch (error) {
                     alert('❌ 清空失败：' + error.message);
                 }
-                
+
                 this.textContent = '🗑️ 清空云端';
                 this.disabled = false;
             }
         });
 
         // ============================================================
-        //  查询云端数据按钮
+        //  查询云端数据
         // ============================================================
         document.getElementById('checkCloudDataBtn').addEventListener('click', async function() {
             if (!GitHubSync.hasToken()) {
@@ -473,15 +705,15 @@
 
             this.textContent = '⏳ 查询中...';
             this.disabled = true;
-            
+
             const result = await GitHubSync.checkCloudData();
-            
+
             this.textContent = '🔍 查询云端数据';
             this.disabled = false;
-            
+
             const display = document.getElementById('cloudDataCount');
             const msg = document.getElementById('syncResultMsg');
-            
+
             if (result.success) {
                 let detailText = '';
                 if (result.details) {
@@ -524,42 +756,41 @@
                     display.textContent = '☁️ 云端暂无数据';
                 }
             }
+            // 构建首页卡片
+            buildHomeCards();
         }, 1000);
 
         // ============================================================
-        //  通用弹窗控制
+        //  弹窗控制
         // ============================================================
         document.getElementById('settleModalCancel').addEventListener('click', function() {
             document.getElementById('settleModal').classList.remove('show');
         });
-
         document.getElementById('settleModalConfirm').addEventListener('click', function() {
             document.getElementById('settleModal').classList.remove('show');
         });
-
         document.getElementById('settleModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('show');
         });
 
-        // ============================================================
-        //  导入弹窗控制
-        // ============================================================
         document.getElementById('prImportCancel')?.addEventListener('click', function() {
             document.getElementById('prImportModal').classList.remove('show');
         });
-
         document.getElementById('prImportModal')?.addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('show');
         });
 
         // ============================================================
-        //  🚀 启动应用！
+        //  🚀 启动应用！（默认显示首页）
         // ============================================================
+        // 先让首页可见，Tab导航隐藏
+        document.getElementById('homePage').classList.remove('hidden');
+        document.getElementById('tabNav').style.display = 'none';
+
+        // 初始化所有模块
         App.init();
 
-        // ============================================================
-        //  注册 Service Worker
-        // ============================================================
+        // 注册 Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(function(registration) {
