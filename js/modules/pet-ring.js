@@ -3,7 +3,7 @@
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
-
+    sortState: { order: 'desc' },  
     // ========== 数据 ==========
     storageKey: 'petRing',
     records: [],
@@ -1004,6 +1004,11 @@ const PetRingModule = {
                 }
             }
         });
+            // ===== 排序按钮 =====
+    document.getElementById('prSortHeader')?.addEventListener('click', function() {
+        PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
+        PetRingModule.updateHistoryTable();
+    });
     },
 
     // ========== 核心业务 ==========
@@ -1218,70 +1223,80 @@ const PetRingModule = {
         list.innerHTML = html;
     },
 
-    updateHistoryTable() {
-        const tbody = document.getElementById('prHistoryTableBody');
-        const count = this.history.length;
-        document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
+ updateHistoryTable() {
+    const tbody = document.getElementById('prHistoryTableBody');
+    const count = this.history.length;
+    document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
 
-        if (count === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
-            return;
-        }
+    if (count === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
+        return;
+    }
 
-        const data = this.getFilteredData();
-        if (data.length === 0 && count > 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
-            return;
-        }
+    let data = this.getFilteredData();
 
-        let html = '';
-        const list = data.slice().reverse();
-        for (let i = 0; i < list.length; i++) {
-            const h = list[i];
-            const row = data.length - i;
-            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
-            const idx = this.history.indexOf(h);
-            const rmb = h.profit * this.exchangeRate;
+    if (data.length === 0 && count > 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
+        return;
+    }
 
-            const rewardParts = [];
-            if (h.bookIncome && h.bookIncome > 0) rewardParts.push(`书铁${h.bookIncome.toFixed(1)}万`);
-            if (h.furnitureIncome && h.furnitureIncome > 0) rewardParts.push(`家具${h.furnitureIncome.toFixed(1)}万`);
-            const rewardStr = rewardParts.length > 0 ? rewardParts.join(' + ') : '-';
+    // ===== 排序 =====
+    const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
+    data = [...data].sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return (dateA - dateB) * sortOrder;
+    });
 
-            let detailStr = '';
-            if (h.typeCount) {
-                const details = [];
-                for (let key of this.ITEM_TYPES.map(t => t.key)) {
-                    if (h.typeCount[key] > 0) {
-                        const label = this.ITEM_TYPES.find(t => t.key === key)?.label || key;
-                        details.push(`${label}:${h.typeCount[key]}`);
-                    }
+    let html = '';
+    const total = data.length;
+    for (let i = 0; i < data.length; i++) {
+        const h = data[i];
+        const row = this.sortState.order === 'desc' ? total - i : i + 1;
+        const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+        const idx = this.history.indexOf(h);
+        const rmb = h.profit * this.exchangeRate;
+
+        const rewardParts = [];
+        if (h.bookIncome && h.bookIncome > 0) rewardParts.push(`书铁${h.bookIncome.toFixed(1)}万`);
+        if (h.furnitureIncome && h.furnitureIncome > 0) rewardParts.push(`家具${h.furnitureIncome.toFixed(1)}万`);
+        const rewardStr = rewardParts.length > 0 ? rewardParts.join(' + ') : '-';
+
+        let detailStr = '';
+        if (h.typeCount) {
+            const details = [];
+            for (let key of this.ITEM_TYPES.map(t => t.key)) {
+                if (h.typeCount[key] > 0) {
+                    const label = this.ITEM_TYPES.find(t => t.key === key)?.label || key;
+                    details.push(`${label}:${h.typeCount[key]}`);
                 }
-                detailStr = details.join(' | ');
             }
-
-            html += `<tr>
-                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
-                <td>${h.date || '未知'}</td>
-                <td><strong>${h.ringCount}</strong></td>
-                <td>${(h.totalCost || 0).toFixed(1)}</td>
-                <td><strong>${h.totalScore || 0}</strong></td>
-                <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
-                <td><strong>${h.totalPoints || 0}</strong></td>
-                <td>${(h.bookIncome || 0).toFixed(1)}</td>
-                <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
-                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-            </tr>
-            <tr class="detail-row" data-idx="${idx}"><td colspan="10" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'} | 奖励: ${rewardStr}</td></tr>`;
+            detailStr = details.join(' | ');
         }
-        tbody.innerHTML = html;
 
-        if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
-            this.updateAnalysis(data);
-        }
-    },
+        html += `<tr>
+            <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+            <td>${h.date || '未知'}</td>
+            <td><strong>${h.ringCount}</strong></td>
+            <td>${(h.totalCost || 0).toFixed(1)}</td>
+            <td><strong>${h.totalScore || 0}</strong></td>
+            <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
+            <td><strong>${h.totalPoints || 0}</strong></td>
+            <td>${(h.bookIncome || 0).toFixed(1)}</td>
+            <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
+            <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
+        </tr>
+        <tr class="detail-row" data-idx="${idx}"><td colspan="10" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'} | 奖励: ${rewardStr}</td></tr>`;
+    }
+    tbody.innerHTML = html;
+
+    const icon = document.getElementById('prSortIcon');
+    if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
+
+    if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
+        this.updateAnalysis(data);
+    }
+},
 
     updateAnalysis(data) {
         const count = data.length;
