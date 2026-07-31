@@ -189,20 +189,8 @@ const TotalStatsModule = {
             document.getElementById('tsFilterDate').value = '';
             this.render();
         });
-
-        // ✅ 日期点击 - 用最直接的方式
-        document.querySelectorAll('#tsCalendar .ts-date-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const date = this.dataset.date;
-                console.log('🖱️ 点击日期:', date);
-                document.getElementById('tsFilterDate').value = date;
-                TotalStatsModule.render();
-            });
-        });
     },
 
-    // ✅ 修复：日历高亮
     renderCalendar(year, month, records, selectedDate) {
         const container = document.getElementById('tsCalendar');
         if (!container) return;
@@ -262,15 +250,18 @@ const TotalStatsModule = {
         html += `</div>`;
         container.innerHTML = html;
 
-        // ✅ 重新绑定点击事件
+        // ✅ 渲染完成后立即绑定点击事件
         document.querySelectorAll('#tsCalendar .ts-date-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
+            btn.removeEventListener('click', btn._clickHandler);
+            const handler = function(e) {
                 e.stopPropagation();
                 const date = this.dataset.date;
                 console.log('🖱️ 点击日期:', date);
                 document.getElementById('tsFilterDate').value = date;
                 TotalStatsModule.render();
-            });
+            };
+            btn._clickHandler = handler;
+            btn.addEventListener('click', handler);
         });
     },
 
