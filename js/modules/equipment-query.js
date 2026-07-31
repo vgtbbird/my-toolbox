@@ -1,6 +1,6 @@
 // ============================================================
-//  ⚔️ 装备打造 & 熔炼查询模块 - 最终版
-//  数据来源：梦幻精灵 2026年7月
+//  ⚔️ 装备打造 & 熔炼查询 + 🐾 宠装查询（整合版）
+//  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
 //  所有数据已锁定，不再变动
 // ============================================================
 const EquipmentQueryModule = {
@@ -16,15 +16,21 @@ const EquipmentQueryModule = {
         fontSize: 14
     },
 
-    // ========== 数据 ==========
+    // ========== 人物装备数据 ==========
     levels: [60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160],
     currentLevel: 130,
     currentPart: '武器',
     currentType: '普通',
     inputValues: {},
 
+    // ========== 宠装数据 ==========
+    petLevels: [65, 75, 85, 95, 105, 115, 125, 135, 145],
+    petCurrentLevel: 115,
+    petCurrentPart: '护腕',
+    petInputValues: {},
+
     // ============================================================
-    //  ✅ 基础主属性数据（已锁定 60-160级）
+    //  ✅ 人物装备 - 基础主属性数据（已锁定 60-160级）
     // ============================================================
     equipmentData: {
         "60": {
@@ -118,7 +124,7 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  ✅ 绿字附加属性上限（已锁定）
+    //  ✅ 人物装备 - 绿字附加属性上限（已锁定）
     // ============================================================
     greenLimit: {
         "60": { single: 14, plusMinus: 19, double: 11, negativeMax: -1 },
@@ -135,7 +141,7 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  ✅ 熔炼规则说明
+    //  ✅ 人物装备 - 熔炼规则说明
     // ============================================================
     meltData: {
         "武器": {
@@ -171,6 +177,23 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
+    //  ✅ 宠装 - 各等级极限属性表（端游数据）
+    // ============================================================
+    petLimitData: {
+        65: { 速度: 27, 防御: 66, 伤害: 36, 力量: 16, 体质: 5, 气血: 56, 敏捷: 13, 耐力: 10, 灵力: 8, 法力: 10 },
+        75: { 速度: 30, 防御: 75, 伤害: 41, 力量: 18, 体质: 6, 气血: 64, 敏捷: 15, 耐力: 12, 灵力: 9, 法力: 12 },
+        85: { 速度: 33, 防御: 84, 伤害: 46, 力量: 21, 体质: 6, 气血: 72, 敏捷: 17, 耐力: 14, 灵力: 10, 法力: 14 },
+        95: { 速度: 36, 防御: 93, 伤害: 51, 力量: 23, 体质: 7, 气血: 80, 敏捷: 19, 耐力: 15, 灵力: 11, 法力: 15 },
+        105: { 速度: 39, 防御: 102, 伤害: 56, 力量: 26, 体质: 8, 气血: 88, 敏捷: 21, 耐力: 17, 灵力: 12, 法力: 17 },
+        115: { 速度: 42, 防御: 111, 伤害: 60, 力量: 28, 体质: 8, 气血: 96, 敏捷: 23, 耐力: 19, 灵力: 12, 法力: 19 },
+        125: { 速度: 45, 防御: 120, 伤害: 65, 力量: 31, 体质: 9, 气血: 104, 敏捷: 25, 耐力: 20, 灵力: 13, 法力: 20 },
+        135: { 速度: 48, 防御: 129, 伤害: 70, 力量: 33, 体质: 10, 气血: 112, 敏捷: 27, 耐力: 22, 灵力: 14, 法力: 22 },
+        145: { 速度: 51, 防御: 138, 伤害: 75, 力量: 36, 体质: 10, 气血: 120, 敏捷: 29, 耐力: 24, 灵力: 15, 法力: 24 }
+    },
+
+    petAttrList: ['伤害', '灵力', '气血', '体质', '耐力', '法力', '力量', '敏捷', '速度', '防御'],
+
+    // ============================================================
     //  生命周期
     // ============================================================
     init() {
@@ -183,9 +206,14 @@ const EquipmentQueryModule = {
     },
 
     render() {
+        // 人物装备
         this.updateMeltInputs();
         this.updateQueryResult();
         this.calculateMelt();
+        // 宠装
+        this.updatePetInputs();
+        this.updatePetQueryResult();
+        this.updatePetValueResult();
         this.saveUISettings();
         setTimeout(() => this.applyUISettings(), 100);
     },
@@ -236,13 +264,13 @@ const EquipmentQueryModule = {
         });
     },
 
-    // ========== 构建UI ==========
+    // ========== 构建UI（人物装备 + 宠装合并） ==========
     buildUI() {
         const container = document.getElementById('equipmentQueryContainer');
         if (!container) return;
 
         container.innerHTML = `
-            <!-- UI设置 -->
+            <!-- 🎨 UI设置 -->
             <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
                 <div class="module-header">
                     <div class="title">🎨 界面设置 <span class="hint">— 自定义颜色和字体</span></div>
@@ -280,6 +308,13 @@ const EquipmentQueryModule = {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- ========================================================== -->
+            <!--  📝 人物装备 -->
+            <!-- ========================================================== -->
+            <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin-bottom:14px;">
+                <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">👤 人物装备</span>
             </div>
 
             <!-- 装备信息输入 -->
@@ -348,27 +383,70 @@ const EquipmentQueryModule = {
                 </div>
             </div>
 
-            <!-- 说明 -->
-            <div class="module" style="margin-top:12px;">
+            <!-- ========================================================== -->
+            <!--  🐾 宠装查询 -->
+            <!-- ========================================================== -->
+            <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin:24px 0 14px 0;">
+                <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">🐾 召唤兽装备查询</span>
+                <span style="font-size:0.7rem;color:#5a7a94;margin-left:10px;">— 逛摊时快速判断宠装价值</span>
+            </div>
+
+            <!-- 宠装信息输入 -->
+            <div class="module">
                 <div class="module-header">
-                    <div class="title">💡 使用说明</div>
-                </div>
-                <div class="module-body" style="font-size:0.8rem;color:#5a7a94;line-height:1.8;">
-                    <div>• 选择装备等级和部位，自动显示可输入属性</div>
-                    <div>• 输入属性值后，自动对比打造范围（高亮显示是否达标）</div>
-                    <div>• <strong>绿字属性区分三种情况：</strong></div>
-                    <div style="padding-left:20px;">
-                        <span style="color:#2d6b2d;">单加</span>：只有1个正面属性（如 体质+14）
-                        <br>
-                        <span style="color:#b48b3a;">一加一减</span>：1个正面 + 1个负面（如 体质+19，耐力-1）
-                        <br>
-                        <span style="color:#2980b9;">双加</span>：2个或以上正面属性（如 体质+11，耐力+11）
+                    <div class="title">📝 宠装信息输入 <span class="hint">— 输入属性值，自动对比极限</span></div>
+                    <div style="font-size:0.7rem;color:#5a7a94;">
+                        <span style="background:#e8f0e8;padding:2px 12px;border-radius:30px;">💡 负值表示减属性</span>
                     </div>
-                    <div>• <strong>绿字熔炼公式：</strong>上限值 - 当前值（负面属性最高到 -1）</div>
-                    <div>• <strong>基础主属性熔炼公式：</strong>(强化最高 - 当前值) / 1.5（差距±1）</div>
-                    <div>• 武器只能熔炼绿字属性，伤害和命中无法熔炼</div>
-                    <div>• 熔炼条件：装备等级 ≥ 60、当前耐久 ≥ 100</div>
-                    <div>• 💡 不管装备是不是强化打造，统一按强化打造的"最高属性"计算</div>
+                </div>
+                <div class="module-body">
+                    <div style="display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <label style="font-weight:600;">等级：</label>
+                            <select id="peLevel" style="padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.75rem;background:white;">
+                                ${this.petLevels.map(l => `<option value="${l}" ${l === this.petCurrentLevel ? 'selected' : ''}>${l}级</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;color:#1f3b53;">
+                            <label style="font-weight:600;">部位：</label>
+                            <select id="pePart" style="padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.75rem;background:white;">
+                                <option value="护腕" ${this.petCurrentPart === '护腕' ? 'selected' : ''}>护腕</option>
+                                <option value="项圈" ${this.petCurrentPart === '项圈' ? 'selected' : ''}>项圈</option>
+                                <option value="铠甲" ${this.petCurrentPart === '铠甲' ? 'selected' : ''}>铠甲</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="peAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:8px 0;border-top:1px solid #eef2f7;">
+                        <!-- 由 updatePetInputs 动态生成 -->
+                    </div>
+                    <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
+                        💡 输入负数表示减属性（如 敏捷-3）
+                    </div>
+                </div>
+            </div>
+
+            <!-- 宠装 - 属性对比 -->
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">📊 属性对比 <span class="hint">— 显示当前值与极限值的差距</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="peQueryResult" style="font-size:0.85rem;color:#5a7a94;">
+                        请选择等级和部位，输入属性值
+                    </div>
+                </div>
+            </div>
+
+            <!-- 宠装 - 价值评估 -->
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">💰 价值评估 <span class="hint">— 快速判断装备价值</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="peValueResult" style="font-size:0.85rem;color:#5a7a94;">
+                        输入属性后自动评估
+                    </div>
                 </div>
             </div>
         `;
@@ -376,7 +454,7 @@ const EquipmentQueryModule = {
 
     // ========== 绑定事件 ==========
     bindEvents() {
-        // UI设置
+        // ===== UI设置 =====
         document.getElementById('eqBgColor').addEventListener('input', function() {
             EquipmentQueryModule.uiSettings.bgColor = this.value;
             EquipmentQueryModule.applyUISettings();
@@ -431,7 +509,7 @@ const EquipmentQueryModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // 选择事件
+        // ===== 人物装备选择事件 =====
         document.getElementById('eqLevel').addEventListener('change', (e) => {
             this.currentLevel = parseInt(e.target.value);
             const partSelect = document.getElementById('eqPart');
@@ -456,7 +534,7 @@ const EquipmentQueryModule = {
             this.render();
         });
 
-        // 属性输入变化时只更新结果，不重新渲染
+        // ===== 人物装备属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
                 const attr = e.target.id.replace('eqAttr_', '');
@@ -468,9 +546,35 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.updateQueryResult();
             }
         });
+
+        // ===== 宠装选择事件 =====
+        document.getElementById('peLevel').addEventListener('change', (e) => {
+            this.petCurrentLevel = parseInt(e.target.value);
+            this.render();
+        });
+
+        document.getElementById('pePart').addEventListener('change', (e) => {
+            this.petCurrentPart = e.target.value;
+            this.render();
+        });
+
+        // ===== 宠装属性输入 =====
+        document.addEventListener('input', function(e) {
+            if (e.target.classList && e.target.classList.contains('pe-attr-input')) {
+                const attr = e.target.id.replace('peAttr_', '');
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) {
+                    EquipmentQueryModule.petInputValues[attr] = val;
+                }
+                EquipmentQueryModule.updatePetQueryResult();
+                EquipmentQueryModule.updatePetValueResult();
+            }
+        });
     },
 
-    // ========== 更新输入框 ==========
+    // ============================================================
+    //  人物装备 - 更新输入框
+    // ============================================================
     updateMeltInputs() {
         const container = document.getElementById('eqAttrInputArea');
         if (!container) return;
@@ -497,7 +601,9 @@ const EquipmentQueryModule = {
         container.innerHTML = html;
     },
 
-    // ========== 更新装备查询结果 ==========
+    // ============================================================
+    //  人物装备 - 更新装备查询结果
+    // ============================================================
     updateQueryResult() {
         const level = this.currentLevel;
         const part = this.currentPart;
@@ -520,7 +626,6 @@ const EquipmentQueryModule = {
             return;
         }
 
-        // 160级只有强化打造
         let data;
         if (level === 160) {
             data = partData['强化'] || {};
@@ -565,7 +670,6 @@ const EquipmentQueryModule = {
             `;
         }
 
-        // 显示耐久
         const userDur = inputValues['耐久'];
         let durStatus = '';
         let durColor = '#5a7a94';
@@ -600,11 +704,7 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  ✅ 熔炼计算（核心逻辑）
-    //  规则：
-    //  1. 绿字（武器/衣服）：单加/一加一减/双加，用 greenLimit 上限
-    //  2. 负面属性：最高到 -1
-    //  3. 基础主属性：(强化最高 - 当前值) / 1.5
+    //  人物装备 - 熔炼计算
     // ============================================================
     calculateMelt() {
         const level = this.currentLevel;
@@ -634,7 +734,6 @@ const EquipmentQueryModule = {
             return;
         }
 
-        // 获取该等级强化打造的最高值（用于基础主属性熔炼）
         const partData = this.equipmentData[level]?.[part];
         let craftData = {};
         if (partData) {
@@ -645,7 +744,6 @@ const EquipmentQueryModule = {
             }
         }
 
-        // 获取绿字上限
         const green = this.greenLimit[level];
         if (!green) {
             el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无绿字熔炼数据</div>';
@@ -655,7 +753,6 @@ const EquipmentQueryModule = {
         const statAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
         const isWeaponOrCloth = (part === '武器' || part === '衣服');
 
-        // 分析绿字类型（仅对武器/衣服）
         let greenType = 'none';
         let positiveStats = [];
         let negativeStats = [];
@@ -686,7 +783,6 @@ const EquipmentQueryModule = {
 
         let html = `<div style="font-weight:600;color:#1f3b53;margin-bottom:8px;">📊 ${level}级 ${part} 熔炼分析</div>`;
 
-        // 显示绿字类型判断
         if (isWeaponOrCloth && greenType !== 'none') {
             const typeLabels = {
                 'single': '单加',
@@ -714,36 +810,30 @@ const EquipmentQueryModule = {
         for (let [attr, val] of Object.entries(values)) {
             if (val === 0) continue;
 
-            // ===== 1. 绿字属性（武器/衣服的属性点） =====
             if (statAttrs.includes(attr) && isWeaponOrCloth) {
                 let maxValue = null;
                 let formulaType = '';
                 let limitName = '';
 
                 if (greenType === 'single') {
-                    // 单加
                     maxValue = green.single;
                     formulaType = 'green';
                     limitName = `单加上限 ${maxValue}`;
                 } else if (greenType === 'plusMinus') {
                     if (val > 0) {
-                        // 正面属性
                         maxValue = green.plusMinus;
                         formulaType = 'green';
                         limitName = `一加一减(正)上限 ${maxValue}`;
                     } else {
-                        // 负面属性：上限 -1
                         maxValue = green.negativeMax;
                         formulaType = 'negative';
                         limitName = `一加一减(负)上限 -1`;
                     }
                 } else if (greenType === 'double') {
-                    // 双加
                     maxValue = green.double;
                     formulaType = 'green';
                     limitName = `双加上限 ${maxValue}`;
                 } else {
-                    // 没有识别到类型（全负面等），跳过
                     html += `
                         <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;color:#b45a5a;">
                             <span>${attr}</span>
@@ -753,15 +843,12 @@ const EquipmentQueryModule = {
                     continue;
                 }
 
-                // 计算可熔炼值
                 let canMelt;
                 if (formulaType === 'negative') {
-                    // 负面属性：计算到 -1 还差多少
-                    canMelt = maxValue - val;  // maxValue = -1
+                    canMelt = maxValue - val;
                     if (canMelt < 0) canMelt = 0;
                     canMelt = Math.round(canMelt * 10) / 10;
                 } else {
-                    // 正面属性：上限值 - 当前值
                     canMelt = maxValue - val;
                     if (canMelt < 0) canMelt = 0;
                     canMelt = Math.round(canMelt * 10) / 10;
@@ -788,7 +875,6 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            // ===== 2. 耐久 =====
             if (attr === '耐久') {
                 html += `
                     <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;">
@@ -799,10 +885,6 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            // ===== 3. 基础主属性（非绿字） =====
-            // 使用公式：(强化最高 - 当前值) / 1.5
-            // 但武器/衣服的绿字已经在上面处理了，这里只处理非绿字属性
-            // 对于武器，伤害和命中不可熔炼
             if (part === '武器' && (attr === '伤害' || attr === '命中')) {
                 html += `
                     <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;color:#b45a5a;">
@@ -813,10 +895,9 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            // 检查是否有强化最高值
             let maxCraft = null;
             if (craftData && craftData[attr]) {
-                maxCraft = craftData[attr][1];  // 取最高值
+                maxCraft = craftData[attr][1];
             }
 
             if (maxCraft === null || maxCraft === 0) {
@@ -829,7 +910,6 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            // ✅ 基础主属性熔炼公式：(强化最高 - 当前值) / 1.5
             let canMelt = (maxCraft - val) / 1.5;
             if (canMelt < 0) canMelt = 0;
             canMelt = Math.round(canMelt * 10) / 10;
@@ -868,6 +948,241 @@ const EquipmentQueryModule = {
                 <br>💡 熔炼条件：装备等级 ≥ 60、当前耐久 ≥ 100
             </div>
         `;
+
+        el.innerHTML = html;
+    },
+
+    // ============================================================
+    //  🐾 宠装 - 更新输入框
+    // ============================================================
+    updatePetInputs() {
+        const container = document.getElementById('peAttrInputArea');
+        if (!container) return;
+
+        let html = '';
+        for (let attr of this.petAttrList) {
+            const val = this.petInputValues[attr] !== undefined ? this.petInputValues[attr] : '';
+            html += `
+                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;">
+                    <label style="font-weight:500;min-width:40px;color:#1f3b53;">${attr}：</label>
+                    <input type="number" id="peAttr_${attr}" class="pe-attr-input" step="0.1" value="${val}" placeholder="数值" style="width:70px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;text-align:center;">
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    },
+
+    // ============================================================
+    //  🐾 宠装 - 更新查询结果
+    // ============================================================
+    updatePetQueryResult() {
+        const level = this.petCurrentLevel;
+        const part = this.petCurrentPart;
+        const el = document.getElementById('peQueryResult');
+
+        const limits = this.petLimitData[level];
+        if (!limits) {
+            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
+            return;
+        }
+
+        const inputs = document.querySelectorAll('.pe-attr-input');
+        const values = {};
+        for (let inp of inputs) {
+            const attr = inp.id.replace('peAttr_', '');
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val !== 0) {
+                values[attr] = val;
+            }
+        }
+
+        if (Object.keys(values).length === 0) {
+            el.innerHTML = '<div style="color:#5a7a94;">请输入属性值</div>';
+            return;
+        }
+
+        let html = `<div style="font-weight:600;color:#1f3b53;margin-bottom:8px;">${level}级 ${part}</div>`;
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;">`;
+
+        let hasResult = false;
+        for (let [attr, val] of Object.entries(values)) {
+            const limit = limits[attr];
+            if (!limit) {
+                html += `
+                    <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;color:#b45a5a;">
+                        <span>${attr}</span>
+                        <span>⚠️ 该等级无此属性数据</span>
+                    </div>
+                `;
+                continue;
+            }
+
+            const ratio = (val / limit * 100);
+            let status = '';
+            let statusColor = '#5a7a94';
+            let bgColor = '#f8faff';
+
+            if (val >= limit) {
+                status = '⭐ 满属性！';
+                statusColor = '#dbbd7c';
+                bgColor = '#f5f0e8';
+            } else if (val >= limit * 0.8) {
+                status = '✅ 优秀';
+                statusColor = '#2d6b2d';
+                bgColor = '#f0f8f0';
+            } else if (val >= limit * 0.6) {
+                status = '📊 中等';
+                statusColor = '#b48b3a';
+                bgColor = '#f8f5e8';
+            } else if (val > 0) {
+                status = '⚠️ 偏低';
+                statusColor = '#c0392b';
+                bgColor = '#f8e8e8';
+            } else {
+                status = '⬇️ 减属性';
+                statusColor = '#8a6a8a';
+                bgColor = '#f5eef5';
+            }
+
+            html += `
+                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;border-radius:4px;background:${bgColor};">
+                    <span>${attr}</span>
+                    <span>
+                        <span style="font-weight:600;color:#1f3b53;">${val}</span>
+                        <span style="font-size:0.7rem;color:#5a7a94;">/ ${limit}</span>
+                        <span style="color:${statusColor};font-weight:600;margin-left:6px;font-size:0.7rem;">${status}</span>
+                    </span>
+                </div>
+            `;
+            hasResult = true;
+        }
+
+        html += `</div>`;
+
+        if (!hasResult) {
+            html = '<div style="color:#5a7a94;">请输入有效属性值</div>';
+        }
+
+        el.innerHTML = html;
+    },
+
+    // ============================================================
+    //  🐾 宠装 - 价值评估
+    // ============================================================
+    updatePetValueResult() {
+        const level = this.petCurrentLevel;
+        const el = document.getElementById('peValueResult');
+
+        const inputs = document.querySelectorAll('.pe-attr-input');
+        const values = {};
+        for (let inp of inputs) {
+            const attr = inp.id.replace('peAttr_', '');
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val !== 0) {
+                values[attr] = val;
+            }
+        }
+
+        if (Object.keys(values).length === 0) {
+            el.innerHTML = '<div style="color:#5a7a94;">输入属性后自动评估价值</div>';
+            return;
+        }
+
+        const limits = this.petLimitData[level];
+        if (!limits) {
+            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
+            return;
+        }
+
+        const damage = values['伤害'] || 0;
+        const strength = values['力量'] || 0;
+        const attackValue = damage + strength;
+
+        const mana = values['法力'] || 0;
+        const spirit = values['灵力'] || 0;
+        const magicValue = mana + spirit;
+
+        const speed = values['速度'] || 0;
+        const agility = values['敏捷'] || 0;
+        const speedValue = speed + agility;
+
+        const defense = values['防御'] || 0;
+
+        let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
+
+        // 攻宠
+        const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
+        let attackRating = '', attackColor = '#5a7a94';
+        if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
+        else if (attackValue >= attackLimit * 0.7) { attackRating = '🔥 极品'; attackColor = '#2d6b2d'; }
+        else if (attackValue >= attackLimit * 0.5) { attackRating = '📊 优秀'; attackColor = '#b48b3a'; }
+        else if (attackValue > 0) { attackRating = '📉 一般'; attackColor = '#5a7a94'; }
+        else { attackRating = '⬇️ 低价值'; attackColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
+                <div style="font-weight:600;color:#1f3b53;">⚔️ 攻宠价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${attackColor};">${attackValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#5a7a94;">伤害+力量 = ${damage.toFixed(1)} + ${strength.toFixed(1)} | 极限 ${attackLimit}</div>
+                <div style="font-weight:600;color:${attackColor};">${attackRating}</div>
+            </div>
+        `;
+
+        // 法宠
+        const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
+        let magicRating = '', magicColor = '#5a7a94';
+        if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
+        else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
+        else if (magicValue >= magicLimit * 0.5) { magicRating = '📊 优秀'; magicColor = '#b48b3a'; }
+        else if (magicValue > 0) { magicRating = '📉 一般'; magicColor = '#5a7a94'; }
+        else { magicRating = '⬇️ 低价值'; magicColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
+                <div style="font-weight:600;color:#1f3b53;">🔮 法宠价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#5a7a94;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
+                <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
+            </div>
+        `;
+
+        // 配速
+        const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
+        let speedRating = '', speedColor = '#5a7a94';
+        if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
+        else if (speedValue >= speedLimit * 0.7) { speedRating = '🔥 极品'; speedColor = '#2d6b2d'; }
+        else if (speedValue >= speedLimit * 0.5) { speedRating = '📊 优秀'; speedColor = '#b48b3a'; }
+        else if (speedValue > 0) { speedRating = '📉 一般'; speedColor = '#5a7a94'; }
+        else { speedRating = '⬇️ 低价值'; speedColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
+                <div style="font-weight:600;color:#1f3b53;">💨 配速价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${speedColor};">${speedValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#5a7a94;">速度+敏捷 = ${speed.toFixed(1)} + ${agility.toFixed(1)} | 极限 ${speedLimit}</div>
+                <div style="font-weight:600;color:${speedColor};">${speedRating}</div>
+            </div>
+        `;
+
+        // 防御
+        const defLimit = limits['防御'] || 0;
+        let defRating = '', defColor = '#5a7a94';
+        if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
+        else if (defense >= defLimit * 0.7) { defRating = '🔥 极品'; defColor = '#2d6b2d'; }
+        else if (defense >= defLimit * 0.5) { defRating = '📊 优秀'; defColor = '#b48b3a'; }
+        else if (defense > 0) { defRating = '📉 一般'; defColor = '#5a7a94'; }
+        else { defRating = '⬇️ 低价值'; defColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
+                <div style="font-weight:600;color:#1f3b53;">🛡️ 防御价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${defColor};">${defense.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#5a7a94;">防御 = ${defense.toFixed(1)} | 极限 ${defLimit}</div>
+                <div style="font-weight:600;color:${defColor};">${defRating}</div>
+            </div>
+        `;
+
+        html += `</div>`;
 
         el.innerHTML = html;
     }
