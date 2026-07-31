@@ -670,12 +670,15 @@ ITEM_TYPES: [
             PetRingModule.applyUISettings();
             PetRingModule.saveData();
         });
-        document.getElementById('prDeductColor').addEventListener('input', function() {
+        const deductColorEl = document.getElementById('prDeductColor');
+        if (deductColorEl) {
+            deductColorEl.addEventListener('input', function() {
                 PetRingModule.uiSettings.deductColor = this.value;
                 PetRingModule.applyUISettings();
                 PetRingModule.render();
                 PetRingModule.saveData();
             });
+        }
         document.getElementById('prCardColor').addEventListener('input', function() {
             PetRingModule.uiSettings.cardBgColor = this.value;
             PetRingModule.applyUISettings();
