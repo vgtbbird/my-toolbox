@@ -222,11 +222,11 @@ const PetRingModule = {
             bookIncome: income.bookIncome,
             furnitureIncome: income.furnitureIncome,
             fruitIncome: income.fruitIncome,
-            isComplete: false,
+            isComplete: true,
             typeCount: stats.typeCount,
-            rewards: rewards || (income.bookIncome > 0 ? `书铁${income.bookIncome.toFixed(1)}万` : '')
+            rewards: rewards || (income.bookIncome > 0 ? `书铁${income.bookIncome.toFixed(1)}万` : ''),
+            exchangeRate: this.exchangeRate  // ✅ 保存当时汇率
         };
-
         this.history.push(entry);
         this.records = [];
         this.bookRewards = [];
