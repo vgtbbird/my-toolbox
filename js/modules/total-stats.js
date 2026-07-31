@@ -1,5 +1,5 @@
 // ============================================================
-//  📊 总收益汇总模块 - 最终稳定版
+//  📊 总收益汇总模块 - 完整版
 // ============================================================
 const TotalStatsModule = {
     id: 'totalStats',
@@ -29,7 +29,6 @@ const TotalStatsModule = {
         this.updateStats(records, filterDate);
     },
 
-    // ✅ 日期点击处理
     handleDateClick(date) {
         console.log('🖱️ 点击日期:', date);
         document.getElementById('tsFilterDate').value = date;
@@ -198,7 +197,6 @@ const TotalStatsModule = {
             this.render();
         });
 
-        // 全局点击监听
         document.addEventListener('click', function(e) {
             const target = e.target.closest('.ts-date-btn');
             if (target) {
@@ -380,6 +378,7 @@ const TotalStatsModule = {
         this.renderDateDetail(records, filterDate);
     },
 
+    // ✅ 各模块统计（显示梦幻币 + 人民币）
     renderModuleStats(moduleStats) {
         const container = document.getElementById('tsModuleStats');
         if (!container) return;
@@ -410,7 +409,6 @@ const TotalStatsModule = {
     }
 };
 
-// ✅ 暴露全局函数供 onclick 调用
 window.TotalStatsModule = TotalStatsModule;
 
 if (document.readyState === 'loading') {
