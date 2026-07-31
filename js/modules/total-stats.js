@@ -23,6 +23,7 @@ const TotalStatsModule = {
             const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
             filterDate = sorted[0].date.split(' ')[0];
             document.getElementById('tsFilterDate').value = filterDate;
+            console.log('📅 默认选中日期:', filterDate);
         }
         
         this.updateStats(records, filterDate);
@@ -74,6 +75,7 @@ const TotalStatsModule = {
         }
 
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
+        console.log('📊 总记录数:', records.length);
         return records;
     },
 
@@ -165,7 +167,6 @@ const TotalStatsModule = {
     },
 
     bindEvents() {
-        // 筛选按钮
         document.getElementById('tsFilterBtn').addEventListener('click', () => {
             this.render();
         });
@@ -175,7 +176,6 @@ const TotalStatsModule = {
             this.render();
         });
 
-        // 月份切换
         document.getElementById('tsPrevMonth').addEventListener('click', () => {
             this.viewMonth--;
             if (this.viewMonth < 0) { this.viewMonth = 11; this.viewYear--; }
@@ -190,27 +190,29 @@ const TotalStatsModule = {
             this.render();
         });
 
-        // 日期点击 - 使用事件委托
-        document.getElementById('totalStatsContainer').addEventListener('click', function(e) {
-            const dateBtn = e.target.closest('.ts-date-btn');
-            if (dateBtn) {
-                const date = dateBtn.dataset.date;
-                console.log('点击日期:', date);
+        // ✅ 日期点击 - 用最直接的方式
+        document.querySelectorAll('#tsCalendar .ts-date-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const date = this.dataset.date;
+                console.log('🖱️ 点击日期:', date);
                 document.getElementById('tsFilterDate').value = date;
                 TotalStatsModule.render();
-            }
+            });
         });
     },
 
+    // ✅ 修复：日历高亮
     renderCalendar(year, month, records, selectedDate) {
         const container = document.getElementById('tsCalendar');
         if (!container) return;
 
-        // 收集有数据的日期（使用原始格式，不转换）
+        // 收集有数据的日期
         const dateKeys = new Set();
         for (let r of records) {
             const d = r.date.split(' ')[0];
             dateKeys.add(d);
+            console.log('📅 有数据的日期:', d);
         }
 
         const firstDay = new Date(year, month, 1).getDay();
@@ -232,7 +234,6 @@ const TotalStatsModule = {
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
-            // 使用 / 格式，与数据一致
             const dateStr = `${year}/${month + 1}/${d}`;
             const hasData = dateKeys.has(dateStr);
             const isToday = dateStr === new Date().toISOString().split('T')[0].replace(/-/g, '/');
@@ -241,6 +242,7 @@ const TotalStatsModule = {
             let style = 'padding:6px 2px;border-radius:50%;cursor:pointer;font-size:0.75rem;';
             if (hasData) {
                 style += 'background:#4c7a5c;color:#fff;font-weight:700;';
+                console.log('✅ 高亮日期:', dateStr);
             }
             if (isToday && !hasData) {
                 style += 'border:2px solid #4c7a5c;';
@@ -259,6 +261,17 @@ const TotalStatsModule = {
 
         html += `</div>`;
         container.innerHTML = html;
+
+        // ✅ 重新绑定点击事件
+        document.querySelectorAll('#tsCalendar .ts-date-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const date = this.dataset.date;
+                console.log('🖱️ 点击日期:', date);
+                document.getElementById('tsFilterDate').value = date;
+                TotalStatsModule.render();
+            });
+        });
     },
 
     renderDateDetail(records, filterDate) {
