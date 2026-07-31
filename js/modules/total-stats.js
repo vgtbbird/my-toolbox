@@ -410,7 +410,7 @@ const TotalStatsModule = {
     }
 };
 
-// ✅ 暴露全局函数
+// ✅ 暴露全局函数供 onclick 调用
 window.TotalStatsModule = TotalStatsModule;
 
 if (document.readyState === 'loading') {
