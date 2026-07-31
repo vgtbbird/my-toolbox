@@ -1145,11 +1145,22 @@ ITEM_TYPES: [
         const pb = document.getElementById('prProfitBox');
         pb.className = 'income-item' + (income.profit > 0 ? ' profit-box' : income.profit < 0 ? ' loss-box' : '');
 
+        const totalRings = stats.ringCount;
         document.querySelectorAll('#prTaskGrid .task-item-wrapper').forEach(w => {
             const key = w.dataset.key;
             const ce = w.querySelector('.task-count');
             if (ce && stats.typeCount[key] !== undefined) {
-                ce.textContent = stats.typeCount[key] > 0 ? stats.typeCount[key] : '';
+                const count = stats.typeCount[key] || 0;
+                if (count > 0 && totalRings > 0) {
+                    const pct = Math.round((count / totalRings) * 100);
+                    // ✅ 根据百分比设置颜色
+                    const color = pct >= 40 ? '#2d6b2d' : '#c0392b';  // 绿色或红色
+                    ce.innerHTML = `${count} <span style="color:${color};font-weight:700;">(${pct}%)</span>`;
+                } else if (count > 0) {
+                    ce.textContent = count;
+                } else {
+                    ce.textContent = '';
+                }
             }
         });
 
