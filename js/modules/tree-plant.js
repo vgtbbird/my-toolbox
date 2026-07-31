@@ -1,5 +1,5 @@
 // ============================================================
-//  🌳 种树模块 - 完整版（金柳露 + 卡片）
+//  🌳 种树模块 - 完整版（含汇率设置）
 // ============================================================
 const TreePlantModule = {
     id: 'treePlant',
@@ -8,6 +8,7 @@ const TreePlantModule = {
     history: [],
     prices: {},
     current: { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {} },
+    exchangeRate: 0.08,
     uiSettings: {
         bgColor: '#eef2f7',
         btnColor: '#4CAF50',
@@ -88,6 +89,7 @@ const TreePlantModule = {
             textColor: '#1a1a2e',
             fontSize: 14
         };
+        this.exchangeRate = data.exchangeRate || 0.08;
 
         this.LOOT_TYPES.forEach(t => {
             if (this.current.loot[t.key] === undefined) this.current.loot[t.key] = 0;
@@ -102,7 +104,8 @@ const TreePlantModule = {
             history: this.history,
             prices: this.prices,
             current: this.current,
-            uiSettings: this.uiSettings
+            uiSettings: this.uiSettings,
+            exchangeRate: this.exchangeRate
         });
     },
 
@@ -329,6 +332,13 @@ const TreePlantModule = {
                 <div class="module-header"><div class="title">⚙️ 掉落物价值 (万) <span class="hint">— 根据物价调整</span></div></div>
                 <div class="module-body">
                     <div class="tree-price-grid" id="trPriceGrid" style="grid-template-columns:repeat(5,1fr);"></div>
+                    <!-- 汇率设置 -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid #dce5ef;">
+                        <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;">💱 1万梦幻币 = </label>
+                        <input type="number" step="0.001" min="0" id="trExchangeRate" value="${this.exchangeRate}" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:20px;font-size:0.8rem;text-align:center;">
+                        <span style="font-size:0.8rem;color:#1f3b53;">元 RMB</span>
+                        <span style="font-size:0.65rem;color:#5a7a94;margin-left:8px;">💡 例：0.08 = 1万梦幻币=0.08元</span>
+                    </div>
                 </div>
             </div>
 
@@ -426,6 +436,14 @@ const TreePlantModule = {
             const body = document.getElementById('trUISettingsBody');
             body.classList.toggle('hidden');
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+        });
+
+        // ===== 汇率变化 =====
+        document.getElementById('trExchangeRate').addEventListener('input', function() {
+            const val = parseFloat(this.value) || 0;
+            TreePlantModule.exchangeRate = val;
+            TreePlantModule.saveData();
+            TreePlantModule.render();
         });
 
         container.addEventListener('click', (e) => {
@@ -602,7 +620,7 @@ const TreePlantModule = {
                 <span>📦 产出物品: <strong>${lootDetails.length > 0 ? lootDetails.join('; ') : '无'}</strong></span>
                 <span>📊 总收入: <strong>${entry.income.toFixed(1)}万</strong></span>
                 <span style="grid-column:1/-1;text-align:center;font-size:1.1rem;padding:6px 0;border-top:1px solid #dce5ef;color:${entry.profit>=0?'#2d6b2d':'#c0392b'};">
-                    ${entry.profit >= 0 ? '✅' : '❌'} 利润: <strong>${entry.profit.toFixed(1)}万</strong>
+                    ${entry.profit >= 0 ? '✅' : '❌'} 利润: <strong>${entry.profit.toFixed(1)}万</strong> (≈${(entry.profit * this.exchangeRate).toFixed(2)}元)
                 </span>
             </div>`;
         document.getElementById('settleModal').classList.add('show');
@@ -612,10 +630,11 @@ const TreePlantModule = {
         const stats = this.calcStats();
         const el = (id) => document.getElementById(id);
         const setText = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+        const rmb = stats.totalProfit * this.exchangeRate;
 
         setText('trTotalCost', stats.totalCost.toFixed(1));
         setText('trTotalIncome', stats.totalIncome.toFixed(1));
-        setText('trTotalProfit', stats.totalProfit.toFixed(1));
+        setText('trTotalProfit', stats.totalProfit.toFixed(1) + ` (≈${rmb.toFixed(2)}元)`);
         setText('trTotalCount', stats.count);
         setText('trAvgProfit', stats.avgProfit.toFixed(1));
         setText('trWinRate', stats.winRate.toFixed(0) + '%');
@@ -683,6 +702,7 @@ const TreePlantModule = {
             const row = list.length - i;
             const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
             const idx = this.history.indexOf(h);
+            const rmb = h.profit * this.exchangeRate;
             
             let lootStr = '-';
             if (h.lootDetails && Array.isArray(h.lootDetails) && h.lootDetails.length > 0) {
@@ -708,7 +728,7 @@ const TreePlantModule = {
                 <td>${h.date || '未知'}</td>
                 <td>${(h.cost || 0).toFixed(1)}</td>
                 <td>${(h.income || 0).toFixed(1)}</td>
-                <td class="${pc}">${(h.profit || 0).toFixed(1)}</td>
+                <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
                 <td>${h.shakes || 0}</td>
                 <td style="font-size:0.7rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lootStr.replace(/"/g, '&quot;')}">${displayStr}</td>
                 <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:50px;padding:2px 14px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
@@ -737,11 +757,12 @@ const TreePlantModule = {
         const stats = this.calcStats();
         const el = (id) => document.getElementById(id);
         const setText = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+        const rmb = stats.totalProfit * this.exchangeRate;
 
         setText('taTotal', stats.count);
         setText('taCost', stats.totalCost.toFixed(1));
         setText('taIncome', stats.totalIncome.toFixed(1));
-        setText('taProfit', stats.totalProfit.toFixed(1));
+        setText('taProfit', stats.totalProfit.toFixed(1) + ` (≈${rmb.toFixed(2)}元)`);
         setText('taRate', stats.winRate.toFixed(0) + '%');
 
         const wrap = document.getElementById('taProfitWrap');
@@ -751,7 +772,7 @@ const TreePlantModule = {
         if (summary) {
             summary.textContent = stats.count === 0 ?
                 '总结: 尚未有种树记录，开始种树吧！' :
-                `总结: 共种植 ${stats.count} 棵，总利润 ${stats.totalProfit.toFixed(1)} 万，盈利率 ${stats.winRate.toFixed(0)}%，平均每棵 ${stats.avgProfit.toFixed(1)} 万。`;
+                `总结: 共种植 ${stats.count} 棵，总利润 ${stats.totalProfit.toFixed(1)} 万 (≈${rmb.toFixed(2)}元)，盈利率 ${stats.winRate.toFixed(0)}%，平均每棵 ${stats.avgProfit.toFixed(1)} 万。`;
         }
     }
 };
