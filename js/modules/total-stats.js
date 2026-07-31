@@ -1,5 +1,5 @@
 // ============================================================
-//  📊 总收益汇总模块 - 最终修复版
+//  📊 总收益汇总模块 - 最终稳定版
 // ============================================================
 const TotalStatsModule = {
     id: 'totalStats',
@@ -23,7 +23,6 @@ const TotalStatsModule = {
             const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
             filterDate = sorted[0].date.split(' ')[0];
             document.getElementById('tsFilterDate').value = filterDate;
-            console.log('📅 默认选中日期:', filterDate);
         }
         
         this.updateStats(records, filterDate);
@@ -75,7 +74,6 @@ const TotalStatsModule = {
         }
 
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
-        console.log('📊 总记录数:', records.length);
         return records;
     },
 
@@ -189,6 +187,19 @@ const TotalStatsModule = {
             document.getElementById('tsFilterDate').value = '';
             this.render();
         });
+
+        // ✅ 用全局点击事件监听所有日期点击
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('.ts-date-btn');
+            if (target) {
+                const date = target.dataset.date;
+                console.log('🖱️ 点击日期(全局):', date);
+                if (date) {
+                    document.getElementById('tsFilterDate').value = date;
+                    TotalStatsModule.render();
+                }
+            }
+        });
     },
 
     renderCalendar(year, month, records, selectedDate) {
@@ -200,7 +211,6 @@ const TotalStatsModule = {
         for (let r of records) {
             const d = r.date.split(' ')[0];
             dateKeys.add(d);
-            console.log('📅 有数据的日期:', d);
         }
 
         const firstDay = new Date(year, month, 1).getDay();
@@ -230,7 +240,6 @@ const TotalStatsModule = {
             let style = 'padding:6px 2px;border-radius:50%;cursor:pointer;font-size:0.75rem;';
             if (hasData) {
                 style += 'background:#4c7a5c;color:#fff;font-weight:700;';
-                console.log('✅ 高亮日期:', dateStr);
             }
             if (isToday && !hasData) {
                 style += 'border:2px solid #4c7a5c;';
@@ -242,27 +251,21 @@ const TotalStatsModule = {
                 }
             }
 
-            const clickAttr = hasData ? `class="ts-date-btn" data-date="${dateStr}"` : '';
+            // ✅ 使用 onclick 属性直接绑定
+            const clickAttr = hasData ? `class="ts-date-btn" data-date="${dateStr}" onclick="TotalStatsModule.handleDateClick('${dateStr}')"` : '';
 
             html += `<div style="${style}" ${clickAttr}>${d}</div>`;
         }
 
         html += `</div>`;
         container.innerHTML = html;
+    },
 
-        // ✅ 渲染完成后立即绑定点击事件
-        document.querySelectorAll('#tsCalendar .ts-date-btn').forEach(btn => {
-            btn.removeEventListener('click', btn._clickHandler);
-            const handler = function(e) {
-                e.stopPropagation();
-                const date = this.dataset.date;
-                console.log('🖱️ 点击日期:', date);
-                document.getElementById('tsFilterDate').value = date;
-                TotalStatsModule.render();
-            };
-            btn._clickHandler = handler;
-            btn.addEventListener('click', handler);
-        });
+    // ✅ 全局函数处理日期点击
+    handleDateClick(date) {
+        console.log('🖱️ onclick 点击日期:', date);
+        document.getElementById('tsFilterDate').value = date;
+        this.render();
     },
 
     renderDateDetail(records, filterDate) {
@@ -406,6 +409,9 @@ const TotalStatsModule = {
         container.innerHTML = html;
     }
 };
+
+// ✅ 暴露全局函数供 onclick 调用
+window.TotalStatsModule = TotalStatsModule;
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => TotalStatsModule.init());
