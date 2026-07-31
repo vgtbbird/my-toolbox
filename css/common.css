@@ -1318,3 +1318,16 @@ body {
         font-size: 0.65rem !important;
     }
 }
+/* ===== 取消所有利润框选效果 ===== */
+.stat-item.profit,
+.stat-item.loss {
+    background: #dce5ef !important;
+    border: none !important;
+    box-shadow: inset 0 1px 3px rgba(255,255,255,0.7), 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+.stat-item.profit .num {
+    color: #2d6b2d !important;
+}
+.stat-item.loss .num {
+    color: #c0392b !important;
+}
