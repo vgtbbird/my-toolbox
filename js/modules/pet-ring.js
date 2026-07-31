@@ -1190,7 +1190,6 @@ ITEM_TYPES: [
           const deductColor = this.uiSettings.deductColor || '#d4a0a0';  // ← 新增这一行
             const grid = document.getElementById('prTaskGrid');
             // ... 后面代码不变
-        const grid = document.getElementById('prTaskGrid');
         if (!grid || grid.children.length > 0) return;
 
         let html = '';
