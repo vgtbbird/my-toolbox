@@ -631,7 +631,9 @@ const PetRingModule = {
                             <thead>
                                 <tr>
                                     <th style="width:36px;min-width:36px;">#</th>
-                                    <th style="min-width:100px;">📅 日期</th>
+                                    <th style="min-width:100px;cursor:pointer;" id="prSortHeader">
+                                    📅 日期 <span id="prSortIcon">↓</span>
+                                    </th>
                                     <th style="min-width:50px;">📌 环数</th>
                                     <th style="min-width:55px;">💰 成本</th>
                                     <th style="min-width:70px;">⭐ 总积分</th>
