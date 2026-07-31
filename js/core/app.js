@@ -1,5 +1,5 @@
 // ============================================================
-//  🚀 应用核心 - 修复版
+//  🚀 应用核心 - 修复Tab切换
 // ============================================================
 const App = {
     modules: {},
@@ -39,9 +39,6 @@ const App = {
         const target = document.getElementById('tab-' + tabId);
         if (target) {
             target.classList.add('active');
-            console.log(`✅ Tab 内容已显示: tab-${tabId}`);
-        } else {
-            console.warn(`⚠️ 找不到 Tab 内容: tab-${tabId}`);
         }
 
         const btn = document.querySelector(`.tab-nav .tab-btn[data-tab="${tabId}"]`);
@@ -51,16 +48,10 @@ const App = {
 
         this.currentTab = tabId;
 
-        // ✅ 关键修复：渲染对应模块
+        // 渲染对应模块
         if (this.modules[tabId] && typeof this.modules[tabId].render === 'function') {
             console.log(`🔄 渲染模块: ${tabId}`);
-            try {
-                this.modules[tabId].render();
-            } catch (e) {
-                console.error(`❌ 模块 ${tabId} 渲染失败:`, e);
-            }
-        } else {
-            console.warn(`⚠️ 模块 ${tabId} 没有 render 方法`);
+            this.modules[tabId].render();
         }
     },
 
@@ -92,12 +83,7 @@ const App = {
         console.log('🔄 刷新所有模块...');
         for (let [id, module] of Object.entries(this.modules)) {
             if (typeof module.render === 'function') {
-                console.log(`  └─ 刷新模块: ${id}`);
-                try {
-                    module.render();
-                } catch (e) {
-                    console.error(`❌ 模块 ${id} 刷新失败:`, e);
-                }
+                module.render();
             }
         }
     },
@@ -109,25 +95,20 @@ const App = {
     init() {
         console.log('🚀 App 启动中...');
 
-        // 绑定Tab按钮事件
+        // ✅ 绑定Tab按钮点击事件
         document.querySelectorAll('.tab-nav .tab-btn').forEach(btn => {
-            btn.removeEventListener('click', btn._clickHandler);
-            const handler = function() {
+            btn.addEventListener('click', function(e) {
                 const tabId = this.dataset.tab;
                 console.log(`🖱️ 点击Tab: ${tabId}`);
                 App.switchTab(tabId);
-            };
-            btn._clickHandler = handler;
-            btn.addEventListener('click', handler);
+            });
         });
 
         // 绑定返回首页按钮
         document.querySelectorAll('.btn-back-home').forEach(btn => {
-            btn.removeEventListener('click', btn._homeHandler);
-            btn._homeHandler = function() {
+            btn.addEventListener('click', function() {
                 App.goHome();
-            };
-            btn.addEventListener('click', btn._homeHandler);
+            });
         });
 
         // 初始化所有模块
