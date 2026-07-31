@@ -1,5 +1,5 @@
 // ============================================================
-//  🚀 应用核心 - 修复Tab切换
+//  🚀 应用核心 - 修复版
 // ============================================================
 const App = {
     modules: {},
@@ -15,10 +15,15 @@ const App = {
     },
 
     switchTab(tabId) {
+        console.log(`🔄 切换到 Tab: ${tabId}`);
+
         // 显示Tab导航
-        document.getElementById('tabNav').style.display = 'flex';
+        const tabNav = document.getElementById('tabNav');
+        if (tabNav) tabNav.style.display = 'flex';
+        
         // 隐藏首页
-        document.getElementById('homePage').classList.add('hidden');
+        const homePage = document.getElementById('homePage');
+        if (homePage) homePage.classList.add('hidden');
 
         // 隐藏所有Tab内容
         document.querySelectorAll('.tab-content').forEach(el => {
@@ -34,6 +39,9 @@ const App = {
         const target = document.getElementById('tab-' + tabId);
         if (target) {
             target.classList.add('active');
+            console.log(`✅ Tab 内容已显示: tab-${tabId}`);
+        } else {
+            console.warn(`⚠️ 找不到 Tab 内容: tab-${tabId}`);
         }
 
         const btn = document.querySelector(`.tab-nav .tab-btn[data-tab="${tabId}"]`);
@@ -43,10 +51,16 @@ const App = {
 
         this.currentTab = tabId;
 
-        // 渲染对应模块
+        // ✅ 关键修复：渲染对应模块
         if (this.modules[tabId] && typeof this.modules[tabId].render === 'function') {
             console.log(`🔄 渲染模块: ${tabId}`);
-            this.modules[tabId].render();
+            try {
+                this.modules[tabId].render();
+            } catch (e) {
+                console.error(`❌ 模块 ${tabId} 渲染失败:`, e);
+            }
+        } else {
+            console.warn(`⚠️ 模块 ${tabId} 没有 render 方法`);
         }
     },
 
@@ -55,19 +69,20 @@ const App = {
     },
 
     goHome() {
-        // 显示首页
-        document.getElementById('homePage').classList.remove('hidden');
-        // 隐藏Tab导航
-        document.getElementById('tabNav').style.display = 'none';
-        // 隐藏所有Tab内容
+        console.log('🏠 返回首页');
+        const homePage = document.getElementById('homePage');
+        if (homePage) homePage.classList.remove('hidden');
+        
+        const tabNav = document.getElementById('tabNav');
+        if (tabNav) tabNav.style.display = 'none';
+        
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.remove('active');
         });
-        // 取消所有Tab按钮高亮
         document.querySelectorAll('.tab-nav .tab-btn').forEach(el => {
             el.classList.remove('active');
         });
-        // 刷新首页卡片数据
+        
         if (typeof buildHomeCards === 'function') {
             buildHomeCards();
         }
@@ -78,7 +93,11 @@ const App = {
         for (let [id, module] of Object.entries(this.modules)) {
             if (typeof module.render === 'function') {
                 console.log(`  └─ 刷新模块: ${id}`);
-                module.render();
+                try {
+                    module.render();
+                } catch (e) {
+                    console.error(`❌ 模块 ${id} 刷新失败:`, e);
+                }
             }
         }
     },
