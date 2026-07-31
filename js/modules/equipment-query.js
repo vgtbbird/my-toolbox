@@ -1,5 +1,5 @@
 // ============================================================
-//  ⚔️ 装备打造 & 熔炼查询模块 - 修复版
+//  ⚔️ 装备打造 & 熔炼查询模块 - 完整版
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -21,7 +21,7 @@ const EquipmentQueryModule = {
     currentType: '普通',
     inputValues: {},
 
-    // ========== 装备数据 ==========
+    // ========== 装备打造数据 ==========
     equipmentData: {
         "60": {
             "武器": { "普通": { "命中": [230, 299], "伤害": [198, 257] }, "强化": { "命中": [241, 313], "伤害": [207, 269] } },
@@ -105,6 +105,7 @@ const EquipmentQueryModule = {
         }
     },
 
+    // ========== 熔炼数据 ==========
     meltData: {
         "武器": { "可熔炼": ["体质", "魔力", "力量", "耐力", "敏捷", "耐久"], "不可熔炼": ["伤害", "命中"], "说明": "武器必须带绿字属性才有效，白板武器熔炼只影响耐久" },
         "衣服": { "可熔炼": ["防御", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"], "不可熔炼": [], "说明": "只熔炼已有的属性类型" },
@@ -114,17 +115,108 @@ const EquipmentQueryModule = {
         "帽子": { "可熔炼": ["防御", "魔法", "耐久"], "不可熔炼": [], "说明": "" }
     },
 
+    // ========== 熔炼国标值（修正版） ==========
     standardValues: {
-        "60": { "灵力": 80, "防御": 36, "敏捷": 24, "气血": 136, "衣服防御": 105, "帽子防御": 36 },
-        "70": { "灵力": 93, "防御": 42, "敏捷": 27, "气血": 157, "衣服防御": 120, "帽子防御": 42 },
-        "80": { "灵力": 106, "防御": 47, "敏捷": 30, "气血": 178, "衣服防御": 136, "帽子防御": 47 },
-        "90": { "灵力": 118, "防御": 52, "敏捷": 33, "气血": 199, "衣服防御": 152, "帽子防御": 52 },
-        "100": { "灵力": 131, "防御": 57, "敏捷": 36, "气血": 220, "衣服防御": 168, "帽子防御": 57 },
-        "110": { "灵力": 143, "防御": 63, "敏捷": 39, "气血": 241, "衣服防御": 183, "帽子防御": 63 },
-        "120": { "灵力": 156, "防御": 68, "敏捷": 43, "气血": 262, "衣服防御": 199, "帽子防御": 68 },
-        "130": { "灵力": 169, "防御": 73, "敏捷": 46, "气血": 283, "衣服防御": 215, "帽子防御": 73 },
-        "140": { "灵力": 181, "防御": 78, "敏捷": 49, "气血": 304, "衣服防御": 231, "帽子防御": 78 },
-        "150": { "灵力": 194, "防御": 84, "敏捷": 52, "气血": 325, "衣服防御": 246, "帽子防御": 84 }
+        "60": {
+            "武器属性": 11,    // 武器单属性国标（体/魔/力/耐/敏）
+            "灵力": 71,        // 项链
+            "防御": 37,        // 鞋子/腰带/帽子通用防御
+            "敏捷": 25,        // 鞋子敏捷
+            "气血": 142,       // 腰带气血
+            "衣服防御": 110,   // 衣服防御
+            "帽子防御": 37,    // 帽子防御
+            "帽子魔法": 71     // 帽子魔法
+        },
+        "70": {
+            "武器属性": 13,
+            "灵力": 81,
+            "防御": 44,
+            "敏捷": 28,
+            "气血": 164,
+            "衣服防御": 126,
+            "帽子防御": 44,
+            "帽子魔法": 81
+        },
+        "80": {
+            "武器属性": 15,
+            "灵力": 89,
+            "防御": 47,
+            "敏捷": 30,
+            "气血": 186,
+            "衣服防御": 136,
+            "帽子防御": 47,
+            "帽子魔法": 89
+        },
+        "90": {
+            "武器属性": 17,
+            "灵力": 106,
+            "防御": 54,
+            "敏捷": 34,
+            "气血": 208,
+            "衣服防御": 159,
+            "帽子防御": 54,
+            "帽子魔法": 106
+        },
+        "100": {
+            "武器属性": 19,
+            "灵力": 117,
+            "防御": 59,
+            "敏捷": 37,
+            "气血": 231,
+            "衣服防御": 176,
+            "帽子防御": 59,
+            "帽子魔法": 117
+        },
+        "110": {
+            "武器属性": 22,
+            "灵力": 129,
+            "防御": 66,
+            "敏捷": 41,
+            "气血": 253,
+            "衣服防御": 192,
+            "帽子防御": 66,
+            "帽子魔法": 129
+        },
+        "120": {
+            "武器属性": 24,
+            "灵力": 140,
+            "防御": 71,
+            "敏捷": 45,
+            "气血": 275,
+            "衣服防御": 208,
+            "帽子防御": 71,
+            "帽子魔法": 140
+        },
+        "130": {
+            "武器属性": 26,
+            "灵力": 151,
+            "防御": 76,
+            "敏捷": 48,
+            "气血": 297,
+            "衣服防御": 225,
+            "帽子防御": 76,
+            "帽子魔法": 151
+        },
+        "140": {
+            "武器属性": 28,
+            "灵力": 163,
+            "防御": 81,
+            "敏捷": 51,
+            "气血": 319,
+            "衣服防御": 242,
+            "帽子防御": 81,
+            "帽子魔法": 163
+        },
+        "150": {
+            "武器属性": 30,
+            "灵力": 177,
+            "防御": 88,
+            "敏捷": 54,
+            "气血": 341,
+            "衣服防御": 258,
+            "帽子防御": 88,
+            "帽子魔法": 177
+        }
     },
 
     // ========== 生命周期 ==========
@@ -138,6 +230,7 @@ const EquipmentQueryModule = {
     },
 
     render() {
+        this.updateMeltInputs();
         this.updateQueryResult();
         this.calculateMelt();
         this.saveUISettings();
@@ -308,7 +401,8 @@ const EquipmentQueryModule = {
                 <div class="module-body" style="font-size:0.8rem;color:#5a7a94;line-height:1.8;">
                     <div>• 选择装备等级和部位，自动显示可输入属性</div>
                     <div>• 输入属性值后，自动对比打造范围（高亮显示是否达标）</div>
-                    <div>• 熔炼上限 = (强化国标值 × 1.3 - 当前属性值) ÷ 1.5</div>
+                    <div>• 熔炼上限公式：(强化国标 × 1.3 - 当前值) ÷ 1.5</div>
+                    <div>• 鞋子敏捷熔炼上限公式：(强化国标 × 1.3 - 当前值) ÷ 1.2</div>
                     <div>• 武器必须带绿字属性才有效，白板武器熔炼只影响耐久</div>
                     <div>• 熔炼条件：装备等级 ≥ 60、当前耐久 ≥ 100</div>
                 </div>
@@ -385,14 +479,11 @@ const EquipmentQueryModule = {
                 this.currentPart = parts[0] || '武器';
                 partSelect.value = this.currentPart;
             }
-            // 重新生成输入框
-            this.updateMeltInputs();
             this.render();
         });
 
         document.getElementById('eqPart').addEventListener('change', (e) => {
             this.currentPart = e.target.value;
-            this.updateMeltInputs();
             this.render();
         });
 
@@ -401,10 +492,9 @@ const EquipmentQueryModule = {
             this.render();
         });
 
-        // ✅ 属性输入变化时只更新结果，不重新渲染（避免死循环）
+        // ✅ 属性输入变化时只更新结果，不重新渲染
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
-                // 保存输入值
                 const attr = e.target.id.replace('eqAttr_', '');
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val)) {
@@ -428,7 +518,6 @@ const EquipmentQueryModule = {
             return;
         }
 
-        // 显示可输入的属性
         const attrList = meltInfo.可熔炼;
         let html = '';
         for (let attr of attrList) {
@@ -450,7 +539,6 @@ const EquipmentQueryModule = {
         const type = this.currentType;
         const el = document.getElementById('eqCraftResult');
 
-        // 获取用户输入的属性值
         const inputs = document.querySelectorAll('.eq-attr-input');
         const inputValues = {};
         for (let inp of inputs) {
@@ -503,7 +591,6 @@ const EquipmentQueryModule = {
             `;
         }
 
-        // 耐久
         const userDur = inputValues['耐久'];
         let durStatus = '';
         let durColor = '#5a7a94';
@@ -543,7 +630,6 @@ const EquipmentQueryModule = {
         const part = this.currentPart;
         const el = document.getElementById('eqMeltResult');
 
-        // 获取输入的属性值
         const inputs = document.querySelectorAll('.eq-attr-input');
         const values = {};
         let hasValue = false;
@@ -585,19 +671,38 @@ const EquipmentQueryModule = {
 
             let stdVal = 0;
             let isStat = statAttrs.includes(attr);
+            let formulaType = 'default'; // default 用 ÷1.5，敏捷用 ÷1.2
 
             if (isStat) {
-                stdVal = part === '衣服' ? standard.衣服防御 : standard.防御;
+                // 武器属性点：使用武器属性国标
+                stdVal = standard['武器属性'] || standard.防御;
+                formulaType = 'default';
             } else if (attr === '防御') {
-                stdVal = part === '衣服' ? standard.衣服防御 : standard.防御;
+                if (part === '衣服') {
+                    stdVal = standard.衣服防御;
+                } else if (part === '帽子') {
+                    stdVal = standard.帽子防御;
+                } else {
+                    stdVal = standard.防御;
+                }
+                formulaType = 'default';
             } else if (attr === '灵力') {
                 stdVal = standard.灵力;
+                formulaType = 'default';
             } else if (attr === '气血') {
                 stdVal = standard.气血;
+                formulaType = 'default';
             } else if (attr === '敏捷') {
-                stdVal = standard.敏捷;
+                if (part === '鞋子') {
+                    stdVal = standard.敏捷;
+                    formulaType = 'agile'; // 鞋子敏捷用 ÷1.2
+                } else {
+                    stdVal = standard.防御;
+                    formulaType = 'default';
+                }
             } else if (attr === '魔法') {
-                stdVal = standard.防御;
+                stdVal = standard.帽子魔法 || standard.防御;
+                formulaType = 'default';
             } else if (attr === '耐久') {
                 html += `
                     <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;">
@@ -610,7 +715,15 @@ const EquipmentQueryModule = {
                 continue;
             }
 
-            const maxValue = (stdVal * 1.3 - val) / 1.5;
+            // 计算熔炼上限
+            let maxValue;
+            if (formulaType === 'agile') {
+                // 鞋子敏捷：÷1.2
+                maxValue = (stdVal * 1.3 - val) / 1.2;
+            } else {
+                // 其他属性：÷1.5
+                maxValue = (stdVal * 1.3 - val) / 1.5;
+            }
             const canMelt = Math.max(0, Math.round(maxValue * 10) / 10);
             const maxFinal = val + canMelt;
 
@@ -647,8 +760,9 @@ const EquipmentQueryModule = {
 
         html += `
             <div style="font-size:0.7rem;color:#5a7a94;margin-top:8px;padding-top:6px;border-top:1px solid #eef2f7;">
-                💡 熔炼上限公式：(强化国标 × 1.3 - 当前值) ÷ 1.5
-                ${part === '武器' ? ' | 武器属性点熔炼上限基于防御国标计算' : ''}
+                💡 熔炼上限公式：防御/灵力/气血 = (强化国标 × 1.3 - 当前值) ÷ 1.5
+                <br>💡 鞋子敏捷熔炼上限公式： (强化国标 × 1.3 - 当前值) ÷ 1.2
+                <br>💡 武器属性点熔炼上限基于武器属性国标计算
             </div>
         `;
 
