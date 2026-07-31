@@ -6,6 +6,8 @@ const TotalStatsModule = {
 
     // ========== 数据 ==========
     currentDate: new Date(),
+    viewYear: new Date().getFullYear(),
+    viewMonth: new Date().getMonth(),
 
     // ========== 生命周期 ==========
     init() {
@@ -23,7 +25,7 @@ const TotalStatsModule = {
     getAllRecords() {
         const records = [];
         
-        // 1. 获取跑宠环数据
+        // 1. 跑宠环
         const petRing = Storage.get('petRing');
         if (petRing && petRing.history) {
             for (let h of petRing.history) {
@@ -44,7 +46,7 @@ const TotalStatsModule = {
             }
         }
 
-        // 2. 获取种树数据
+        // 2. 种树
         const treePlant = Storage.get('treePlant');
         if (treePlant && treePlant.history) {
             for (let h of treePlant.history) {
@@ -66,11 +68,7 @@ const TotalStatsModule = {
             }
         }
 
-        // 按日期排序（最新的在前）
-        records.sort((a, b) => {
-            return new Date(b.date) - new Date(a.date);
-        });
-
+        records.sort((a, b) => new Date(b.date) - new Date(a.date));
         return records;
     },
 
@@ -89,10 +87,7 @@ const TotalStatsModule = {
 
     // ========== 计算汇总 ==========
     calcTotalStats(records) {
-        let totalIncome = 0,
-            totalCost = 0,
-            totalProfit = 0,
-            totalRmb = 0;
+        let totalIncome = 0, totalCost = 0, totalProfit = 0, totalRmb = 0;
         const moduleStats = {};
 
         for (let r of records) {
@@ -102,13 +97,7 @@ const TotalStatsModule = {
             totalRmb += r.rmb || 0;
 
             if (!moduleStats[r.module]) {
-                moduleStats[r.module] = { 
-                    count: 0, 
-                    income: 0, 
-                    cost: 0, 
-                    profit: 0,
-                    rmb: 0
-                };
+                moduleStats[r.module] = { count: 0, income: 0, cost: 0, profit: 0, rmb: 0 };
             }
             moduleStats[r.module].count++;
             moduleStats[r.module].income += r.income || 0;
@@ -120,16 +109,15 @@ const TotalStatsModule = {
         const winCount = records.filter(r => r.profit > 0).length;
         const winRate = records.length > 0 ? (winCount / records.length * 100) : 0;
 
-        return { 
-            totalIncome, 
-            totalCost, 
-            totalProfit, 
-            totalRmb,
-            moduleStats, 
-            count: records.length,
-            winCount,
-            winRate
-        };
+        return { totalIncome, totalCost, totalProfit, totalRmb, moduleStats, count: records.length, winCount, winRate };
+    },
+
+    // ========== 获取当月记录 ==========
+    getMonthRecords(records) {
+        return records.filter(r => {
+            const d = new Date(r.date);
+            return d.getFullYear() === this.viewYear && d.getMonth() === this.viewMonth;
+        });
     },
 
     // ========== 构建UI ==========
@@ -138,7 +126,7 @@ const TotalStatsModule = {
         if (!container) return;
 
         container.innerHTML = `
-            <!-- 顶部统计卡片 -->
+            <!-- 顶部统计 -->
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="tsTotalCount">0</div><div class="label">📊 总记录</div></div>
                 <div class="stat-item"><div class="num" id="tsTotalIncome">0</div><div class="label">💰 总收入(万)</div></div>
@@ -150,20 +138,14 @@ const TotalStatsModule = {
 
             <!-- 模块统计 -->
             <div class="module">
-                <div class="module-header">
-                    <div class="title">📦 各模块统计</div>
-                </div>
-                <div class="module-body">
-                    <div id="tsModuleStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;">
-                        <div style="color:#6c87a0;text-align:center;padding:12px;">暂无数据</div>
-                    </div>
-                </div>
+                <div class="module-header"><div class="title">📦 各模块统计</div></div>
+                <div class="module-body"><div id="tsModuleStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;"></div></div>
             </div>
 
-            <!-- 筛选栏 -->
+            <!-- 日历 + 时间线 -->
             <div class="module">
                 <div class="module-header">
-                    <div class="title">📅 时间线 <span class="hint">— 按日期查看所有记录</span></div>
+                    <div class="title">📅 时间线 <span class="hint">— 点击有数据的日期查看详情</span></div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <input type="date" id="tsFilterDate" style="padding:4px 8px;border:1px solid #bccad9;border-radius:16px;font-size:0.7rem;">
                         <button class="btn-small" id="tsFilterBtn" style="background:#4c7a5c;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">🔍 筛选</button>
@@ -171,10 +153,20 @@ const TotalStatsModule = {
                     </div>
                 </div>
                 <div class="module-body">
-                    <div id="tsCalendar" style="margin-bottom:12px;"></div>
-                    <div id="tsTimeline">
-                        <div style="color:#6c87a0;text-align:center;padding:20px;">暂无记录</div>
+                    <!-- 月份切换 -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <button class="btn-small" id="tsPrevMonth" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.7rem;cursor:pointer;">◀ 上月</button>
+                        <span id="tsMonthLabel" style="font-weight:700;font-size:1rem;color:#1f3b53;"></span>
+                        <button class="btn-small" id="tsNextMonth" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.7rem;cursor:pointer;">下月 ▶</button>
                     </div>
+                    <!-- 当月利润汇总 -->
+                    <div id="tsMonthSummary" style="background:#f0f5fb;border-radius:12px;padding:8px 14px;margin-bottom:10px;font-size:0.85rem;color:#1f3b53;text-align:center;border:1px solid #dce5ef;"></div>
+                    <!-- 日历 -->
+                    <div id="tsCalendar" style="margin-bottom:10px;"></div>
+                    <!-- 选中的日期详情 -->
+                    <div id="tsDateDetail" style="margin-bottom:10px;"></div>
+                    <!-- 记录列表 -->
+                    <div id="tsTimeline"></div>
                 </div>
             </div>
         `;
@@ -182,11 +174,22 @@ const TotalStatsModule = {
 
     // ========== 绑定事件 ==========
     bindEvents() {
-        document.getElementById('tsFilterBtn').addEventListener('click', () => {
+        document.getElementById('tsFilterBtn').addEventListener('click', () => this.render());
+        document.getElementById('tsFilterResetBtn').addEventListener('click', () => {
+            document.getElementById('tsFilterDate').value = '';
             this.render();
         });
 
-        document.getElementById('tsFilterResetBtn').addEventListener('click', () => {
+        document.getElementById('tsPrevMonth').addEventListener('click', () => {
+            this.viewMonth--;
+            if (this.viewMonth < 0) { this.viewMonth = 11; this.viewYear--; }
+            document.getElementById('tsFilterDate').value = '';
+            this.render();
+        });
+
+        document.getElementById('tsNextMonth').addEventListener('click', () => {
+            this.viewMonth++;
+            if (this.viewMonth > 11) { this.viewMonth = 0; this.viewYear++; }
             document.getElementById('tsFilterDate').value = '';
             this.render();
         });
@@ -197,6 +200,8 @@ const TotalStatsModule = {
                 const date = dateBtn.dataset.date;
                 document.getElementById('tsFilterDate').value = date;
                 this.render();
+                // 滚动到时间线区域
+                document.getElementById('tsTimeline').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     },
@@ -207,19 +212,18 @@ const TotalStatsModule = {
         if (!container) return;
 
         const dateKeys = new Set();
+        const dateData = {};
         for (let r of records) {
             const d = r.date.split(' ')[0];
             dateKeys.add(d);
+            if (!dateData[d]) dateData[d] = [];
+            dateData[d].push(r);
         }
 
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
         let html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600;color:#1f3b53;">
-                <span>${year}年${month + 1}月</span>
-                <span style="font-size:0.7rem;color:#5a7a94;">有数据的日期高亮</span>
-            </div>
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:0.7rem;text-align:center;">
                 <div style="color:#c0392b;font-weight:600;">日</div>
                 <div style="font-weight:600;">一</div>
@@ -240,7 +244,7 @@ const TotalStatsModule = {
             const isToday = dateStr === new Date().toISOString().split('T')[0];
             const isSelected = dateStr === document.getElementById('tsFilterDate').value;
 
-            let style = 'padding:6px 2px;border-radius:50%;cursor:pointer;';
+            let style = 'padding:6px 2px;border-radius:50%;cursor:pointer;font-size:0.75rem;';
             if (hasData) {
                 style += 'background:#4c7a5c;color:#fff;font-weight:700;';
             }
@@ -258,6 +262,43 @@ const TotalStatsModule = {
 
         html += `</div>`;
         container.innerHTML = html;
+    },
+
+    // ========== 渲染日期详情 ==========
+    renderDateDetail(records, filterDate) {
+        const container = document.getElementById('tsDateDetail');
+        if (!container) return;
+
+        if (!filterDate) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const dayRecords = records.filter(r => r.date.startsWith(filterDate));
+        if (dayRecords.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let totalProfit = 0, totalRmb = 0;
+        for (let r of dayRecords) {
+            totalProfit += r.profit || 0;
+            totalRmb += r.rmb || 0;
+        }
+
+        const pc = totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
+        container.innerHTML = `
+            <div style="background:#e8f0f8;border-radius:12px;padding:8px 14px;border:1px solid #d0dce8;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+                    <span style="font-weight:700;color:#1f3b53;">📅 ${filterDate}</span>
+                    <span style="font-size:0.8rem;color:#5a7a94;">${dayRecords.length} 条记录</span>
+                    <span style="font-size:0.85rem;font-weight:700;">
+                        📈 <span class="${pc}">${totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(1)}万</span>
+                        | 💴 ${totalRmb.toFixed(2)}元
+                    </span>
+                </div>
+            </div>
+        `;
     },
 
     // ========== 渲染时间线 ==========
@@ -283,17 +324,11 @@ const TotalStatsModule = {
         const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
 
         let html = '';
-        let totalProfit = 0;
-        let totalIncome = 0;
-        let totalCost = 0;
-        let totalRmb = 0;
+        let totalProfit = 0, totalIncome = 0, totalCost = 0, totalRmb = 0;
 
         for (let date of sortedDates) {
             const items = groups[date];
-            let dayIncome = 0,
-                dayCost = 0,
-                dayProfit = 0,
-                dayRmb = 0;
+            let dayIncome = 0, dayCost = 0, dayProfit = 0, dayRmb = 0;
             for (let item of items) {
                 dayIncome += item.income || 0;
                 dayCost += item.cost || 0;
@@ -337,10 +372,7 @@ const TotalStatsModule = {
                 `;
             }
 
-            html += `
-                    </div>
-                </div>
-            `;
+            html += `</div></div>`;
         }
 
         const totalProfitClass = totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
@@ -362,10 +394,10 @@ const TotalStatsModule = {
     updateStats() {
         const records = this.getAllRecords();
         const filterDate = document.getElementById('tsFilterDate').value;
+        const monthRecords = this.getMonthRecords(records);
 
-        const stats = this.calcTotalStats(records);
-        
         // 统计卡片
+        const stats = this.calcTotalStats(records);
         document.getElementById('tsTotalCount').textContent = stats.count;
         document.getElementById('tsTotalIncome').textContent = stats.totalIncome.toFixed(1);
         document.getElementById('tsTotalProfit').textContent = stats.totalProfit.toFixed(1);
@@ -373,16 +405,30 @@ const TotalStatsModule = {
         document.getElementById('tsWinRate').textContent = stats.winRate.toFixed(0) + '%';
         document.getElementById('tsModuleCount').textContent = Object.keys(stats.moduleStats).length;
 
-        // 利润颜色
         const ps = document.getElementById('tsTotalProfitStat');
         ps.className = 'stat-item' + (stats.totalProfit > 0 ? ' profit' : stats.totalProfit < 0 ? ' loss' : '');
 
         // 模块统计
         this.renderModuleStats(stats.moduleStats);
 
-        // 日历
-        const now = this.currentDate;
-        this.renderCalendar(now.getFullYear(), now.getMonth(), records);
+        // 月份标签
+        document.getElementById('tsMonthLabel').textContent = `${this.viewYear}年${this.viewMonth + 1}月`;
+
+        // 当月汇总
+        const monthStats = this.calcTotalStats(monthRecords);
+        const mc = monthStats.totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
+        document.getElementById('tsMonthSummary').innerHTML = `
+            📊 当月汇总：💰 收入 ${monthStats.totalIncome.toFixed(1)}万 | 
+            📈 利润 <span class="${mc}">${monthStats.totalProfit >= 0 ? '+' : ''}${monthStats.totalProfit.toFixed(1)}万</span> | 
+            💴 收益 ${monthStats.totalRmb.toFixed(2)}元 | 
+            📌 ${monthStats.count} 条记录
+        `;
+
+        // 日历（用所有记录）
+        this.renderCalendar(this.viewYear, this.viewMonth, records);
+
+        // 日期详情
+        this.renderDateDetail(records, filterDate);
 
         // 时间线
         this.renderTimeline(records, filterDate);
@@ -399,12 +445,7 @@ const TotalStatsModule = {
             return;
         }
 
-        const icons = {
-            '跑宠环': '🏃',
-            '种树': '🌳',
-            '师门': '📋',
-            '活动': '🎯'
-        };
+        const icons = { '跑宠环': '🏃', '种树': '🌳', '师门': '📋', '活动': '🎯' };
 
         let html = '';
         for (let [name, stats] of Object.entries(moduleStats)) {
