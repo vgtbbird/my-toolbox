@@ -23,9 +23,18 @@ const TotalStatsModule = {
             const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
             filterDate = sorted[0].date.split(' ')[0];
             document.getElementById('tsFilterDate').value = filterDate;
+            console.log('📅 默认选中日期:', filterDate);
         }
         
         this.updateStats(records, filterDate);
+    },
+
+    // ✅ 日期点击处理
+    handleDateClick(date) {
+        console.log('🖱️ 点击日期:', date);
+        document.getElementById('tsFilterDate').value = date;
+        const records = this.getAllRecords();
+        this.updateStats(records, date);
     },
 
     getAllRecords() {
@@ -74,6 +83,7 @@ const TotalStatsModule = {
         }
 
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
+        console.log('📊 总记录数:', records.length);
         return records;
     },
 
@@ -188,15 +198,14 @@ const TotalStatsModule = {
             this.render();
         });
 
-        // ✅ 用全局点击事件监听所有日期点击
+        // 全局点击监听
         document.addEventListener('click', function(e) {
             const target = e.target.closest('.ts-date-btn');
             if (target) {
                 const date = target.dataset.date;
                 console.log('🖱️ 点击日期(全局):', date);
                 if (date) {
-                    document.getElementById('tsFilterDate').value = date;
-                    TotalStatsModule.render();
+                    TotalStatsModule.handleDateClick(date);
                 }
             }
         });
@@ -206,7 +215,6 @@ const TotalStatsModule = {
         const container = document.getElementById('tsCalendar');
         if (!container) return;
 
-        // 收集有数据的日期
         const dateKeys = new Set();
         for (let r of records) {
             const d = r.date.split(' ')[0];
@@ -251,7 +259,6 @@ const TotalStatsModule = {
                 }
             }
 
-            // ✅ 使用 onclick 属性直接绑定
             const clickAttr = hasData ? `class="ts-date-btn" data-date="${dateStr}" onclick="TotalStatsModule.handleDateClick('${dateStr}')"` : '';
 
             html += `<div style="${style}" ${clickAttr}>${d}</div>`;
@@ -259,13 +266,6 @@ const TotalStatsModule = {
 
         html += `</div>`;
         container.innerHTML = html;
-    },
-
-    // ✅ 全局函数处理日期点击
-    handleDateClick(date) {
-        console.log('🖱️ onclick 点击日期:', date);
-        document.getElementById('tsFilterDate').value = date;
-        this.render();
     },
 
     renderDateDetail(records, filterDate) {
@@ -410,7 +410,7 @@ const TotalStatsModule = {
     }
 };
 
-// ✅ 暴露全局函数供 onclick 调用
+// ✅ 暴露全局函数
 window.TotalStatsModule = TotalStatsModule;
 
 if (document.readyState === 'loading') {
