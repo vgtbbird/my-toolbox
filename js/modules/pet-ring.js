@@ -24,23 +24,23 @@ const PetRingModule = {
         fontSize: 14
     },
 
-    ITEM_TYPES: [
-        { key: 'find', label: '找人', score: 1, defaultPrice: 0, color: '#2d6b9e' },
-        { key: 'ring60', label: '60环', score: 2, defaultPrice: 1.5, color: '#3a7a4a' },
-        { key: 'ring70', label: '70环', score: 3, defaultPrice: 3, color: '#b87a3a' },
-        { key: 'ring80', label: '80环', score: 5, defaultPrice: 8, color: '#8f3a8f' },
-        { key: 'flower', label: '花卉乐器', score: 4, defaultPrice: 2, color: '#c45a7a' },
-        { key: 'cook', label: '烹饪三药', score: 2, defaultPrice: 1, color: '#3a9e7a' },
-        { key: 'furn1', label: '1级家具', score: 2, defaultPrice: 1, color: '#7a8a3a' },
-        { key: 'furn2', label: '2级家具', score: 5, defaultPrice: 3, color: '#8a6a3a' },
-        { key: 'var_common', label: '非指定变异', score: 5, defaultPrice: 30, color: '#b45a3a' },
-        { key: 'var_spec', label: '指定变异', score: 10, defaultPrice: 80, color: '#b43a7a' },
-    ],
-    DEDUCT_TYPES: [
-        { key: 'skip', label: '跳过任务', defaultDeduct: 20, defaultCost: 0 },
-        { key: 'normal_pet', label: '交普通召唤兽', defaultDeduct: 15, defaultCost: 0.5 },
-        { key: 'low_quality', label: '不足品质烹饪/三药', defaultDeduct: 4, defaultCost: 0.3 },
-    ],
+ITEM_TYPES: [
+    { key: 'find', label: '找人', icon: '🔍', score: 1, defaultPrice: 0, color: '#2d6b9e' },
+    { key: 'ring60', label: '60环', icon: '🔵', score: 2, defaultPrice: 1.5, color: '#3a7a4a' },
+    { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
+    { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
+    { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
+    { key: 'cook', label: '烹饪三药', icon: '🍳', score: 2, defaultPrice: 1, color: '#3a9e7a' },
+    { key: 'furn1', label: '1级家具', icon: '🪑', score: 2, defaultPrice: 1, color: '#7a8a3a' },
+    { key: 'furn2', label: '2级家具', icon: '🛋️', score: 5, defaultPrice: 3, color: '#8a6a3a' },
+    { key: 'var_common', label: '非指定变异', icon: '🐉', score: 5, defaultPrice: 30, color: '#b45a3a' },
+    { key: 'var_spec', label: '指定变异', icon: '⭐', score: 10, defaultPrice: 80, color: '#b43a7a' },
+],
+   DEDUCT_TYPES: [
+    { key: 'skip', label: '跳过任务', icon: '⏭️', defaultDeduct: 20, defaultCost: 0 },
+    { key: 'normal_pet', label: '交普通召唤兽', icon: '🐾', defaultDeduct: 15, defaultCost: 0.5 },
+    { key: 'low_quality', label: '不足品质烹饪/三药', icon: '⚠️', defaultDeduct: 4, defaultCost: 0.3 },
+],
     INITIAL_COST: 10,
     filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', profitType: 'all' },
 
@@ -1153,6 +1153,7 @@ const PetRingModule = {
         const allTasks = [...this.ITEM_TYPES, ...this.DEDUCT_TYPES.map(d => ({
             key: d.key,
             label: d.label,
+            icon: d.icon || '', 
             score: -(this.deductSettings[d.key]?.deduct || d.defaultDeduct),
             isDeduct: true
         }))];
@@ -1163,7 +1164,7 @@ const PetRingModule = {
             const color = isDeduct ? '#8f3a3a' : (this.ITEM_TYPES.find(it => it.key === t.key)?.color || '#1f3b53');
             html += `<div class="task-item-wrapper" data-key="${t.key}">
                 <button class="${isDeduct ? 'task-btn deduct' : 'task-btn'}" data-key="${t.key}" style="border-color:${color};background:${isDeduct ? '#c0392b' : '#4CAF50'};color:#ffffff;border-radius:30px;padding:8px 2px;font-size:0.85rem;font-weight:700;cursor:pointer;text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;line-height:1.2;border:1px solid ${color};">
-                    <span style="color:#ffffff;">${t.label}</span>
+                     <span style="color:#ffffff;">${t.icon || ''} ${t.label}</span>
                     <span class="sub" style="color:${isDeduct ? '#ffcccc' : '#e0e0e0'};font-weight:600;font-size:0.6rem;">${isDeduct ? `${sc}分` : `+${sc}分`}</span>
                 </button>
                 <span class="task-count"></span>
