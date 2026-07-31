@@ -1,5 +1,5 @@
 // ============================================================
-//  📊 总收益汇总模块 - 完整修复版
+//  📊 总收益汇总模块 - 最终修复版
 // ============================================================
 const TotalStatsModule = {
     id: 'totalStats',
@@ -62,13 +62,14 @@ const TotalStatsModule = {
                     module: '种树',
                     icon: '🌳',
                     type: '种树',
-                    detail: `收入${(h.income || 0).toFixed(1)}万 | 摇树${h.shakes || 0}次 | ${lootStr.substring(0, 20)}${lootStr.length > 20 ? '...' : ''}`,
+                    detail: `收入${(h.income || 0).toFixed(1)}万 | 摇树${h.shakes || 0}次`,
                     income: h.income || 0,
                     cost: h.cost || 0,
                     profit: h.profit || 0,
                     rmb: rmb,
                     exchangeRate: h.exchangeRate || 0.08,
-                    raw: h
+                    raw: h,
+                    lootStr: lootStr
                 });
             }
         }
@@ -158,8 +159,8 @@ const TotalStatsModule = {
                     </div>
                     <div id="tsMonthSummary" style="background:#f0f5fb;border-radius:12px;padding:8px 14px;margin-bottom:10px;font-size:0.85rem;color:#1f3b53;text-align:center;border:1px solid #dce5ef;"></div>
                     <div id="tsCalendar" style="margin-bottom:10px;"></div>
+                    <!-- 只显示一个日期详情，不重复 -->
                     <div id="tsDateDetail" style="margin-bottom:10px;"></div>
-                    <div id="tsTimeline"></div>
                 </div>
             </div>
         `;
@@ -207,7 +208,6 @@ const TotalStatsModule = {
                 const date = dateBtn.dataset.date;
                 document.getElementById('tsFilterDate').value = date;
                 this.render();
-                document.getElementById('tsTimeline').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     },
@@ -271,19 +271,27 @@ const TotalStatsModule = {
         container.innerHTML = html;
     },
 
+    // ✅ 修复：只显示一个日期详情，不重复
     renderDateDetail(records, filterDate) {
         const container = document.getElementById('tsDateDetail');
         if (!container) return;
 
-        if (!filterDate) {
+        // 如果没有选中日期，自动选最新有数据的日期
+        let activeDate = filterDate;
+        if (!activeDate && records.length > 0) {
+            const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+            activeDate = sorted[0].date.split(' ')[0].replace(/\//g, '-');
+        }
+
+        if (!activeDate) {
             container.innerHTML = '';
             return;
         }
 
-        // 统一日期格式比较
+        // 筛选该日期的记录
         const dayRecords = records.filter(r => {
             const d = r.date.split(' ')[0].replace(/\//g, '-');
-            return d === filterDate;
+            return d === activeDate;
         });
 
         if (dayRecords.length === 0) {
@@ -291,6 +299,7 @@ const TotalStatsModule = {
             return;
         }
 
+        // 计算当天汇总
         let totalProfit = 0, totalRmb = 0, totalIncome = 0;
         for (let r of dayRecords) {
             totalProfit += r.profit || 0;
@@ -299,10 +308,30 @@ const TotalStatsModule = {
         }
 
         const pc = totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
+
+        // 构建记录列表HTML
+        let listHtml = '';
+        for (let item of dayRecords) {
+            const pc2 = item.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            listHtml += `
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:0.8rem;border-bottom:1px solid #f5f8fc;flex-wrap:wrap;">
+                    <span style="font-size:1.1rem;">${item.icon}</span>
+                    <span style="font-weight:600;color:#1f3b53;min-width:60px;">${item.module}</span>
+                    <span style="color:#5a7a94;flex:1;font-size:0.75rem;">${item.detail}</span>
+                    ${item.lootStr ? `<span style="color:#5a7a94;font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.lootStr}</span>` : ''}
+                    <span style="font-weight:600;white-space:nowrap;font-size:0.75rem;">
+                        💰 ${(item.income || 0).toFixed(1)}万
+                        | <span class="${pc2}">${item.profit >= 0 ? '+' : ''}${(item.profit || 0).toFixed(1)}万</span>
+                        | 💴 ${(item.rmb || 0).toFixed(2)}元
+                    </span>
+                </div>
+            `;
+        }
+
         container.innerHTML = `
-            <div style="background:#e8f0f8;border-radius:12px;padding:8px 14px;border:1px solid #d0dce8;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
-                    <span style="font-weight:700;color:#1f3b53;">📅 ${filterDate}</span>
+            <div style="background:#f8faff;border-radius:12px;padding:12px 14px;border:1px solid #e8eef5;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+                    <span style="font-weight:700;color:#1f3b53;">📅 ${activeDate}</span>
                     <span style="font-size:0.8rem;color:#5a7a94;">${dayRecords.length} 条记录</span>
                     <span style="font-size:0.85rem;font-weight:700;">
                         💰 ${totalIncome.toFixed(1)}万 | 
@@ -310,99 +339,11 @@ const TotalStatsModule = {
                         | 💴 ${totalRmb.toFixed(2)}元
                     </span>
                 </div>
-            </div>
-        `;
-    },
-
-    renderTimeline(records, filterDate) {
-        const container = document.getElementById('tsTimeline');
-        if (!container) return;
-
-        let filtered = records;
-        if (filterDate) {
-            filtered = records.filter(r => {
-                const d = r.date.split(' ')[0].replace(/\//g, '-');
-                return d === filterDate;
-            });
-        }
-
-        if (filtered.length === 0) {
-            container.innerHTML = `
-                <div style="color:#6c87a0;text-align:center;padding:20px;font-style:italic;">
-                    ${filterDate ? `📅 ${filterDate} 暂无记录` : '暂无记录'}
-                </div>
-            `;
-            return;
-        }
-
-        const groups = this.groupByDate(filtered);
-        const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
-
-        let html = '';
-        let totalProfit = 0, totalIncome = 0, totalCost = 0, totalRmb = 0;
-
-        for (let date of sortedDates) {
-            const items = groups[date];
-            let dayIncome = 0, dayCost = 0, dayProfit = 0, dayRmb = 0;
-            for (let item of items) {
-                dayIncome += item.income || 0;
-                dayCost += item.cost || 0;
-                dayProfit += item.profit || 0;
-                dayRmb += item.rmb || 0;
-            }
-            totalIncome += dayIncome;
-            totalCost += dayCost;
-            totalProfit += dayProfit;
-            totalRmb += dayRmb;
-
-            const profitClass = dayProfit >= 0 ? 'profit-positive' : 'profit-negative';
-
-            html += `
-                <div style="background:#f8faff;border-radius:12px;padding:10px 14px;margin-bottom:10px;border:1px solid #e8eef5;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
-                        <span style="font-weight:700;color:#1f3b53;">📅 ${date}</span>
-                        <span style="font-size:0.8rem;color:#5a7a94;">${items.length} 条</span>
-                        <span style="font-size:0.85rem;font-weight:700;">
-                            💰 ${dayIncome.toFixed(1)}万 | 
-                            📈 <span class="${profitClass}">${dayProfit >= 0 ? '+' : ''}${dayProfit.toFixed(1)}万</span>
-                            | 💴 ${dayRmb.toFixed(2)}元
-                        </span>
-                    </div>
-                    <div style="border-top:1px solid #eef2f7;padding-top:6px;">
-            `;
-
-            for (let item of items) {
-                const pc = item.profit >= 0 ? 'profit-positive' : 'profit-negative';
-                html += `
-                    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.8rem;border-bottom:1px solid #f5f8fc;">
-                        <span style="font-size:1.1rem;">${item.icon}</span>
-                        <span style="font-weight:600;color:#1f3b53;min-width:60px;">${item.module}</span>
-                        <span style="color:#5a7a94;flex:1;font-size:0.75rem;">${item.detail}</span>
-                        <span style="font-weight:600;white-space:nowrap;font-size:0.75rem;">
-                            💰 ${(item.income || 0).toFixed(1)}万
-                            | <span class="${pc}">${item.profit >= 0 ? '+' : ''}${(item.profit || 0).toFixed(1)}万</span>
-                            | 💴 ${(item.rmb || 0).toFixed(2)}元
-                        </span>
-                    </div>
-                `;
-            }
-
-            html += `</div></div>`;
-        }
-
-        const totalProfitClass = totalProfit >= 0 ? 'profit-positive' : 'profit-negative';
-        html += `
-            <div style="background:#f0f5fb;border-radius:12px;padding:12px 16px;border:2px solid #4c7a5c;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-size:0.9rem;">
-                    <span style="font-weight:700;color:#1f3b53;">📊 汇总</span>
-                    <span>💰 总收入: <strong>${totalIncome.toFixed(1)}万</strong></span>
-                    <span>📈 总利润: <strong class="${totalProfitClass}">${totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(1)}万</strong></span>
-                    <span>💴 总收益: <strong>${totalRmb.toFixed(2)}元</strong></span>
+                <div style="border-top:1px solid #eef2f7;padding-top:6px;">
+                    ${listHtml}
                 </div>
             </div>
         `;
-
-        container.innerHTML = html;
     },
 
     updateStats(records, filterDate) {
@@ -443,8 +384,8 @@ const TotalStatsModule = {
         `;
 
         this.renderCalendar(this.viewYear, this.viewMonth, records, filterDate);
+        // ✅ 只调用一次日期详情，不重复
         this.renderDateDetail(records, filterDate);
-        this.renderTimeline(records, filterDate);
     },
 
     renderModuleStats(moduleStats) {
