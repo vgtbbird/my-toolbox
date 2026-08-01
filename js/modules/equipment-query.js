@@ -206,18 +206,17 @@ const EquipmentQueryModule = {
         setTimeout(() => this.applyUISettings(), 150);
     },
 
-    render() {
-        // 人物装备
-        this.updateMeltInputs();
-        this.updateQueryResult();
-        this.calculateMelt();
-        // 宠装
-        this.updatePetInputs();
-        this.updatePetQueryResult();
-        this.updatePetValueResult();
-        this.saveUISettings();
-        setTimeout(() => this.applyUISettings(), 100);
-    },
+render() {
+    this.buildUI();
+    this.updateMeltInputs();
+    this.updateQueryResult();
+    this.calculateMelt();
+    this.updatePetInputs();
+    this.updatePetQueryResult();
+    this.updatePetValueResult();
+    this.saveUISettings();
+    setTimeout(() => this.applyUISettings(), 100);
+},
 
     // ========== UI设置 ==========
     loadUISettings() {
