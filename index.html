@@ -826,16 +826,16 @@
         // 4. 构建首页卡片
         buildHomeCards();
 
-        // Service Worker 已禁用（CSP 策略冲突）
-        // if ('serviceWorker' in navigator) {
-        //     navigator.serviceWorker.register('sw.js')
-        //         .then(function(registration) {
-        //             console.log('Service Worker 注册成功');
-        //         })
-        //         .catch(function(err) {
-        //             console.log('Service Worker 注册失败:', err);
-        //         });
-        // }
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(function(registration) {
+                    console.log('Service Worker 注册成功');
+                })
+                .catch(function(err) {
+                    console.log('Service Worker 注册失败:', err);
+                });
+        }
     </script>
 </body>
 </html>
