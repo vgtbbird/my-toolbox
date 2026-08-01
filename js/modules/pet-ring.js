@@ -1,9 +1,12 @@
 // ============================================================
-//  🏃 跑宠环模块 - 完整版（奖励可删除）
+//  🏃 跑宠环模块 - 完整版（含期望值计算 + 策略建议）
+//  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
+//  新增：修炼果单价保存、扣分设置折叠、期望值计算、变异策略、跑法策略
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
-    sortState: { order: 'desc' },  
+    sortState: { order: 'desc' },
+
     // ========== 数据 ==========
     storageKey: 'petRing',
     records: [],
@@ -14,6 +17,7 @@ const PetRingModule = {
     extraRewards: { points: 0, fruits: 0, furnitures: 0 },
     pendingSettle: null,
     exchangeRate: 0.08,
+    fruitPrice: 80,  // 修炼果单价，保存到本地
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -22,26 +26,63 @@ const PetRingModule = {
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
         fontSize: 14,
-        deductColor: '#d4a0a0' 
+        deductColor: '#d4a0a0'
     },
 
-ITEM_TYPES: [
-    { key: 'find', label: '找人', icon: '🔍', score: 1, defaultPrice: 0, color: '#2d6b9e' },
-    { key: 'ring60', label: '60环', icon: '🔵', score: 2, defaultPrice: 1.5, color: '#3a7a4a' },
-    { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
-    { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
-    { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
-    { key: 'cook', label: '烹饪三药', icon: '🍳', score: 2, defaultPrice: 1, color: '#3a9e7a' },
-    { key: 'furn1', label: '1级家具', icon: '🪑', score: 2, defaultPrice: 1, color: '#7a8a3a' },
-    { key: 'furn2', label: '2级家具', icon: '🛋️', score: 5, defaultPrice: 3, color: '#8a6a3a' },
-    { key: 'var_common', label: '非指定变异', icon: '🐉', score: 5, defaultPrice: 30, color: '#b45a3a' },
-    { key: 'var_spec', label: '指定变异', icon: '⭐', score: 10, defaultPrice: 80, color: '#b43a7a' },
-],
-   DEDUCT_TYPES: [
-    { key: 'skip', label: '跳过任务', icon: '⏭️', defaultDeduct: 20, defaultCost: 0 },
-    { key: 'normal_pet', label: '交普通召唤兽', icon: '🐾', defaultDeduct: 15, defaultCost: 0.5 },
-    { key: 'low_quality', label: '不足品质烹饪/三药', icon: '⚠️', defaultDeduct: 4, defaultCost: 0.3 },
-],
+    // ========== 概率表（用于期望值计算） ==========
+    taskProb: {
+        find: 0.43,
+        ring60: 0.10,
+        ring70: 0.05,
+        ring80: 0.05,
+        flower: 0.04,
+        cook: 0.16,
+        furn1: 0.07,
+        furn2: 0.05,
+        var_spec: 0.01
+    },
+    taskScore: {
+        find: 1,
+        ring60: 2,
+        ring70: 3,
+        ring80: 5,
+        flower: 4,
+        cook: 2,
+        furn1: 2,
+        furn2: 5,
+        var_spec: 10
+    },
+    taskLabel: {
+        find: '找人',
+        ring60: '60环',
+        ring70: '70环',
+        ring80: '80环',
+        flower: '花卉乐器',
+        cook: '烹饪三药',
+        furn1: '1级家具',
+        furn2: '2级家具',
+        var_spec: '指定变异'
+    },
+
+    ITEM_TYPES: [
+        { key: 'find', label: '找人', icon: '🔍', score: 1, defaultPrice: 0, color: '#2d6b9e' },
+        { key: 'ring60', label: '60环', icon: '🔵', score: 2, defaultPrice: 1.5, color: '#3a7a4a' },
+        { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
+        { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
+        { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
+        { key: 'cook', label: '烹饪三药', icon: '🍳', score: 2, defaultPrice: 1, color: '#3a9e7a' },
+        { key: 'furn1', label: '1级家具', icon: '🪑', score: 2, defaultPrice: 1, color: '#7a8a3a' },
+        { key: 'furn2', label: '2级家具', icon: '🛋️', score: 5, defaultPrice: 3, color: '#8a6a3a' },
+        { key: 'var_common', label: '非指定变异', icon: '🐉', score: 5, defaultPrice: 30, color: '#b45a3a' },
+        { key: 'var_spec', label: '指定变异', icon: '⭐', score: 10, defaultPrice: 80, color: '#b43a7a' }
+    ],
+
+    DEDUCT_TYPES: [
+        { key: 'skip', label: '跳过任务', icon: '⏭️', defaultDeduct: 20, defaultCost: 0 },
+        { key: 'normal_pet', label: '交普通召唤兽', icon: '🐾', defaultDeduct: 15, defaultCost: 0.5 },
+        { key: 'low_quality', label: '不足品质烹饪/三药', icon: '⚠️', defaultDeduct: 4, defaultCost: 0.3 }
+    ],
+
     INITIAL_COST: 10,
     filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', profitType: 'all' },
 
@@ -55,16 +96,21 @@ ITEM_TYPES: [
         setTimeout(() => this.applyUISettings(), 150);
     },
 
-   render() {
-    this.updateStats();
-    this.updateHistory();
-    this.updateAdvice();
-    this.updateBookList();
-    this.updateHistoryTable();  // ← 确保这行存在
-    this.saveData();
-    setTimeout(() => this.applyUISettings(), 100);
-    this.checkAutoSettle();
-},
+    render() {
+        // 保存修炼果单价
+        const fruitInput = document.getElementById('prFruitPrice');
+        if (fruitInput) {
+            this.fruitPrice = parseFloat(fruitInput.value) || 80;
+        }
+        this.updateStats();
+        this.updateHistory();
+        this.updateAdvice();
+        this.updateBookList();
+        this.updateHistoryTable();
+        this.saveData();
+        setTimeout(() => this.applyUISettings(), 100);
+        this.checkAutoSettle();
+    },
 
     // ========== 数据操作 ==========
     loadData() {
@@ -82,10 +128,11 @@ ITEM_TYPES: [
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
             fontSize: 14,
-            deductColor: '#d4a0a0'  
+            deductColor: '#d4a0a0'
         };
         this.pendingSettle = data.pendingSettle || null;
         this.exchangeRate = data.exchangeRate || 0.08;
+        this.fruitPrice = data.fruitPrice || 80;
 
         this.ITEM_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.defaultPrice;
@@ -107,7 +154,8 @@ ITEM_TYPES: [
             extraRewards: this.extraRewards,
             uiSettings: this.uiSettings,
             pendingSettle: this.pendingSettle,
-            exchangeRate: this.exchangeRate
+            exchangeRate: this.exchangeRate,
+            fruitPrice: this.fruitPrice
         });
     },
 
@@ -150,7 +198,7 @@ ITEM_TYPES: [
             el.style.setProperty('border', '1px solid ' + s.btnColor, 'important');
         });
 
-      container.querySelectorAll('.task-btn.deduct').forEach(el => {
+        container.querySelectorAll('.task-btn.deduct').forEach(el => {
             const color = s.deductColor || '#d4a0a0';
             el.style.setProperty('background', color, 'important');
             el.style.setProperty('background-color', color, 'important');
@@ -183,7 +231,6 @@ ITEM_TYPES: [
     prepareSettle() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
-
         const isFull = stats.ringCount >= 100;
 
         if (isFull) {
@@ -228,7 +275,7 @@ ITEM_TYPES: [
             isComplete: true,
             typeCount: stats.typeCount,
             rewards: rewards || (income.bookIncome > 0 ? `书铁${income.bookIncome.toFixed(1)}万` : ''),
-            exchangeRate: this.exchangeRate  // ✅ 保存当时汇率
+            exchangeRate: this.exchangeRate
         };
         this.history.push(entry);
         this.records = [];
@@ -260,11 +307,9 @@ ITEM_TYPES: [
 
         const { stats, rewards } = this.pendingSettle;
 
-        // 重新计算收入
         const fp = parseFloat(document.getElementById('prFruitPrice')?.value) || 80;
         const fup = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
 
-        // 修炼点 = 基础跑环点 + 手动添加的200修炼点 + 修炼果
         const totalPoints = stats.totalPoints;
         const fruitCount = totalPoints / 170;
         const fruitIncome = fruitCount * fp;
@@ -366,7 +411,6 @@ ITEM_TYPES: [
         }
 
         const count = this.records.length;
-        // 修炼点 = 基础跑环点 + 额外200修炼点 + 修炼果(170点/个)
         let totalPointsAll = totalPoints + this.extraRewards.points + this.extraRewards.fruits * 170;
 
         return {
@@ -433,13 +477,82 @@ ITEM_TYPES: [
         this.render();
     },
 
+    // ========== 期望值计算 ==========
+    calculateExpectation() {
+        const totalRings = 100;
+        const runRings = this.records.length;
+        const stats = this.calcStats();
+        const currentScore = stats.totalScore;
+        const remaining = totalRings - runRings;
+
+        if (runRings === 0) {
+            return {
+                currentScore: 0,
+                runRings: 0,
+                remaining: 100,
+                expectedScore: 200,
+                details: [],
+                canPredict: false
+            };
+        }
+
+        // 统计当前已出现的各任务次数
+        const currentCounts = {};
+        for (let r of this.records) {
+            const key = r.typeKey;
+            if (key && this.taskProb[key] !== undefined) {
+                currentCounts[key] = (currentCounts[key] || 0) + 1;
+            }
+        }
+
+        let expectedScore = currentScore;
+        let details = [];
+        const taskKeys = Object.keys(this.taskProb);
+
+        for (let key of taskKeys) {
+            const prob = this.taskProb[key];
+            const score = this.taskScore[key];
+            const label = this.taskLabel[key] || key;
+            const already = currentCounts[key] || 0;
+            const theoreticalSoFar = runRings * prob;
+            const deviation = already - theoreticalSoFar;
+
+            // 均值回归：修正幅度为偏差的 50%
+            const correction = -deviation * 0.5;
+            let remainingExpected = remaining * prob + correction;
+            if (remainingExpected < 0) remainingExpected = 0;
+
+            const expectedContribution = remainingExpected * score;
+            expectedScore += expectedContribution;
+
+            details.push({
+                key: key,
+                label: label,
+                prob: prob,
+                score: score,
+                already: already,
+                theoreticalSoFar: theoreticalSoFar,
+                remainingExpected: remainingExpected,
+                expectedContribution: expectedContribution
+            });
+        }
+
+        return {
+            currentScore: currentScore,
+            runRings: runRings,
+            remaining: remaining,
+            expectedScore: expectedScore,
+            details: details,
+            canPredict: true
+        };
+    },
+
     // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('petRingContainer');
         if (!container) return;
 
         container.innerHTML = `
-
             <!-- 🎨 界面设置 -->
             <div class="module" id="prModuleUISettings" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
                 <div class="module-header">
@@ -466,7 +579,6 @@ ITEM_TYPES: [
                             <label style="font-weight:600;">📝 文字色</label>
                             <input type="color" id="prTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
-
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🔤 字体大小</label>
                             <div style="display:flex;align-items:center;gap:6px;">
@@ -474,7 +586,7 @@ ITEM_TYPES: [
                                 <span id="prFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${this.uiSettings.fontSize}</span>
                             </div>
                         </div>
-                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">⚠️ 扣分按钮</label>
                             <input type="color" id="prDeductColor" value="${this.uiSettings.deductColor || '#d4a0a0'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
@@ -506,7 +618,11 @@ ITEM_TYPES: [
                 </div>
                 <div class="module-body" id="prTaskBody">
                     <div class="task-grid" id="prTaskGrid"></div>
-                    <div class="deduct-settings-inline" id="prDeductSettings"></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
+                        <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚙️ 扣分设置</span>
+                        <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
+                    </div>
+                    <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
                 </div>
             </div>
 
@@ -553,7 +669,7 @@ ITEM_TYPES: [
                 </div>
                 <div class="module-body" id="prIncomeBody">
                     <div class="income-row">
-                        <div class="income-item"><label>💎 修炼果单价</label><input type="number" step="0.1" min="0" id="prFruitPrice" value="80"><span class="unit">万</span></div>
+                        <div class="income-item"><label>💎 修炼果单价</label><input type="number" step="0.1" min="0" id="prFruitPrice" value="${this.fruitPrice || 80}"><span class="unit">万</span></div>
                         <div class="income-item"><label>📐 家具图册</label><input type="number" step="0.1" min="0" id="prFurniturePrice" value="3.5"><span class="unit">万</span></div>
                         <div class="income-item"><label>📊 总收入</label><span class="fixed-val" id="prTotalIncomeDisplay">0</span><span class="unit">万</span></div>
                         <div class="income-item profit-box" id="prProfitBox"><label>🏆 利润</label><span class="fixed-val" id="prProfitDisplay2">0</span><span class="unit">万</span></div>
@@ -639,9 +755,7 @@ ITEM_TYPES: [
                             <thead>
                                 <tr>
                                     <th style="width:36px;min-width:36px;">#</th>
-                                    <th style="min-width:100px;cursor:pointer;" id="prSortHeader">
-                                    📅 日期 <span id="prSortIcon">↓</span>
-                                    </th>
+                                    <th style="min-width:100px;cursor:pointer;" id="prSortHeader">📅 日期 <span id="prSortIcon">↓</span></th>
                                     <th style="min-width:50px;">📌 环数</th>
                                     <th style="min-width:55px;">💰 成本</th>
                                     <th style="min-width:70px;">⭐ 总积分</th>
@@ -709,12 +823,14 @@ ITEM_TYPES: [
                     btnTextColor: '#ffffff',
                     cardBgColor: '#ffffff',
                     textColor: '#1a1a2e',
-                    fontSize: 14
+                    fontSize: 14,
+                    deductColor: '#d4a0a0'
                 };
                 document.getElementById('prBgColor').value = PetRingModule.uiSettings.bgColor;
                 document.getElementById('prCardColor').value = PetRingModule.uiSettings.cardBgColor;
                 document.getElementById('prBtnColor').value = PetRingModule.uiSettings.btnColor;
                 document.getElementById('prTextColor').value = PetRingModule.uiSettings.textColor;
+                document.getElementById('prDeductColor').value = PetRingModule.uiSettings.deductColor;
                 document.getElementById('prFontSize').value = PetRingModule.uiSettings.fontSize;
                 document.getElementById('prFontSizeDisplay').textContent = PetRingModule.uiSettings.fontSize;
                 PetRingModule.applyUISettings();
@@ -748,6 +864,15 @@ ITEM_TYPES: [
                 }
                 const income = this.calcIncome(stats);
                 this.quickSettle(stats, income);
+            }
+        });
+
+        // ===== 扣分设置折叠 =====
+        document.getElementById('prToggleDeductBtn')?.addEventListener('click', function() {
+            const body = document.getElementById('prDeductSettings');
+            if (body) {
+                body.classList.toggle('hidden');
+                this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
             }
         });
 
@@ -865,7 +990,12 @@ ITEM_TYPES: [
         });
 
         // ===== 单价变化 =====
-        document.getElementById('prFruitPrice').addEventListener('change', () => this.render());
+        document.getElementById('prFruitPrice').addEventListener('change', () => {
+            const val = parseFloat(document.getElementById('prFruitPrice').value) || 80;
+            PetRingModule.fruitPrice = val;
+            PetRingModule.saveData();
+            PetRingModule.render();
+        });
         document.getElementById('prFurniturePrice').addEventListener('change', () => this.render());
 
         // ===== 价格输入变化 =====
@@ -1023,11 +1153,12 @@ ITEM_TYPES: [
                 }
             }
         });
-            // ===== 排序按钮 =====
-    document.getElementById('prSortHeader')?.addEventListener('click', function() {
-        PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
-        PetRingModule.updateHistoryTable();
-    });
+
+        // ===== 排序按钮 =====
+        document.getElementById('prSortHeader')?.addEventListener('click', function() {
+            PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
+            PetRingModule.updateHistoryTable();
+        });
     },
 
     // ========== 核心业务 ==========
@@ -1170,8 +1301,7 @@ ITEM_TYPES: [
                 const count = stats.typeCount[key] || 0;
                 if (count > 0 && totalRings > 0) {
                     const pct = Math.round((count / totalRings) * 100);
-                    // ✅ 根据百分比设置颜色
-                    const color = pct >= 40 ? '#2d6b2d' : '#c0392b';  // 绿色或红色
+                    const color = pct >= 40 ? '#2d6b2d' : '#c0392b';
                     ce.innerHTML = `${count} <span style="color:${color};font-weight:700;">(${pct}%)</span>`;
                 } else if (count > 0) {
                     ce.textContent = count;
@@ -1187,16 +1317,15 @@ ITEM_TYPES: [
     },
 
     buildTaskButtons() {
-          const deductColor = this.uiSettings.deductColor || '#d4a0a0';  // ← 新增这一行
-            const grid = document.getElementById('prTaskGrid');
-            // ... 后面代码不变
+        const deductColor = this.uiSettings.deductColor || '#d4a0a0';
+        const grid = document.getElementById('prTaskGrid');
         if (!grid || grid.children.length > 0) return;
 
         let html = '';
         const allTasks = [...this.ITEM_TYPES, ...this.DEDUCT_TYPES.map(d => ({
             key: d.key,
             label: d.label,
-            icon: d.icon || '', 
+            icon: d.icon || '',
             score: -(this.deductSettings[d.key]?.deduct || d.defaultDeduct),
             isDeduct: true
         }))];
@@ -1206,8 +1335,8 @@ ITEM_TYPES: [
             const sc = isDeduct ? t.score : (this.ITEM_TYPES.find(it => it.key === t.key)?.score || 0);
             const color = isDeduct ? '#8f3a3a' : (this.ITEM_TYPES.find(it => it.key === t.key)?.color || '#1f3b53');
             html += `<div class="task-item-wrapper" data-key="${t.key}">
-               <button class="${isDeduct ? 'task-btn deduct' : 'task-btn'}" data-key="${t.key}" style="border-color:${isDeduct ? deductColor : color};background:${isDeduct ? deductColor : '#4CAF50'};color:#ffffff;border-radius:30px;padding:8px 2px;font-size:0.85rem;font-weight:700;cursor:pointer;text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;line-height:1.2;border:1px solid ${isDeduct ? deductColor : color};">
-                     <span style="color:#ffffff;">${t.icon || ''} ${t.label}</span>
+                <button class="${isDeduct ? 'task-btn deduct' : 'task-btn'}" data-key="${t.key}" style="border-color:${isDeduct ? deductColor : color};background:${isDeduct ? deductColor : '#4CAF50'};color:#ffffff;border-radius:30px;padding:8px 2px;font-size:0.85rem;font-weight:700;cursor:pointer;text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;line-height:1.2;border:1px solid ${isDeduct ? deductColor : color};">
+                    <span style="color:#ffffff;">${t.icon || ''} ${t.label}</span>
                     <span class="sub" style="color:${isDeduct ? '#ffcccc' : '#e0e0e0'};font-weight:600;font-size:0.6rem;">${isDeduct ? `${sc}分` : `+${sc}分`}</span>
                 </button>
                 <span class="task-count"></span>
@@ -1269,80 +1398,79 @@ ITEM_TYPES: [
         list.innerHTML = html;
     },
 
- updateHistoryTable() {
-    const tbody = document.getElementById('prHistoryTableBody');
-    const count = this.history.length;
-    document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
+    updateHistoryTable() {
+        const tbody = document.getElementById('prHistoryTableBody');
+        const count = this.history.length;
+        document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
 
-    if (count === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
-        return;
-    }
-
-    let data = this.getFilteredData();
-
-    if (data.length === 0 && count > 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
-        return;
-    }
-
-    // ===== 排序 =====
-    const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
-    data = [...data].sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return (dateA - dateB) * sortOrder;
-    });
-
-    let html = '';
-    const total = data.length;
-    for (let i = 0; i < data.length; i++) {
-        const h = data[i];
-        const row = this.sortState.order === 'desc' ? total - i : i + 1;
-        const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
-        const idx = this.history.indexOf(h);
-        const rmb = h.profit * this.exchangeRate;
-
-        const rewardParts = [];
-        if (h.bookIncome && h.bookIncome > 0) rewardParts.push(`书铁${h.bookIncome.toFixed(1)}万`);
-        if (h.furnitureIncome && h.furnitureIncome > 0) rewardParts.push(`家具${h.furnitureIncome.toFixed(1)}万`);
-        const rewardStr = rewardParts.length > 0 ? rewardParts.join(' + ') : '-';
-
-        let detailStr = '';
-        if (h.typeCount) {
-            const details = [];
-            for (let key of this.ITEM_TYPES.map(t => t.key)) {
-                if (h.typeCount[key] > 0) {
-                    const label = this.ITEM_TYPES.find(t => t.key === key)?.label || key;
-                    details.push(`${label}:${h.typeCount[key]}`);
-                }
-            }
-            detailStr = details.join(' | ');
+        if (count === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
+            return;
         }
 
-        html += `<tr>
-            <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
-            <td>${h.date || '未知'}</td>
-            <td><strong>${h.ringCount}</strong></td>
-            <td>${(h.totalCost || 0).toFixed(1)}</td>
-            <td><strong>${h.totalScore || 0}</strong></td>
-            <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
-            <td><strong>${h.totalPoints || 0}</strong></td>
-            <td>${(h.bookIncome || 0).toFixed(1)}</td>
-            <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
-            <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-        </tr>
-        <tr class="detail-row" data-idx="${idx}"><td colspan="10" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'} | 奖励: ${rewardStr}</td></tr>`;
-    }
-    tbody.innerHTML = html;
+        let data = this.getFilteredData();
 
-    const icon = document.getElementById('prSortIcon');
-    if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
+        if (data.length === 0 && count > 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
+            return;
+        }
 
-    if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
-        this.updateAnalysis(data);
-    }
-},
+        const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
+        data = [...data].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return (dateA - dateB) * sortOrder;
+        });
+
+        let html = '';
+        const total = data.length;
+        for (let i = 0; i < data.length; i++) {
+            const h = data[i];
+            const row = this.sortState.order === 'desc' ? total - i : i + 1;
+            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            const idx = this.history.indexOf(h);
+            const rmb = h.profit * this.exchangeRate;
+
+            const rewardParts = [];
+            if (h.bookIncome && h.bookIncome > 0) rewardParts.push(`书铁${h.bookIncome.toFixed(1)}万`);
+            if (h.furnitureIncome && h.furnitureIncome > 0) rewardParts.push(`家具${h.furnitureIncome.toFixed(1)}万`);
+            const rewardStr = rewardParts.length > 0 ? rewardParts.join(' + ') : '-';
+
+            let detailStr = '';
+            if (h.typeCount) {
+                const details = [];
+                for (let key of this.ITEM_TYPES.map(t => t.key)) {
+                    if (h.typeCount[key] > 0) {
+                        const label = this.ITEM_TYPES.find(t => t.key === key)?.label || key;
+                        details.push(`${label}:${h.typeCount[key]}`);
+                    }
+                }
+                detailStr = details.join(' | ');
+            }
+
+            html += `<tr>
+                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+                <td>${h.date || '未知'}</td>
+                <td><strong>${h.ringCount}</strong></td>
+                <td>${(h.totalCost || 0).toFixed(1)}</td>
+                <td><strong>${h.totalScore || 0}</strong></td>
+                <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
+                <td><strong>${h.totalPoints || 0}</strong></td>
+                <td>${(h.bookIncome || 0).toFixed(1)}</td>
+                <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
+                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
+            </tr>
+            <tr class="detail-row" data-idx="${idx}"><td colspan="10" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'} | 奖励: ${rewardStr}</td></tr>`;
+        }
+        tbody.innerHTML = html;
+
+        const icon = document.getElementById('prSortIcon');
+        if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
+
+        if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
+            this.updateAnalysis(data);
+        }
+    },
 
     updateAnalysis(data) {
         const count = data.length;
@@ -1417,6 +1545,7 @@ ITEM_TYPES: [
         document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
     },
 
+    // ========== 决策建议 ==========
     updateAdvice() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
@@ -1435,37 +1564,91 @@ ITEM_TYPES: [
             return;
         }
 
-        status.textContent =
-            `已完成 ${stats.ringCount} 环，剩余 ${stats.remaining} 环，总成本 ${stats.totalCost.toFixed(1)} 万，总积分 ${stats.totalScore}，平均每环 ${stats.avgCost.toFixed(1)} 万。`;
+        // ===== 期望值计算 =====
+        const exp = this.calculateExpectation();
+        const expectedFinal = exp.expectedScore;
+        const runRings = stats.ringCount;
+        const remaining = 100 - runRings;
 
-        const avgScore = stats.ringCount > 0 ? stats.totalScore / stats.ringCount : 0;
-        const projected = Math.round(stats.totalScore + avgScore * (100 - stats.ringCount));
-        let reward = '';
-        if (projected >= 222) reward = '150级书铁或160级战魄 🏆';
-        else if (projected >= 212) reward = '140级书铁 🌟';
-        else if (projected >= 202) reward = '130级书铁 📈';
-        else if (projected >= 192) reward = '120级书铁 📊';
-        else if (projected >= 182) reward = '110级书铁 📉';
-        else if (projected >= 172) reward = '100级书铁 📉';
-        else reward = '80-90级书铁 ⚠️';
+        // 判断当前状态
+        const benchmark = runRings * 2;
+        const diff = stats.totalScore - benchmark;
 
-        pred.style.display = 'block';
-        predText.innerHTML = `按当前节奏预估100环总积分约 <strong>${projected}</strong> 分，可获得 <strong>${reward}</strong>`;
-
-        strat.style.display = 'block';
-        let strategyMsg =
-            `💰 ${stats.avgCost > 5 ? '⚠️ 成本偏高，建议"乞丐跑环"策略' : stats.avgCost > 2.5 ? '📊 成本中等，正常跑' : '✅ 成本较低，可冲击高分'}`;
-        if (income.profit > 0) {
-            strategyMsg += ` 💰 <span class="success">当前预估盈利 +${income.profit.toFixed(1)}万</span>`;
-        } else if (income.profit < -50) {
-            strategyMsg += ` 📉 <span class="warning">当前亏损 ${income.profit.toFixed(1)}万</span>`;
+        // 状态描述
+        let statusMsg = `已完成 ${runRings} 环，剩余 ${remaining} 环，总成本 ${stats.totalCost.toFixed(1)} 万，当前积分 ${stats.totalScore}。`;
+        if (diff > 0) {
+            statusMsg += ` 🟢 领先 ${diff} 分`;
+        } else if (diff < 0) {
+            statusMsg += ` 🔴 落后 ${Math.abs(diff)} 分`;
+        } else {
+            statusMsg += ` ⚪ 持平`;
         }
-        stratText.innerHTML = strategyMsg;
+        status.textContent = statusMsg;
 
-        if (projected >= 222) tag.textContent = '🏆 冲150级';
-        else if (projected >= 202) tag.textContent = '📈 高价值目标';
-        else if (projected >= 180) tag.textContent = '📊 稳健收益';
-        else tag.textContent = '📉 低成本模式';
+        // ===== 预测积分 =====
+        pred.style.display = 'block';
+        let reward = '';
+        let rewardColor = '#f2eee4';
+        if (expectedFinal >= 222) {
+            reward = '🏆 150级书铁或160级战魄';
+            rewardColor = '#f0d060';
+        } else if (expectedFinal >= 212) {
+            reward = '🌟 140级书铁';
+            rewardColor = '#60d080';
+        } else if (expectedFinal >= 202) {
+            reward = '📈 130级书铁';
+            rewardColor = '#60b0e0';
+        } else if (expectedFinal >= 192) {
+            reward = '📊 120级书铁';
+            rewardColor = '#b0c8e0';
+        } else if (expectedFinal >= 182) {
+            reward = '📉 110级书铁';
+            rewardColor = '#e0a060';
+        } else if (expectedFinal >= 172) {
+            reward = '📉 100级书铁';
+            rewardColor = '#e0a060';
+        } else {
+            reward = '⚠️ 80-90级书铁或家具图纸';
+            rewardColor = '#e06060';
+        }
+
+        predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
+
+        // ===== 策略建议 =====
+        strat.style.display = 'block';
+        let strategyMsg = '';
+        let tagText = '';
+
+        // 判断策略
+        if (expectedFinal >= 222 && diff >= 0) {
+            // 冲刺150
+            strategyMsg = '🎯 <strong style="color:#f0d060;">冲刺150级策略</strong>：当前有望冲击150级奖励！建议全部正常交，遇到指定变异提交（+10分），80环正常交，不要跳。<br>💡 预计成本较高，但收益也最高。';
+            tagText = '🏆 冲150级';
+        } else if (expectedFinal >= 192 && diff >= -5) {
+            // 标准跑
+            strategyMsg = '📊 <strong style="color:#60d080;">标准跑环策略</strong>：目标120-140级书铁。建议60/70环正常交，80环视善恶点情况，变异任务评估成本。<br>💡 投入产出均衡，适合多数玩家。';
+            tagText = '📈 标准模式';
+        } else if (expectedFinal >= 172) {
+            // 乞丐跑环
+            strategyMsg = '📉 <strong style="color:#e0a060;">乞丐跑环策略</strong>：目标100-110级书铁或保底。建议80环用善恶点或跳过，变异任务交普通或跳过，只交低价物品。<br>💡 成本最低，保底收益。';
+            tagText = '🛡️ 乞丐模式';
+        } else {
+            // 保底
+            strategyMsg = '⚠️ <strong style="color:#e06060;">保底策略</strong>：当前积分偏低，建议以保底修炼果为目标。80环以上全部跳过，变异任务跳过或交普通，只交60环、烹饪、三药等低价物品。<br>💡 控制成本，等待下一轮。';
+            tagText = '💤 保底模式';
+        }
+
+        // 附加变异策略
+        if (expectedFinal >= 212) {
+            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#f0d060;">✅ 建议提交</span>（有望冲140-150级）';
+        } else if (expectedFinal >= 192 && diff >= 0) {
+            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#60d080;">🤔 视成本决定</span>（低价可交，高价跳过）';
+        } else {
+            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#e06060;">❌ 不建议提交</span>（收益有限，保底为主）';
+        }
+
+        stratText.innerHTML = strategyMsg;
+        tag.textContent = tagText;
     },
 
     // ========== 导入 ==========
@@ -1579,3 +1762,5 @@ if (document.readyState === 'loading') {
 } else {
     PetRingModule.init();
 }
+
+window.PetRingModule = PetRingModule;
