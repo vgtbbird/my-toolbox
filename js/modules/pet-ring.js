@@ -620,9 +620,9 @@ const PetRingModule = {
                     <div class="task-grid" id="prTaskGrid"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
                         <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚙️ 扣分设置</span>
-                        <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
+                        <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 显示</button>
                     </div>
-                    <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
+                    <div class="deduct-settings-inline hidden" id="prDeductSettings" style="margin-top:4px;display:none;"></div>
                 </div>
             </div>
 
@@ -871,8 +871,16 @@ const PetRingModule = {
         document.getElementById('prToggleDeductBtn')?.addEventListener('click', function() {
             const body = document.getElementById('prDeductSettings');
             if (body) {
-                body.classList.toggle('hidden');
-                this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+                const isHidden = body.style.display === 'none' || body.classList.contains('hidden');
+                if (isHidden) {
+                    body.style.display = 'flex';
+                    body.classList.remove('hidden');
+                    this.textContent = '👁️ 隐藏';
+                } else {
+                    body.style.display = 'none';
+                    body.classList.add('hidden');
+                    this.textContent = '👁️ 显示';
+                }
             }
         });
 
@@ -1346,19 +1354,31 @@ const PetRingModule = {
     },
 
     buildDeductSettings() {
-        const container = document.getElementById('prDeductSettings');
-        if (!container || container.children.length > 0) return;
+    const container = document.getElementById('prDeductSettings');
+    if (!container) return;
 
+        // 保留现有内容，但不要重复添加
+        // 改为每次重新生成
         let html = '';
         this.DEDUCT_TYPES.forEach(d => {
             const s = this.deductSettings[d.key] || { deduct: d.defaultDeduct, cost: d.defaultCost };
             html += `<div class="ds-item">
-                <label>${d.label}</label>
+                <label>${d.icon || ''} ${d.label}</label>
                 <input type="number" step="0.5" min="0" value="${s.deduct}" data-key="${d.key}" data-type="deduct"><span class="unit">分</span>
                 <input type="number" step="0.1" min="0" value="${s.cost}" data-key="${d.key}" data-type="cost"><span class="unit">万</span>
             </div>`;
         });
         container.innerHTML = html;
+    
+        // ✅ 恢复隐藏状态
+        const toggleBtn = document.getElementById('prToggleDeductBtn');
+        const isHidden = container.classList.contains('hidden');
+        if (toggleBtn && isHidden) {
+            container.style.display = 'none';
+            toggleBtn.textContent = '👁️ 显示';
+        } else {
+            container.style.display = 'flex';
+        }
     },
 
     buildPriceInputs() {
