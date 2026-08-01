@@ -21,7 +21,7 @@ const PetRingModule = {
         btnTextColor: '#ffffff',
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
-        fontSize: 14，
+        fontSize: 14,
         deductColor: '#d4a0a0' 
     },
 
@@ -81,7 +81,7 @@ ITEM_TYPES: [
             btnTextColor: '#ffffff',
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
-            fontSize: 14，
+            fontSize: 14,
             deductColor: '#d4a0a0'  
         };
         this.pendingSettle = data.pendingSettle || null;
@@ -1206,7 +1206,7 @@ ITEM_TYPES: [
             const sc = isDeduct ? t.score : (this.ITEM_TYPES.find(it => it.key === t.key)?.score || 0);
             const color = isDeduct ? '#8f3a3a' : (this.ITEM_TYPES.find(it => it.key === t.key)?.color || '#1f3b53');
             html += `<div class="task-item-wrapper" data-key="${t.key}">
-                <button class="${isDeduct ? 'task-btn deduct' : 'task-btn'}" data-key="${t.key}" style="border-color:${isDeduct ? deductColor : color};background:${isDeduct ? deductColor : '#4CAF50'}: '#4CAF50'};color:#ffffff;border-radius:30px;padding:8px 2px;font-size:0.85rem;font-weight:700;cursor:pointer;text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;line-height:1.2;border:1px solid ${color};">
+               <button class="${isDeduct ? 'task-btn deduct' : 'task-btn'}" data-key="${t.key}" style="border-color:${isDeduct ? deductColor : color};background:${isDeduct ? deductColor : '#4CAF50'};color:#ffffff;border-radius:30px;padding:8px 2px;font-size:0.85rem;font-weight:700;cursor:pointer;text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;line-height:1.2;border:1px solid ${isDeduct ? deductColor : color};">
                      <span style="color:#ffffff;">${t.icon || ''} ${t.label}</span>
                     <span class="sub" style="color:${isDeduct ? '#ffcccc' : '#e0e0e0'};font-weight:600;font-size:0.6rem;">${isDeduct ? `${sc}分` : `+${sc}分`}</span>
                 </button>
