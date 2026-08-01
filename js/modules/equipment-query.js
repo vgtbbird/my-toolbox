@@ -365,7 +365,10 @@ const EquipmentQueryModule = {
                         <div style="display:flex;flex-wrap:wrap;gap:4px;">${typeBtns}</div>
                     </div>
 
-                    <div id="eqAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+    <button class="btn-small" id="eqResetAllBtn" style="background:#b48b5f;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;">🔄 重置全部</button>
+</div>
+<div id="eqAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
                     <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
                         💡 点击输入框自动放大 · 点击 × 清除数值
                     </div>
@@ -413,7 +416,10 @@ const EquipmentQueryModule = {
                         <div style="display:flex;flex-wrap:wrap;gap:4px;">${petPartBtns}</div>
                     </div>
 
-                    <div id="peAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
+                  <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+    <button class="btn-small" id="peResetAllBtn" style="background:#b48b5f;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;">🔄 重置全部</button>
+</div>
+<div id="peAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
                     <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
                         💡 点击输入框自动放大 · 点击 × 清除数值
                     </div>
