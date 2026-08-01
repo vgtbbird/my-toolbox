@@ -2,6 +2,7 @@
 //  ⚔️ 装备打造 & 熔炼查询 + 🐾 宠装查询（整合版）
 //  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
 //  所有数据已锁定，不再变动
+//  优化：按钮式选择 + 输入框放大 + 清除按钮
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -264,208 +265,184 @@ const EquipmentQueryModule = {
         });
     },
 
-   buildUI() {
-    const container = document.getElementById('equipmentQueryContainer');
-    if (!container) return;
+    // ============================================================
+    //  🏗️ 构建UI（按钮版）
+    // ============================================================
+    buildUI() {
+        const container = document.getElementById('equipmentQueryContainer');
+        if (!container) return;
 
-    // ---- 构建等级按钮 ----
-    const levelBtns = this.levels.map(l => 
-        `<button class="eq-btn-level ${l === this.currentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.currentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.currentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
-    ).join('');
+        // ---- 构建等级按钮 ----
+        const levelBtns = this.levels.map(l => 
+            `<button class="eq-btn-level ${l === this.currentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.currentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.currentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
+        ).join('');
 
-    // ---- 构建部位按钮 ----
-    const parts = Object.keys(this.equipmentData[this.currentLevel] || {});
-    const partBtns = parts.map(p => 
-        `<button class="eq-btn-part ${p === this.currentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.currentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.currentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
-    ).join('');
+        // ---- 构建部位按钮 ----
+        const parts = Object.keys(this.equipmentData[this.currentLevel] || {});
+        const partBtns = parts.map(p => 
+            `<button class="eq-btn-part ${p === this.currentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.currentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.currentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
+        ).join('');
 
-    // ---- 构建打造方式按钮 ----
-    const typeBtns = ['普通', '强化'].map(t => 
-        `<button class="eq-btn-type ${t === this.currentType ? 'active' : ''}" data-value="${t}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${t === this.currentType ? '#4CAF50' : '#f0f4f8'};color:${t === this.currentType ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${t}</button>`
-    ).join('');
+        // ---- 构建打造方式按钮 ----
+        const typeBtns = ['普通', '强化'].map(t => 
+            `<button class="eq-btn-type ${t === this.currentType ? 'active' : ''}" data-value="${t}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${t === this.currentType ? '#4CAF50' : '#f0f4f8'};color:${t === this.currentType ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${t}</button>`
+        ).join('');
 
-    // ---- 宠装等级按钮 ----
-    const petLevelBtns = this.petLevels.map(l => 
-        `<button class="pe-btn-level ${l === this.petCurrentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.petCurrentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.petCurrentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
-    ).join('');
+        // ---- 宠装等级按钮 ----
+        const petLevelBtns = this.petLevels.map(l => 
+            `<button class="pe-btn-level ${l === this.petCurrentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.petCurrentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.petCurrentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
+        ).join('');
 
-    // ---- 宠装部位按钮 ----
-    const petPartBtns = ['护腕', '项圈', '铠甲'].map(p => 
-        `<button class="pe-btn-part ${p === this.petCurrentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.petCurrentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.petCurrentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
-    ).join('');
+        // ---- 宠装部位按钮 ----
+        const petPartBtns = ['护腕', '项圈', '铠甲'].map(p => 
+            `<button class="pe-btn-part ${p === this.petCurrentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.petCurrentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.petCurrentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
+        ).join('');
 
-    container.innerHTML = `
-        <!-- 🎨 UI设置（保持不变） -->
-        <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
-            <div class="module-header">
-                <div class="title">🎨 界面设置 <span class="hint">— 自定义颜色和字体</span></div>
-                <div>
-                    <button class="toggle-btn" id="eqToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
+        container.innerHTML = `
+            <!-- 🎨 UI设置 -->
+            <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
+                <div class="module-header">
+                    <div class="title">🎨 界面设置 <span class="hint">— 自定义颜色和字体</span></div>
+                    <div>
+                        <button class="toggle-btn" id="eqToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
+                    </div>
                 </div>
-            </div>
-            <div class="module-body" id="eqUISettingsBody">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:8px 0;">
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                        <label style="font-weight:600;">🎨 背景色</label>
-                        <input type="color" id="eqBgColor" value="${this.uiSettings.bgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                        <label style="font-weight:600;">📦 卡片色</label>
-                        <input type="color" id="eqCardColor" value="${this.uiSettings.cardBgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                        <label style="font-weight:600;">🔘 按钮色</label>
-                        <input type="color" id="eqBtnColor" value="${this.uiSettings.btnColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                        <label style="font-weight:600;">📝 文字色</label>
-                        <input type="color" id="eqTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
-                        <label style="font-weight:600;">🔤 字体大小</label>
-                        <div style="display:flex;align-items:center;gap:6px;">
-                            <input type="range" id="eqFontSize" min="12" max="20" value="${this.uiSettings.fontSize}" style="width:80px;">
-                            <span id="eqFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${this.uiSettings.fontSize}</span>
+                <div class="module-body" id="eqUISettingsBody">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:8px 0;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">🎨 背景色</label>
+                            <input type="color" id="eqBgColor" value="${this.uiSettings.bgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">📦 卡片色</label>
+                            <input type="color" id="eqCardColor" value="${this.uiSettings.cardBgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">🔘 按钮色</label>
+                            <input type="color" id="eqBtnColor" value="${this.uiSettings.btnColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">📝 文字色</label>
+                            <input type="color" id="eqTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">🔤 字体大小</label>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <input type="range" id="eqFontSize" min="12" max="20" value="${this.uiSettings.fontSize}" style="width:80px;">
+                                <span id="eqFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${this.uiSettings.fontSize}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:center;">
+                            <button class="btn-small" id="eqResetUI" style="background:#b48b5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">↩️ 重置</button>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;justify-content:center;">
-                        <button class="btn-small" id="eqResetUI" style="background:#b48b5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">↩️ 重置</button>
+                </div>
+            </div>
+
+            <!-- 👤 人物装备 -->
+            <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin-bottom:14px;">
+                <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">👤 人物装备</span>
+            </div>
+
+            <div class="module">
+                <div class="module-header">
+                    <div class="title">📝 装备信息输入 <span class="hint">— 点击按钮选择，输入属性值自动对比</span></div>
+                    <div style="font-size:0.7rem;color:#5a7a94;">
+                        <span style="background:#e8f0e8;padding:2px 12px;border-radius:30px;">💡 负值表示"一加一减"中的减项</span>
+                    </div>
+                </div>
+                <div class="module-body">
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${levelBtns}</div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 部位</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${partBtns}</div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 打造方式</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${typeBtns}</div>
+                    </div>
+
+                    <div id="eqAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
+                    <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
+                        💡 点击输入框自动放大 · 点击 × 清除数值
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================================== -->
-        <!--  👤 人物装备 -->
-        <!-- ========================================================== -->
-        <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin-bottom:14px;">
-            <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">👤 人物装备</span>
-        </div>
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">📊 打造属性范围 <span class="hint">— 灰色=未达下限，绿色=达标，金色=满属性</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="eqCraftResult" style="font-size:0.85rem;color:#5a7a94;">请选择装备等级和部位</div>
+                </div>
+            </div>
 
-        <!-- 装备信息输入（按钮版） -->
-        <div class="module">
-            <div class="module-header">
-                <div class="title">📝 装备信息输入 <span class="hint">— 点击按钮选择，输入属性值自动对比</span></div>
-                <div style="font-size:0.7rem;color:#5a7a94;">
-                    <span style="background:#e8f0e8;padding:2px 12px;border-radius:30px;">💡 负值表示"一加一减"中的减项</span>
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">🔥 熔炼上限计算 <span class="hint">— 根据当前属性自动计算可熔炼上限</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="eqMeltResult" style="font-size:0.85rem;color:#5a7a94;">请输入属性值后自动计算</div>
                 </div>
             </div>
-            <div class="module-body">
-                <!-- 等级按钮组 -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${levelBtns}</div>
-                </div>
-                <!-- 部位按钮组 -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 部位</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${partBtns}</div>
-                </div>
-                <!-- 打造类型按钮组 -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 打造方式</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${typeBtns}</div>
-                </div>
 
-                <!-- 属性输入区域 -->
-                <div id="eqAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;">
-                    <!-- 由 updateMeltInputs 动态生成 -->
-                </div>
-                <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
-                    💡 点击输入框自动放大 · 点击 × 清除数值
-                </div>
+            <!-- 🐾 宠装查询 -->
+            <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin:24px 0 14px 0;">
+                <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">🐾 召唤兽装备查询</span>
+                <span style="font-size:0.7rem;color:#5a7a94;margin-left:10px;">— 逛摊时快速判断宠装价值</span>
             </div>
-        </div>
 
-        <!-- 打造属性范围 -->
-        <div class="module" style="margin-top:14px;">
-            <div class="module-header">
-                <div class="title">📊 打造属性范围 <span class="hint">— 灰色=未达下限，绿色=达标，金色=满属性</span></div>
-            </div>
-            <div class="module-body">
-                <div id="eqCraftResult" style="font-size:0.85rem;color:#5a7a94;">
-                    请选择装备等级和部位
+            <div class="module">
+                <div class="module-header">
+                    <div class="title">📝 宠装信息输入 <span class="hint">— 输入属性值，自动对比极限</span></div>
+                    <div style="font-size:0.7rem;color:#5a7a94;">
+                        <span style="background:#e8f0e8;padding:2px 12px;border-radius:30px;">💡 负值表示减属性</span>
+                    </div>
                 </div>
-            </div>
-        </div>
+                <div class="module-body">
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${petLevelBtns}</div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 部位</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${petPartBtns}</div>
+                    </div>
 
-        <!-- 熔炼计算 -->
-        <div class="module" style="margin-top:14px;">
-            <div class="module-header">
-                <div class="title">🔥 熔炼上限计算 <span class="hint">— 根据当前属性自动计算可熔炼上限</span></div>
-            </div>
-            <div class="module-body">
-                <div id="eqMeltResult" style="font-size:0.85rem;color:#5a7a94;">
-                    请输入属性值后自动计算
+                    <div id="peAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;"></div>
+                    <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
+                        💡 点击输入框自动放大 · 点击 × 清除数值
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ========================================================== -->
-        <!--  🐾 宠装查询 -->
-        <!-- ========================================================== -->
-        <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin:24px 0 14px 0;">
-            <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">🐾 召唤兽装备查询</span>
-            <span style="font-size:0.7rem;color:#5a7a94;margin-left:10px;">— 逛摊时快速判断宠装价值</span>
-        </div>
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">📊 属性对比 <span class="hint">— 显示当前值与极限值的差距</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="peQueryResult" style="font-size:0.85rem;color:#5a7a94;">请选择等级和部位，输入属性值</div>
+                </div>
+            </div>
 
-        <!-- 宠装信息输入（按钮版） -->
-        <div class="module">
-            <div class="module-header">
-                <div class="title">📝 宠装信息输入 <span class="hint">— 输入属性值，自动对比极限</span></div>
-                <div style="font-size:0.7rem;color:#5a7a94;">
-                    <span style="background:#e8f0e8;padding:2px 12px;border-radius:30px;">💡 负值表示减属性</span>
+            <div class="module" style="margin-top:14px;">
+                <div class="module-header">
+                    <div class="title">💰 价值评估 <span class="hint">— 快速判断装备价值</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="peValueResult" style="font-size:0.85rem;color:#5a7a94;">输入属性后自动评估</div>
                 </div>
             </div>
-            <div class="module-body">
-                <!-- 宠装等级按钮组 -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${petLevelBtns}</div>
-                </div>
-                <!-- 宠装部位按钮组 -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 部位</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${petPartBtns}</div>
-                </div>
+        `;
+    },
 
-                <!-- 宠装属性输入区域 -->
-                <div id="peAttrInputArea" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px 0;border-top:1px solid #eef2f7;">
-                    <!-- 由 updatePetInputs 动态生成 -->
-                </div>
-                <div style="font-size:0.65rem;color:#5a7a94;margin-top:4px;text-align:right;">
-                    💡 点击输入框自动放大 · 点击 × 清除数值
-                </div>
-            </div>
-        </div>
-
-        <!-- 宠装 - 属性对比 -->
-        <div class="module" style="margin-top:14px;">
-            <div class="module-header">
-                <div class="title">📊 属性对比 <span class="hint">— 显示当前值与极限值的差距</span></div>
-            </div>
-            <div class="module-body">
-                <div id="peQueryResult" style="font-size:0.85rem;color:#5a7a94;">
-                    请选择等级和部位，输入属性值
-                </div>
-            </div>
-        </div>
-
-        <!-- 宠装 - 价值评估 -->
-        <div class="module" style="margin-top:14px;">
-            <div class="module-header">
-                <div class="title">💰 价值评估 <span class="hint">— 快速判断装备价值</span></div>
-            </div>
-            <div class="module-body">
-                <div id="peValueResult" style="font-size:0.85rem;color:#5a7a94;">
-                    输入属性后自动评估
-                </div>
-            </div>
-        </div>
-    `;
-},
-
-    // ========== 绑定事件 ==========
+    // ============================================================
+    //  🔗 绑定事件（清理版 - 只保留按钮事件 + UI设置）
+    // ============================================================
     bindEvents() {
         // ===== UI设置 =====
         document.getElementById('eqBgColor').addEventListener('input', function() {
@@ -522,7 +499,57 @@ const EquipmentQueryModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-       
+        // ===== 人物装备 - 等级按钮 =====
+        document.querySelectorAll('.eq-btn-level').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.eq-btn-level').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                EquipmentQueryModule.currentLevel = parseInt(this.dataset.value);
+                // 同时更新部位按钮（因为部位列表可能随等级变化）
+                EquipmentQueryModule.render();
+            });
+        });
+
+        // ===== 人物装备 - 部位按钮 =====
+        document.querySelectorAll('.eq-btn-part').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.eq-btn-part').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                EquipmentQueryModule.currentPart = this.dataset.value;
+                EquipmentQueryModule.render();
+            });
+        });
+
+        // ===== 人物装备 - 打造类型按钮 =====
+        document.querySelectorAll('.eq-btn-type').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.eq-btn-type').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                EquipmentQueryModule.currentType = this.dataset.value;
+                EquipmentQueryModule.render();
+            });
+        });
+
+        // ===== 宠装 - 等级按钮 =====
+        document.querySelectorAll('.pe-btn-level').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.pe-btn-level').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                EquipmentQueryModule.petCurrentLevel = parseInt(this.dataset.value);
+                EquipmentQueryModule.render();
+            });
+        });
+
+        // ===== 宠装 - 部位按钮 =====
+        document.querySelectorAll('.pe-btn-part').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.pe-btn-part').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                EquipmentQueryModule.petCurrentPart = this.dataset.value;
+                EquipmentQueryModule.render();
+            });
+        });
+
         // ===== 人物装备属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
@@ -536,7 +563,6 @@ const EquipmentQueryModule = {
             }
         });
 
-
         // ===== 宠装属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('pe-attr-input')) {
@@ -549,115 +575,67 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.updatePetValueResult();
             }
         });
-        // ===== 人物装备 - 等级按钮 =====
-document.querySelectorAll('.eq-btn-level').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.eq-btn-level').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        EquipmentQueryModule.currentLevel = parseInt(this.dataset.value);
-        EquipmentQueryModule.render();
-    });
-});
-
-// ===== 人物装备 - 部位按钮 =====
-document.querySelectorAll('.eq-btn-part').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.eq-btn-part').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        EquipmentQueryModule.currentPart = this.dataset.value;
-        EquipmentQueryModule.render();
-    });
-});
-
-// ===== 人物装备 - 打造类型按钮 =====
-document.querySelectorAll('.eq-btn-type').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.eq-btn-type').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        EquipmentQueryModule.currentType = this.dataset.value;
-        EquipmentQueryModule.render();
-    });
-});
-
-// ===== 宠装 - 等级按钮 =====
-document.querySelectorAll('.pe-btn-level').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.pe-btn-level').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        EquipmentQueryModule.petCurrentLevel = parseInt(this.dataset.value);
-        EquipmentQueryModule.render();
-    });
-});
-
-// ===== 宠装 - 部位按钮 =====
-document.querySelectorAll('.pe-btn-part').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.pe-btn-part').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        EquipmentQueryModule.petCurrentPart = this.dataset.value;
-        EquipmentQueryModule.render();
-    });
-});
     },
 
     // ============================================================
-    //  人物装备 - 更新输入框
+    //  人物装备 - 更新输入框（含清除按钮 + 放大效果）
     // ============================================================
-updateMeltInputs() {
-    const container = document.getElementById('eqAttrInputArea');
-    if (!container) return;
+    updateMeltInputs() {
+        const container = document.getElementById('eqAttrInputArea');
+        if (!container) return;
 
-    const part = this.currentPart;
-    const meltInfo = this.meltData[part];
-    if (!meltInfo) {
-        container.innerHTML = '<div style="color:#6c87a0;">该部位暂无熔炼数据</div>';
-        return;
-    }
+        const part = this.currentPart;
+        const meltInfo = this.meltData[part];
+        if (!meltInfo) {
+            container.innerHTML = '<div style="color:#6c87a0;">该部位暂无熔炼数据</div>';
+            return;
+        }
 
-    const attrList = meltInfo.可熔炼;
-    let html = '';
-    for (let attr of attrList) {
-        const val = this.inputValues[attr] !== undefined ? this.inputValues[attr] : '';
-        const placeholder = attr === '耐久' ? '输入耐久' : '输入数值(负值允许)';
-        html += `
-            <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;position:relative;">
-                <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}：</label>
-                <input type="number" id="eqAttr_${attr}" class="eq-attr-input" step="0.1" value="${val}" placeholder="${placeholder}" style="flex:1;min-width:80px;padding:6px 30px 6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;text-align:center;transition:all 0.2s;">
-                <button class="eq-clear-btn" data-target="eqAttr_${attr}" style="position:absolute;right:6px;background:transparent;border:none;color:#999;cursor:pointer;font-size:0.9rem;padding:0 4px;line-height:1;">×</button>
-            </div>
-        `;
-    }
-    container.innerHTML = html;
+        const attrList = meltInfo.可熔炼;
+        let html = '';
+        for (let attr of attrList) {
+            const val = this.inputValues[attr] !== undefined ? this.inputValues[attr] : '';
+            const placeholder = attr === '耐久' ? '输入耐久' : '输入数值(负值允许)';
+            html += `
+                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;position:relative;">
+                    <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}：</label>
+                    <input type="number" id="eqAttr_${attr}" class="eq-attr-input" step="0.1" value="${val}" placeholder="${placeholder}" style="flex:1;min-width:80px;padding:6px 30px 6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;text-align:center;transition:all 0.2s;">
+                    <button class="eq-clear-btn" data-target="eqAttr_${attr}" style="position:absolute;right:6px;background:transparent;border:none;color:#999;cursor:pointer;font-size:0.9rem;padding:0 4px;line-height:1;">×</button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
 
-    // 绑定清除按钮事件
-    container.querySelectorAll('.eq-clear-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetId = this.dataset.target;
-            const input = document.getElementById(targetId);
-            if (input) {
-                input.value = '';
-                input.dispatchEvent(new Event('input'));
-                input.focus();
-            }
+        // 绑定清除按钮事件
+        container.querySelectorAll('.eq-clear-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const input = document.getElementById(targetId);
+                if (input) {
+                    input.value = '';
+                    input.dispatchEvent(new Event('input'));
+                    input.focus();
+                }
+            });
         });
-    });
 
-    // 绑定点击放大事件
-    container.querySelectorAll('.eq-attr-input').forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.fontSize = '1.1rem';
-            this.style.padding = '8px 35px 8px 12px';
-            this.style.borderColor = '#4CAF50';
-            this.style.boxShadow = '0 0 8px rgba(76,175,80,0.3)';
+        // 绑定点击放大事件
+        container.querySelectorAll('.eq-attr-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.fontSize = '1.1rem';
+                this.style.padding = '8px 35px 8px 12px';
+                this.style.borderColor = '#4CAF50';
+                this.style.boxShadow = '0 0 8px rgba(76,175,80,0.3)';
+            });
+            input.addEventListener('blur', function() {
+                this.style.fontSize = '0.85rem';
+                this.style.padding = '6px 30px 6px 10px';
+                this.style.borderColor = '#bccad9';
+                this.style.boxShadow = 'none';
+            });
         });
-        input.addEventListener('blur', function() {
-            this.style.fontSize = '0.85rem';
-            this.style.padding = '6px 30px 6px 10px';
-            this.style.borderColor = '#bccad9';
-            this.style.boxShadow = 'none';
-        });
-    });
-},
+    },
+
     // ============================================================
     //  人物装备 - 更新装备查询结果
     // ============================================================
@@ -1010,54 +988,52 @@ updateMeltInputs() {
     },
 
     // ============================================================
-    //  🐾 宠装 - 更新输入框
+    //  🐾 宠装 - 更新输入框（含清除按钮 + 放大效果）
     // ============================================================
-updatePetInputs() {
-    const container = document.getElementById('peAttrInputArea');
-    if (!container) return;
+    updatePetInputs() {
+        const container = document.getElementById('peAttrInputArea');
+        if (!container) return;
 
-    let html = '';
-    for (let attr of this.petAttrList) {
-        const val = this.petInputValues[attr] !== undefined ? this.petInputValues[attr] : '';
-        html += `
-            <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;position:relative;">
-                <label style="font-weight:500;min-width:40px;color:#1f3b53;">${attr}：</label>
-                <input type="number" id="peAttr_${attr}" class="pe-attr-input" step="0.1" value="${val}" placeholder="数值" style="flex:1;min-width:80px;padding:6px 30px 6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;text-align:center;transition:all 0.2s;">
-                <button class="pe-clear-btn" data-target="peAttr_${attr}" style="position:absolute;right:6px;background:transparent;border:none;color:#999;cursor:pointer;font-size:0.9rem;padding:0 4px;line-height:1;">×</button>
-            </div>
-        `;
-    }
-    container.innerHTML = html;
+        let html = '';
+        for (let attr of this.petAttrList) {
+            const val = this.petInputValues[attr] !== undefined ? this.petInputValues[attr] : '';
+            html += `
+                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;position:relative;">
+                    <label style="font-weight:500;min-width:40px;color:#1f3b53;">${attr}：</label>
+                    <input type="number" id="peAttr_${attr}" class="pe-attr-input" step="0.1" value="${val}" placeholder="数值" style="flex:1;min-width:80px;padding:6px 30px 6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;text-align:center;transition:all 0.2s;">
+                    <button class="pe-clear-btn" data-target="peAttr_${attr}" style="position:absolute;right:6px;background:transparent;border:none;color:#999;cursor:pointer;font-size:0.9rem;padding:0 4px;line-height:1;">×</button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
 
-    // 绑定清除按钮
-    container.querySelectorAll('.pe-clear-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetId = this.dataset.target;
-            const input = document.getElementById(targetId);
-            if (input) {
-                input.value = '';
-                input.dispatchEvent(new Event('input'));
-                input.focus();
-            }
+        container.querySelectorAll('.pe-clear-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const input = document.getElementById(targetId);
+                if (input) {
+                    input.value = '';
+                    input.dispatchEvent(new Event('input'));
+                    input.focus();
+                }
+            });
         });
-    });
 
-    // 绑定点击放大事件
-    container.querySelectorAll('.pe-attr-input').forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.fontSize = '1.1rem';
-            this.style.padding = '8px 35px 8px 12px';
-            this.style.borderColor = '#4CAF50';
-            this.style.boxShadow = '0 0 8px rgba(76,175,80,0.3)';
+        container.querySelectorAll('.pe-attr-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.style.fontSize = '1.1rem';
+                this.style.padding = '8px 35px 8px 12px';
+                this.style.borderColor = '#4CAF50';
+                this.style.boxShadow = '0 0 8px rgba(76,175,80,0.3)';
+            });
+            input.addEventListener('blur', function() {
+                this.style.fontSize = '0.85rem';
+                this.style.padding = '6px 30px 6px 10px';
+                this.style.borderColor = '#bccad9';
+                this.style.boxShadow = 'none';
+            });
         });
-        input.addEventListener('blur', function() {
-            this.style.fontSize = '0.85rem';
-            this.style.padding = '6px 30px 6px 10px';
-            this.style.borderColor = '#bccad9';
-            this.style.boxShadow = 'none';
-        });
-    });
-},
+    },
 
     // ============================================================
     //  🐾 宠装 - 更新查询结果
@@ -1104,7 +1080,6 @@ updatePetInputs() {
                 continue;
             }
 
-            const ratio = (val / limit * 100);
             let status = '';
             let statusColor = '#5a7a94';
             let bgColor = '#f8faff';
@@ -1197,7 +1172,6 @@ updatePetInputs() {
 
         let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
 
-        // 攻宠
         const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
         let attackRating = '', attackColor = '#5a7a94';
         if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
@@ -1215,7 +1189,6 @@ updatePetInputs() {
             </div>
         `;
 
-        // 法宠
         const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
         let magicRating = '', magicColor = '#5a7a94';
         if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
@@ -1233,7 +1206,6 @@ updatePetInputs() {
             </div>
         `;
 
-        // 配速
         const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
         let speedRating = '', speedColor = '#5a7a94';
         if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
@@ -1251,7 +1223,6 @@ updatePetInputs() {
             </div>
         `;
 
-        // 防御
         const defLimit = limits['防御'] || 0;
         let defRating = '', defColor = '#5a7a94';
         if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
