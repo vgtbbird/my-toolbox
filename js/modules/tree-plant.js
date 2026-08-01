@@ -45,6 +45,7 @@ const TreePlantModule = {
         { key: 'fushi_juanzhou', label: '符石卷轴', defaultPrice: 5 },
         { key: 'jinliu', label: '金柳露', defaultPrice: 8 },
         { key: 'kapian', label: '卡片', defaultPrice: 5 },
+        { key: 'qianghuashi', label: '强化石', defaultPrice: 5 },
     ],
 
     init() {
@@ -316,10 +317,12 @@ const TreePlantModule = {
 
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0;">
                         <button class="loot-btn" data-loot="kapian">🃏 卡片 <span class="count" id="tl-kapian">0</span></button>
+                        <button class="loot-btn" data-loot="qianghuashi">💎 强化石 <span class="count" id="tl-qianghuashi">0</span></button>
                         <button class="loot-btn" data-loot="none" style="visibility:hidden;"></button>
                         <button class="loot-btn" data-loot="none" style="visibility:hidden;"></button>
                         <button class="loot-btn" data-loot="none" style="visibility:hidden;"></button>
                         <button class="loot-btn" data-loot="none" style="visibility:hidden;"></button>
+                        
                     </div>
 
                     <div style="background:#eef4fa;border-radius:12px;padding:6px 12px;margin-top:8px;font-size:0.8rem;color:#1f3b53;">
