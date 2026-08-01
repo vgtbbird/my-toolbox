@@ -1,7 +1,7 @@
 // ============================================================
 //  ⚔️ 装备打造 & 熔炼查询 + 🐾 宠装查询（整合版）
 //  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
-//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部 + 装备评分
+//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部 + 装备评分 + 武器总伤
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -148,32 +148,38 @@ const EquipmentQueryModule = {
         "武器": {
             "可熔炼": ["体质", "魔力", "力量", "耐力", "敏捷", "耐久"],
             "不可熔炼": ["伤害", "命中"],
-            "说明": "武器只能熔炼绿字属性，伤害和命中无法熔炼。"
+            "说明": "武器只能熔炼绿字属性，伤害和命中无法熔炼。",
+            "可输入": ["伤害", "命中", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"]
         },
         "衣服": {
             "可熔炼": ["防御", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"],
             "不可熔炼": [],
-            "说明": "衣服可熔炼防御和绿字属性。"
+            "说明": "衣服可熔炼防御和绿字属性。",
+            "可输入": ["防御", "体质", "魔力", "力量", "耐力", "敏捷", "耐久"]
         },
         "项链": {
             "可熔炼": ["灵力", "耐久"],
             "不可熔炼": [],
-            "说明": ""
+            "说明": "",
+            "可输入": ["灵力", "耐久"]
         },
         "帽子": {
             "可熔炼": ["防御", "魔法", "耐久"],
             "不可熔炼": [],
-            "说明": ""
+            "说明": "",
+            "可输入": ["防御", "魔法", "耐久"]
         },
         "腰带": {
             "可熔炼": ["防御", "气血", "耐久"],
             "不可熔炼": [],
-            "说明": ""
+            "说明": "",
+            "可输入": ["防御", "气血", "耐久"]
         },
         "鞋子": {
             "可熔炼": ["防御", "敏捷", "耐久"],
             "不可熔炼": [],
-            "说明": ""
+            "说明": "",
+            "可输入": ["防御", "敏捷", "耐久"]
         }
     },
 
@@ -211,6 +217,7 @@ const EquipmentQueryModule = {
         this.updateQueryResult();
         this.calculateMelt();
         this.calculateScore();
+        this.calculateWeaponScore();
         this.updatePetInputs();
         this.updatePetQueryResult();
         this.updatePetValueResult();
@@ -269,6 +276,12 @@ const EquipmentQueryModule = {
         container.querySelectorAll('.module .title').forEach(el => {
             el.style.setProperty('font-size', (s.fontSize + 2) + 'px', 'important');
         });
+
+        // 控制武器模块显示
+        const weaponModule = document.getElementById('eqWeaponModule');
+        if (weaponModule) {
+            weaponModule.style.display = this.currentPart === '武器' ? 'block' : 'none';
+        }
     },
 
     // ============================================================
@@ -406,6 +419,18 @@ const EquipmentQueryModule = {
                 <div class="module-body">
                     <div id="eqScoreResult" style="font-size:0.95rem;color:#b0c8e0;padding:4px 0;">
                         请输入属性值后自动评估
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⚔️ 武器总伤评价 -->
+            <div class="module eq-score-module" id="eqWeaponModule" style="margin-top:14px;background:${this.uiSettings.scoreBgColor || '#1a2a3a'};border-radius:16px;border:1px solid #3a5a6a;display:${this.currentPart === '武器' ? 'block' : 'none'};">
+                <div class="module-header">
+                    <div class="title" style="color:#e8eef5;">⚔️ 武器总伤 <span class="hint" style="color:#8ab0c8;">— 伤害 + 命中/3</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="eqWeaponResult" style="font-size:0.95rem;color:#b0c8e0;padding:4px 0;">
+                        请输入伤害和命中后自动计算
                     </div>
                 </div>
             </div>
@@ -562,6 +587,7 @@ const EquipmentQueryModule = {
             EquipmentQueryModule.uiSettings.scoreBgColor = this.value;
             EquipmentQueryModule.applyUISettings();
             EquipmentQueryModule.calculateScore();
+            EquipmentQueryModule.calculateWeaponScore();
             EquipmentQueryModule.saveUISettings();
         });
         document.getElementById('eqFontSize').addEventListener('input', function() {
@@ -650,6 +676,7 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.calculateMelt();
                 EquipmentQueryModule.updateQueryResult();
                 EquipmentQueryModule.calculateScore();
+                EquipmentQueryModule.calculateWeaponScore();
             }
         });
         document.addEventListener('input', function(e) {
@@ -774,14 +801,18 @@ const EquipmentQueryModule = {
             return;
         }
 
-        const attrList = meltInfo.可熔炼;
+        // 使用"可输入"列表，如果没有则使用"可熔炼"
+        const attrList = meltInfo.可输入 || meltInfo.可熔炼;
         let html = '';
         for (let attr of attrList) {
             const val = this.inputValues[attr] !== undefined ? this.inputValues[attr] : '';
             const placeholder = attr === '耐久' ? '输入耐久' : '输入数值(负值允许)';
+            // 判断是否可熔炼（用于显示提示）
+            const isMeltable = meltInfo.可熔炼 && meltInfo.可熔炼.includes(attr);
+            const hint = (!isMeltable && part === '武器' && (attr === '伤害' || attr === '命中')) ? ' ⚠️不可熔炼' : '';
             html += `
                 <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;position:relative;">
-                    <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}：</label>
+                    <label style="font-weight:500;min-width:45px;color:#1f3b53;">${attr}${hint}：</label>
                     <input type="number" id="eqAttr_${attr}" class="eq-attr-input" step="0.1" value="${val}" placeholder="${placeholder}" style="flex:1;min-width:80px;padding:6px 30px 6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;text-align:center;transition:all 0.2s;">
                     <button class="eq-clear-btn" data-target="eqAttr_${attr}" style="position:absolute;right:6px;background:transparent;border:none;color:#999;cursor:pointer;font-size:0.9rem;padding:0 4px;line-height:1;">×</button>
                 </div>
@@ -1000,6 +1031,11 @@ const EquipmentQueryModule = {
         for (let [attr, val] of Object.entries(values)) {
             if (val === 0) continue;
 
+            // 跳过伤害和命中（不可熔炼）
+            if (part === '武器' && (attr === '伤害' || attr === '命中')) {
+                continue;
+            }
+
             if (statAttrs.includes(attr) && isWeaponOrCloth) {
                 let maxValue = null;
                 let formulaType = '';
@@ -1076,12 +1112,6 @@ const EquipmentQueryModule = {
             }
 
             if (part === '武器' && (attr === '伤害' || attr === '命中')) {
-                html += `
-                    <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;color:#b45a5a;">
-                        <span>${attr}</span>
-                        <span>⚠️ 该属性无法熔炼</span>
-                    </div>
-                `;
                 continue;
             }
 
@@ -1188,6 +1218,7 @@ const EquipmentQueryModule = {
 
         for (let [attr, val] of Object.entries(values)) {
             if (attr === '耐久') continue;
+            // 武器伤害和命中不参与评分（由武器总伤单独评价）
             if (part === '武器' && (attr === '伤害' || attr === '命中')) continue;
 
             let maxVal = null;
@@ -1292,6 +1323,128 @@ const EquipmentQueryModule = {
         }
 
         html += `</div>`;
+        el.innerHTML = html;
+    },
+
+    // ============================================================
+    //  ⚔️ 武器总伤计算 & 评价
+    // ============================================================
+    calculateWeaponScore() {
+        const level = this.currentLevel;
+        const part = this.currentPart;
+        const el = document.getElementById('eqWeaponResult');
+        if (!el) return;
+
+        // 只在武器部位显示
+        if (part !== '武器') {
+            el.innerHTML = '';
+            return;
+        }
+
+        const inputs = document.querySelectorAll('.eq-attr-input');
+        const values = {};
+        for (let inp of inputs) {
+            const attr = inp.id.replace('eqAttr_', '');
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val !== 0) {
+                values[attr] = val;
+            }
+        }
+
+        const damage = values['伤害'] || 0;
+        const hit = values['命中'] || 0;
+
+        // 如果没有输入伤害和命中，显示提示
+        if (!damage && !hit) {
+            el.innerHTML = '<div style="color:#8ab0c8;">请输入伤害和命中后自动计算</div>';
+            return;
+        }
+
+        // 获取当前打造类型的数据
+        const type = this.currentType;
+        const partData = this.equipmentData[level]?.[part];
+        if (!partData) {
+            el.innerHTML = '<div style="color:#8ab0c8;">暂无数据</div>';
+            return;
+        }
+
+        let data;
+        if (level === 160) {
+            data = partData['强化'] || {};
+        } else {
+            data = partData[type] || partData['普通'] || {};
+        }
+
+        const damageRange = data['伤害'] || [0, 0];
+        const hitRange = data['命中'] || [0, 0];
+
+        // 总伤 = 伤害 + 命中/3
+        const totalDamage = damage + hit / 3;
+
+        // 满属性总伤 = 满伤害 + 满命中/3
+        const maxDamage = damageRange[1] || 0;
+        const maxHit = hitRange[1] || 0;
+        const maxTotalDamage = maxDamage + maxHit / 3;
+
+        // 国标总伤 = 国标伤害 + 国标命中/3
+        const minDamage = damageRange[0] || 0;
+        const minHit = hitRange[0] || 0;
+        const minTotalDamage = minDamage + minHit / 3;
+
+        // 计算百分比
+        const pct = maxTotalDamage > 0 ? (totalDamage / maxTotalDamage * 100) : 0;
+
+        // 评价等级
+        let rating = '';
+        let ratingColor = '';
+        let ratingBg = '';
+        if (pct >= 95) {
+            rating = '🌟 极品';
+            ratingColor = '#f0d060';
+            ratingBg = 'rgba(240,208,96,0.15)';
+        } else if (pct >= 85) {
+            rating = '✅ 优秀';
+            ratingColor = '#60d080';
+            ratingBg = 'rgba(96,208,128,0.15)';
+        } else if (pct >= 70) {
+            rating = '📊 中等';
+            ratingColor = '#60b0e0';
+            ratingBg = 'rgba(96,176,224,0.15)';
+        } else if (pct >= 50) {
+            rating = '⚠️ 一般';
+            ratingColor = '#e0a060';
+            ratingBg = 'rgba(224,160,96,0.15)';
+        } else {
+            rating = '❌ 较差';
+            ratingColor = '#e06060';
+            ratingBg = 'rgba(224,96,96,0.15)';
+        }
+
+        // 构建HTML
+        let html = `
+            <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:10px;padding:12px 16px;background:${ratingBg};border-radius:12px;border:1px solid ${ratingColor}40;">
+                <div style="font-size:1.4rem;font-weight:700;color:${ratingColor};">${rating}</div>
+                <div style="font-size:1.1rem;color:#e0e8f0;">总伤 <span style="font-weight:700;color:#ffffff;">${totalDamage.toFixed(1)}</span></div>
+                <div style="font-size:0.85rem;color:#8ab0c8;">国标 <span style="color:#e0e8f0;">${minTotalDamage.toFixed(1)}</span> → 满 <span style="color:#f0d060;">${maxTotalDamage.toFixed(1)}</span></div>
+                <div style="font-size:0.85rem;color:#8ab0c8;flex:1;text-align:right;">${pct.toFixed(0)}%</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+                <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:0.7rem;color:#8ab0c8;">伤害</div>
+                    <div style="font-size:1.1rem;font-weight:600;color:#ffffff;">${damage || '-'}</div>
+                    <div style="font-size:0.6rem;color:#5a7a94;">(${damageRange[0]} - ${damageRange[1]})</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:0.7rem;color:#8ab0c8;">命中</div>
+                    <div style="font-size:1.1rem;font-weight:600;color:#ffffff;">${hit || '-'}</div>
+                    <div style="font-size:0.6rem;color:#5a7a94;">(${hitRange[0]} - ${hitRange[1]})</div>
+                </div>
+            </div>
+            <div style="font-size:0.65rem;color:#5a7a94;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+                💡 总伤 = 伤害 + 命中/3（人族/魔族），仙族为 伤害 + 命中/3.6
+            </div>
+        `;
+
         el.innerHTML = html;
     },
 
