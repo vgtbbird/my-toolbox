@@ -1566,119 +1566,121 @@ const EquipmentQueryModule = {
     // ============================================================
     //  🐾 宠装 - 价值评估
     // ============================================================
-    updatePetValueResult() {
-        const level = this.petCurrentLevel;
-        const el = document.getElementById('peValueResult');
+updatePetValueResult() {
+    const level = this.petCurrentLevel;
+    const el = document.getElementById('peValueResult');
 
-        const inputs = document.querySelectorAll('.pe-attr-input');
-        const values = {};
-        for (let inp of inputs) {
-            const attr = inp.id.replace('peAttr_', '');
-            const val = parseFloat(inp.value);
-            if (!isNaN(val) && val !== 0) {
-                values[attr] = val;
-            }
+    const inputs = document.querySelectorAll('.pe-attr-input');
+    const values = {};
+    for (let inp of inputs) {
+        const attr = inp.id.replace('peAttr_', '');
+        const val = parseFloat(inp.value);
+        if (!isNaN(val) && val !== 0) {
+            values[attr] = val;
         }
-
-        if (Object.keys(values).length === 0) {
-            el.innerHTML = '<div style="color:#5a7a94;">输入属性后自动评估价值</div>';
-            return;
-        }
-
-        const limits = this.petLimitData[level];
-        if (!limits) {
-            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
-            return;
-        }
-
-        const damage = values['伤害'] || 0;
-        const strength = values['力量'] || 0;
-        const attackValue = damage + strength;
-
-        const mana = values['法力'] || 0;
-        const spirit = values['灵力'] || 0;
-        const magicValue = mana + spirit;
-
-        const speed = values['速度'] || 0;
-        const agility = values['敏捷'] || 0;
-        const speedValue = speed + agility;
-
-        const defense = values['防御'] || 0;
-
-        let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
-
-        const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
-        let attackRating = '', attackColor = '#5a7a94';
-        if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
-        else if (attackValue >= attackLimit * 0.7) { attackRating = '🔥 极品'; attackColor = '#2d6b2d'; }
-        else if (attackValue >= attackLimit * 0.5) { attackRating = '📊 优秀'; attackColor = '#b48b3a'; }
-        else if (attackValue > 0) { attackRating = '📉 一般'; attackColor = '#5a7a94'; }
-        else { attackRating = '⬇️ 低价值'; attackColor = '#8a6a8a'; }
-
-        html += `
-            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                <div style="font-weight:600;color:#1f3b53;">⚔️ 攻宠价值</div>
-                <div style="font-size:1.2rem;font-weight:700;color:${attackColor};">${attackValue.toFixed(1)}</div>
-                <div style="font-size:0.7rem;color:#5a7a94;">伤害+力量 = ${damage.toFixed(1)} + ${strength.toFixed(1)} | 极限 ${attackLimit}</div>
-                <div style="font-weight:600;color:${attackColor};">${attackRating}</div>
-            </div>
-        `;
-
-        const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
-        let magicRating = '', magicColor = '#5a7a94';
-        if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
-        else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
-        else if (magicValue >= magicLimit * 0.5) { magicRating = '📊 优秀'; magicColor = '#b48b3a'; }
-        else if (magicValue > 0) { magicRating = '📉 一般'; magicColor = '#5a7a94'; }
-        else { magicRating = '⬇️ 低价值'; magicColor = '#8a6a8a'; }
-
-        html += `
-            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                <div style="font-weight:600;color:#1f3b53;">🔮 法宠价值</div>
-                <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
-                <div style="font-size:0.7rem;color:#5a7a94;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
-                <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
-            </div>
-        `;
-
-        const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
-        let speedRating = '', speedColor = '#5a7a94';
-        if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
-        else if (speedValue >= speedLimit * 0.7) { speedRating = '🔥 极品'; speedColor = '#2d6b2d'; }
-        else if (speedValue >= speedLimit * 0.5) { speedRating = '📊 优秀'; speedColor = '#b48b3a'; }
-        else if (speedValue > 0) { speedRating = '📉 一般'; speedColor = '#5a7a94'; }
-        else { speedRating = '⬇️ 低价值'; speedColor = '#8a6a8a'; }
-
-        html += `
-            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                <div style="font-weight:600;color:#1f3b53;">💨 配速价值</div>
-                <div style="font-size:1.2rem;font-weight:700;color:${speedColor};">${speedValue.toFixed(1)}</div>
-                <div style="font-size:0.7rem;color:#5a7a94;">速度+敏捷 = ${speed.toFixed(1)} + ${agility.toFixed(1)} | 极限 ${speedLimit}</div>
-                <div style="font-weight:600;color:${speedColor};">${speedRating}</div>
-            </div>
-        `;
-
-        const defLimit = limits['防御'] || 0;
-        let defRating = '', defColor = '#5a7a94';
-        if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
-        else if (defense >= defLimit * 0.7) { defRating = '🔥 极品'; defColor = '#2d6b2d'; }
-        else if (defense >= defLimit * 0.5) { defRating = '📊 优秀'; defColor = '#b48b3a'; }
-        else if (defense > 0) { defRating = '📉 一般'; defColor = '#5a7a94'; }
-        else { defRating = '⬇️ 低价值'; defColor = '#8a6a8a'; }
-
-        html += `
-            <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                <div style="font-weight:600;color:#1f3b53;">🛡️ 防御价值</div>
-                <div style="font-size:1.2rem;font-weight:700;color:${defColor};">${defense.toFixed(1)}</div>
-                <div style="font-size:0.7rem;color:#5a7a94;">防御 = ${defense.toFixed(1)} | 极限 ${defLimit}</div>
-                <div style="font-weight:600;color:${defColor};">${defRating}</div>
-            </div>
-        `;
-
-        html += `</div>`;
-
-        el.innerHTML = html;
     }
+
+    if (Object.keys(values).length === 0) {
+        el.innerHTML = '<div style="color:#5a7a94;">输入属性后自动评估价值</div>';
+        return;
+    }
+
+    const limits = this.petLimitData[level];
+    if (!limits) {
+        el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
+        return;
+    }
+
+    const damage = values['伤害'] || 0;
+    const strength = values['力量'] || 0;
+    const attackValue = damage + strength;
+
+    const mana = values['法力'] || 0;
+    const spirit = values['灵力'] || 0;
+    const magicValue = mana + spirit;
+
+    const speed = values['速度'] || 0;
+    const agility = values['敏捷'] || 0;
+    const speedValue = speed + agility;
+
+    const defense = values['防御'] || 0;
+
+    const scoreBg = this.uiSettings.scoreBgColor || '#1a2a3a';
+
+    let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
+
+    const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
+    let attackRating = '', attackColor = '#5a7a94';
+    if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
+    else if (attackValue >= attackLimit * 0.7) { attackRating = '🔥 极品'; attackColor = '#2d6b2d'; }
+    else if (attackValue >= attackLimit * 0.5) { attackRating = '📊 优秀'; attackColor = '#b48b3a'; }
+    else if (attackValue > 0) { attackRating = '📉 一般'; attackColor = '#5a7a94'; }
+    else { attackRating = '⬇️ 低价值'; attackColor = '#8a6a8a'; }
+
+    html += `
+        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:600;color:#e0e8f0;">⚔️ 攻宠价值</div>
+            <div style="font-size:1.2rem;font-weight:700;color:${attackColor};">${attackValue.toFixed(1)}</div>
+            <div style="font-size:0.7rem;color:#8ab0c8;">伤害+力量 = ${damage.toFixed(1)} + ${strength.toFixed(1)} | 极限 ${attackLimit}</div>
+            <div style="font-weight:600;color:${attackColor};">${attackRating}</div>
+        </div>
+    `;
+
+    const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
+    let magicRating = '', magicColor = '#5a7a94';
+    if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
+    else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
+    else if (magicValue >= magicLimit * 0.5) { magicRating = '📊 优秀'; magicColor = '#b48b3a'; }
+    else if (magicValue > 0) { magicRating = '📉 一般'; magicColor = '#5a7a94'; }
+    else { magicRating = '⬇️ 低价值'; magicColor = '#8a6a8a'; }
+
+    html += `
+        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:600;color:#e0e8f0;">🔮 法宠价值</div>
+            <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
+            <div style="font-size:0.7rem;color:#8ab0c8;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
+            <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
+        </div>
+    `;
+
+    const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
+    let speedRating = '', speedColor = '#5a7a94';
+    if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
+    else if (speedValue >= speedLimit * 0.7) { speedRating = '🔥 极品'; speedColor = '#2d6b2d'; }
+    else if (speedValue >= speedLimit * 0.5) { speedRating = '📊 优秀'; speedColor = '#b48b3a'; }
+    else if (speedValue > 0) { speedRating = '📉 一般'; speedColor = '#5a7a94'; }
+    else { speedRating = '⬇️ 低价值'; speedColor = '#8a6a8a'; }
+
+    html += `
+        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:600;color:#e0e8f0;">💨 配速价值</div>
+            <div style="font-size:1.2rem;font-weight:700;color:${speedColor};">${speedValue.toFixed(1)}</div>
+            <div style="font-size:0.7rem;color:#8ab0c8;">速度+敏捷 = ${speed.toFixed(1)} + ${agility.toFixed(1)} | 极限 ${speedLimit}</div>
+            <div style="font-weight:600;color:${speedColor};">${speedRating}</div>
+        </div>
+    `;
+
+    const defLimit = limits['防御'] || 0;
+    let defRating = '', defColor = '#5a7a94';
+    if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
+    else if (defense >= defLimit * 0.7) { defRating = '🔥 极品'; defColor = '#2d6b2d'; }
+    else if (defense >= defLimit * 0.5) { defRating = '📊 优秀'; defColor = '#b48b3a'; }
+    else if (defense > 0) { defRating = '📉 一般'; defColor = '#5a7a94'; }
+    else { defRating = '⬇️ 低价值'; defColor = '#8a6a8a'; }
+
+    html += `
+        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:600;color:#e0e8f0;">🛡️ 防御价值</div>
+            <div style="font-size:1.2rem;font-weight:700;color:${defColor};">${defense.toFixed(1)}</div>
+            <div style="font-size:0.7rem;color:#8ab0c8;">防御 = ${defense.toFixed(1)} | 极限 ${defLimit}</div>
+            <div style="font-weight:600;color:${defColor};">${defRating}</div>
+        </div>
+    `;
+
+    html += `</div>`;
+
+    el.innerHTML = html;
+}
 };
 
 // ===== 自动初始化 =====
