@@ -1,7 +1,6 @@
 // ============================================================
-//  🏃 跑宠环模块 - 完整版（含期望值计算 + 策略建议）
-//  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
-//  新增：修炼果单价保存、扣分设置折叠、期望值计算、变异策略、跑法策略
+//  🏃 跑宠环模块 - 完整版
+//  功能：跑环记录 + 期望值计算 + 策略建议 + 100环结算弹窗
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
@@ -18,6 +17,14 @@ const PetRingModule = {
     pendingSettle: null,
     exchangeRate: 0.08,
     fruitPrice: 80,  // 修炼果单价，保存到本地
+
+    // 100环结算弹窗暂存数据
+    settleTemp: {
+        bookType: '',      // '书' 或 '铁'
+        bookLevel: '',
+        bookValue: '',
+        rewardType: ''     // 'points200' | 'fruit' | 'furniture'
+    },
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -223,35 +230,189 @@ const PetRingModule = {
     checkAutoSettle() {
         const stats = this.calcStats();
         if (stats.ringCount >= 100 && !this.pendingSettle) {
-            this.prepareSettle();
+            this.showFullSettleModal(stats);
         }
     },
 
-    // ========== 结算准备 ==========
+    // ========== 100环强制结算弹窗（书铁二选一 + 三选一） ==========
+    showFullSettleModal(stats) {
+        const income = this.calcIncome(stats);
+        const fruitPrice = this.fruitPrice || 80;
+        const furnPrice = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
+
+        // 三选一预览价值
+        const pointsValue = (200 / 170) * fruitPrice;
+        const fruitValue = fruitPrice;
+        const furnValue = furnPrice;
+
+        // 构建弹窗HTML
+        const modalHTML = `
+            <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+                <h3 style="color:#1f3b53;margin-bottom:8px;font-size:1.2rem;">🎯 100环结算报告</h3>
+                <div style="font-size:0.85rem;color:#5a7a94;margin-bottom:14px;">
+                    📊 总成本 ${stats.totalCost.toFixed(1)}万 | ⭐ 总积分 ${stats.totalScore} | 📈 修炼点 ${stats.totalPoints}
+                </div>
+
+                <!-- 书铁二选一 -->
+                <div style="margin-bottom:16px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
+                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">📘 书铁奖励（必得，二选一）</div>
+                    <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
+                        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;">
+                            <input type="radio" name="bookType" value="书" checked> 书
+                        </label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;">
+                            <input type="radio" name="bookType" value="铁"> 铁
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.85rem;">
+                            <label style="font-weight:500;">等级</label>
+                            <input type="number" id="settleBookLevel" placeholder="130" style="width:60px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;font-size:0.85rem;">
+                            <label style="font-weight:500;">价值(万)</label>
+                            <input type="number" id="settleBookValue" placeholder="80" style="width:80px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 三选一 -->
+                <div style="margin-bottom:16px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
+                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">🎁 随机奖励（三选一）</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="points200">
+                            <input type="radio" name="rewardType" value="points200" checked> 200修炼点（≈${pointsValue.toFixed(1)}万）
+                        </label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="fruit">
+                            <input type="radio" name="rewardType" value="fruit"> 1个修炼果（${fruitValue.toFixed(1)}万）
+                        </label>
+                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="furniture">
+                            <input type="radio" name="rewardType" value="furniture"> 家具图×1（${furnValue.toFixed(1)}万）
+                        </label>
+                    </div>
+                </div>
+
+                <div style="font-size:0.75rem;color:#5a7a94;margin-bottom:12px;padding:8px 12px;background:#f5f8fc;border-radius:12px;">
+                    💡 选择完成后点击「确认结算」，系统将自动计算本轮利润
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
+                    <button class="btn-cancel" id="settleFullCancel" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">取消</button>
+                    <button class="btn-confirm" id="settleFullConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 确认结算</button>
+                </div>
+            </div>
+        `;
+
+        // 创建遮罩
+        const overlay = document.createElement('div');
+        overlay.id = 'settleFullOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+        overlay.innerHTML = modalHTML;
+        document.body.appendChild(overlay);
+
+        // 点击取消
+        document.getElementById('settleFullCancel').addEventListener('click', function() {
+            overlay.remove();
+        });
+
+        // 点击遮罩关闭
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        // 点击确认
+        document.getElementById('settleFullConfirm').addEventListener('click', () => {
+            // 获取书铁信息
+            const bookType = document.querySelector('input[name="bookType"]:checked')?.value || '书';
+            const bookLevel = parseInt(document.getElementById('settleBookLevel').value) || 0;
+            const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
+
+            if (bookLevel <= 0 || bookValue <= 0) {
+                alert('请填写书铁等级和价值！');
+                return;
+            }
+
+            // 获取三选一
+            const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
+
+            // 计算三选一价值
+            const fruitPrice2 = this.fruitPrice || 80;
+            const furnPrice2 = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
+            let rewardValue = 0;
+            let rewardLabel = '';
+            if (rewardType === 'points200') {
+                rewardValue = (200 / 170) * fruitPrice2;
+                rewardLabel = '200修炼点';
+            } else if (rewardType === 'fruit') {
+                rewardValue = fruitPrice2;
+                rewardLabel = '1个修炼果';
+            } else if (rewardType === 'furniture') {
+                rewardValue = furnPrice2;
+                rewardLabel = '家具图×1';
+            }
+
+            const totalIncome = bookValue + rewardValue;
+            const profit = totalIncome - stats.totalCost;
+
+            // 生成任务类型统计
+            const typeCount = stats.typeCount || {};
+            const rewardsDesc = `${bookType}${bookLevel}级（${bookValue}万） + ${rewardLabel}（${rewardValue.toFixed(1)}万）`;
+
+            const entry = {
+                date: new Date().toLocaleString(),
+                ringCount: stats.ringCount,
+                totalCost: stats.totalCost,
+                totalScore: stats.totalScore,
+                totalPoints: stats.totalPoints,
+                totalIncome: totalIncome,
+                profit: profit,
+                bookIncome: bookValue,
+                furnitureIncome: rewardType === 'furniture' ? rewardValue : 0,
+                fruitIncome: rewardType === 'points200' || rewardType === 'fruit' ? rewardValue : 0,
+                isComplete: true,
+                typeCount: typeCount,
+                rewards: rewardsDesc,
+                exchangeRate: this.exchangeRate,
+                bookLevel: bookLevel,
+                bookType: bookType,
+                rewardType: rewardType
+            };
+
+            this.history.push(entry);
+            this.records = [];
+            this.bookRewards = [];
+            this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
+            this.pendingSettle = null;
+            this.saveData();
+
+            overlay.remove();
+
+            // 显示结算结果弹窗
+            this.showSettleModal(entry);
+
+            // 刷新显示
+            this.updateStats();
+            this.updateHistory();
+            this.updateAdvice();
+            this.updateBookList();
+            this.updateHistoryTable();
+
+            const container = document.getElementById('petRingContainer');
+            if (container) {
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    },
+
+    // ========== 结算准备（原有，供提前结束使用） ==========
     prepareSettle() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
         const isFull = stats.ringCount >= 100;
 
         if (isFull) {
-            this.pendingSettle = {
-                stats: stats,
-                income: income,
-                rewards: this.bookRewards.map(b => `${b.name}(${b.value}万)`).join(' + ')
-            };
-            this.saveData();
-
-            const incomeBody = document.getElementById('prIncomeBody');
-            if (incomeBody) incomeBody.classList.remove('hidden');
-            const incomeBtn = document.getElementById('prToggleIncomeBtn');
-            if (incomeBtn) incomeBtn.textContent = '👁️ 隐藏';
-
-            const incomeModule = document.getElementById('prModuleIncome');
-            if (incomeModule) {
-                incomeModule.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            alert(`🎯 第 ${this.history.length + 1} 轮已完成100环！\n📌 总积分: ${stats.totalScore}\n📈 修炼点: ${stats.totalPoints}\n💰 当前成本: ${stats.totalCost.toFixed(1)}万\n\n请在下方的「收入 & 利润设置」模块中，\n输入本轮获得的书铁等物品价值，\n然后点击「✅ 确认结算」按钮。`);
+            // 满100环由 showFullSettleModal 处理，这里不重复触发
+            return;
         } else {
             this.quickSettle(stats, income);
         }
@@ -298,61 +459,10 @@ const PetRingModule = {
         }
     },
 
-    // ========== 确认结算（满100环） ==========
+    // ========== 确认结算（满100环，由弹窗触发） ==========
     confirmSettle() {
-        if (!this.pendingSettle) {
-            alert('没有待结算的数据！');
-            return;
-        }
-
-        const { stats, rewards } = this.pendingSettle;
-
-        const fp = parseFloat(document.getElementById('prFruitPrice')?.value) || 80;
-        const fup = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
-
-        const totalPoints = stats.totalPoints;
-        const fruitCount = totalPoints / 170;
-        const fruitIncome = fruitCount * fp;
-        const bookIncome = this.bookRewards.reduce((s, b) => s + (b.value || 0), 0);
-        const furnitureIncome = this.extraRewards.furnitures * fup;
-        const totalIncome = fruitIncome + bookIncome + furnitureIncome;
-        const profit = totalIncome - stats.totalCost;
-
-        const entry = {
-            date: new Date().toLocaleString(),
-            ringCount: stats.ringCount,
-            totalCost: stats.totalCost,
-            totalScore: stats.totalScore,
-            totalPoints: totalPoints,
-            totalIncome: totalIncome,
-            profit: profit,
-            bookIncome: bookIncome,
-            furnitureIncome: furnitureIncome,
-            fruitIncome: fruitIncome,
-            isComplete: true,
-            typeCount: stats.typeCount,
-            rewards: rewards || (bookIncome > 0 ? `书铁${bookIncome.toFixed(1)}万` : '')
-        };
-
-        this.history.push(entry);
-        this.records = [];
-        this.bookRewards = [];
-        this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
-        this.pendingSettle = null;
-        this.saveData();
-
-        this.updateStats();
-        this.updateHistory();
-        this.updateAdvice();
-        this.updateBookList();
-        this.updateHistoryTable();
-
-        this.showSettleModal(entry);
-
-        const container = document.getElementById('petRingContainer');
-        if (container) {
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        // 已由 showFullSettleModal 处理，此函数保留但不使用
+        alert('请使用结算弹窗完成结算');
     },
 
     // ========== 显示结算弹窗 ==========
@@ -360,7 +470,7 @@ const PetRingModule = {
         const profit = entry.profit;
         const rmb = profit * this.exchangeRate;
         const fruitCount = entry.totalPoints / 170;
-        document.getElementById('settleModalTitle').textContent = entry.isComplete ? '🎯 100环结算报告' : '⏹️ 提前结束结算';
+        document.getElementById('settleModalTitle').textContent = entry.isComplete ? '🎯 结算报告' : '⏹️ 提前结束结算';
         document.getElementById('settleModalDesc').textContent =
             `💰 总成本 ${entry.totalCost.toFixed(1)}万 | 📈 利润 ${profit.toFixed(1)}万 (≈${rmb.toFixed(2)}元) | 📌 ${entry.ringCount}环 | ⭐ 总积分 ${entry.totalScore}`;
         document.getElementById('settleModalBody').innerHTML =
@@ -477,7 +587,7 @@ const PetRingModule = {
         this.render();
     },
 
-    // ========== 期望值计算 ==========
+    // ========== 期望值计算（独立事件版） ==========
     calculateExpectation() {
         const totalRings = 100;
         const runRings = this.records.length;
@@ -496,7 +606,7 @@ const PetRingModule = {
             };
         }
 
-        // 统计当前已出现的各任务次数
+        // 统计当前已出现的各任务次数（仅用于展示，不影响期望计算）
         const currentCounts = {};
         for (let r of this.records) {
             const key = r.typeKey;
@@ -514,14 +624,9 @@ const PetRingModule = {
             const score = this.taskScore[key];
             const label = this.taskLabel[key] || key;
             const already = currentCounts[key] || 0;
-            const theoreticalSoFar = runRings * prob;
-            const deviation = already - theoreticalSoFar;
 
-            // 均值回归：修正幅度为偏差的 50%
-            const correction = -deviation * 0.5;
-            let remainingExpected = remaining * prob + correction;
-            if (remainingExpected < 0) remainingExpected = 0;
-
+            // 后续期望 = 剩余环数 × 概率（独立事件，不受已出现次数影响）
+            const remainingExpected = remaining * prob;
             const expectedContribution = remainingExpected * score;
             expectedScore += expectedContribution;
 
@@ -531,7 +636,6 @@ const PetRingModule = {
                 prob: prob,
                 score: score,
                 already: already,
-                theoreticalSoFar: theoreticalSoFar,
                 remainingExpected: remainingExpected,
                 expectedContribution: expectedContribution
             });
@@ -601,7 +705,10 @@ const PetRingModule = {
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="prTotalScore">0</div><div class="label">⭐ 总积分</div></div>
-                <div class="stat-item"><div class="num" id="prRingCount">0 <span class="remaining" id="prRingRemaining">/100</span></div><div class="label">📌 当前/剩余环数</div></div>
+                <div class="stat-item">
+                    <div class="num" id="prRingCount" style="font-size:1.2rem;font-weight:700;color:#1f3b53;">0 / 100 剩</div>
+                    <div class="label">📌 当前/剩余环数</div>
+                </div>
                 <div class="stat-item"><div class="num" id="prAvgCost">0</div><div class="label">📊 平均成本</div></div>
                 <div class="stat-item"><div class="num" id="prTotalPoints">0</div><div class="label">📈 修炼点</div></div>
                 <div class="stat-item" id="prProfitStat"><div class="num" id="prProfitDisplay">0</div><div class="label">💰 利润(万)</div></div>
@@ -620,9 +727,9 @@ const PetRingModule = {
                     <div class="task-grid" id="prTaskGrid"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
                         <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚙️ 扣分设置</span>
-                        <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 显示</button>
+                        <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
                     </div>
-                    <div class="deduct-settings-inline hidden" id="prDeductSettings" style="margin-top:4px;display:none;"></div>
+                    <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
                 </div>
             </div>
 
@@ -852,35 +959,30 @@ const PetRingModule = {
             PetRingModule.render();
         });
 
-        // ===== 确认结算 =====
+        // ===== 确认结算（提前结束用） =====
         document.getElementById('prConfirmSettleBtn').addEventListener('click', () => {
-            if (this.pendingSettle) {
-                this.confirmSettle();
-            } else {
-                const stats = this.calcStats();
-                if (stats.ringCount === 0) {
-                    alert('还没有任何记录！');
-                    return;
-                }
-                const income = this.calcIncome(stats);
-                this.quickSettle(stats, income);
+            const stats = this.calcStats();
+            if (stats.ringCount === 0) {
+                alert('还没有任何记录！');
+                return;
             }
+            if (stats.ringCount >= 100) {
+                // 满100环由 checkAutoSettle 触发弹窗
+                this.checkAutoSettle();
+                return;
+            }
+            const income = this.calcIncome(stats);
+            this.quickSettle(stats, income);
         });
 
         // ===== 扣分设置折叠 =====
         document.getElementById('prToggleDeductBtn')?.addEventListener('click', function() {
             const body = document.getElementById('prDeductSettings');
             if (body) {
-                const isHidden = body.style.display === 'none' || body.classList.contains('hidden');
-                if (isHidden) {
-                    body.style.display = 'flex';
-                    body.classList.remove('hidden');
-                    this.textContent = '👁️ 隐藏';
-                } else {
-                    body.style.display = 'none';
-                    body.classList.add('hidden');
-                    this.textContent = '👁️ 显示';
-                }
+                const isHidden = body.style.display === 'none';
+                body.style.display = isHidden ? 'flex' : 'none';
+                body.classList.toggle('hidden');
+                this.textContent = isHidden ? '👁️ 隐藏' : '👁️ 显示';
             }
         });
 
@@ -937,6 +1039,11 @@ const PetRingModule = {
             const stats = this.calcStats();
             if (stats.ringCount === 0) {
                 alert('还没有任何记录！');
+                return;
+            }
+            if (stats.ringCount >= 100) {
+                alert('已满100环，请使用结算弹窗完成结算');
+                this.checkAutoSettle();
                 return;
             }
             if (!confirm(`当前只有 ${stats.ringCount} 环，确定要提前结束结算吗？`)) return;
@@ -1288,7 +1395,8 @@ const PetRingModule = {
             }
         }
         document.getElementById('prTotalScore').textContent = stats.totalScore + diffText;
-        document.getElementById('prRingCount').innerHTML = `${stats.ringCount} <span class="remaining">/${stats.remaining}剩</span>`;
+        // 统一显示 当前/剩余环数
+        document.getElementById('prRingCount').textContent = `${stats.ringCount} / ${stats.remaining} 剩`;
         document.getElementById('prAvgCost').textContent = stats.avgCost.toFixed(1);
         document.getElementById('prTotalPoints').textContent = stats.totalPoints;
         document.getElementById('prProfitDisplay').textContent = income.profit.toFixed(1) + ` (≈${rmb.toFixed(2)}元)`;
@@ -1354,11 +1462,9 @@ const PetRingModule = {
     },
 
     buildDeductSettings() {
-    const container = document.getElementById('prDeductSettings');
-    if (!container) return;
+        const container = document.getElementById('prDeductSettings');
+        if (!container) return;
 
-        // 保留现有内容，但不要重复添加
-        // 改为每次重新生成
         let html = '';
         this.DEDUCT_TYPES.forEach(d => {
             const s = this.deductSettings[d.key] || { deduct: d.defaultDeduct, cost: d.defaultCost };
@@ -1369,11 +1475,10 @@ const PetRingModule = {
             </div>`;
         });
         container.innerHTML = html;
-    
-        // ✅ 恢复隐藏状态
+
+        // 恢复隐藏状态
         const toggleBtn = document.getElementById('prToggleDeductBtn');
-        const isHidden = container.classList.contains('hidden');
-        if (toggleBtn && isHidden) {
+        if (toggleBtn && container.classList.contains('hidden')) {
             container.style.display = 'none';
             toggleBtn.textContent = '👁️ 显示';
         } else {
@@ -1641,19 +1746,15 @@ const PetRingModule = {
 
         // 判断策略
         if (expectedFinal >= 222 && diff >= 0) {
-            // 冲刺150
             strategyMsg = '🎯 <strong style="color:#f0d060;">冲刺150级策略</strong>：当前有望冲击150级奖励！建议全部正常交，遇到指定变异提交（+10分），80环正常交，不要跳。<br>💡 预计成本较高，但收益也最高。';
             tagText = '🏆 冲150级';
         } else if (expectedFinal >= 192 && diff >= -5) {
-            // 标准跑
             strategyMsg = '📊 <strong style="color:#60d080;">标准跑环策略</strong>：目标120-140级书铁。建议60/70环正常交，80环视善恶点情况，变异任务评估成本。<br>💡 投入产出均衡，适合多数玩家。';
             tagText = '📈 标准模式';
         } else if (expectedFinal >= 172) {
-            // 乞丐跑环
             strategyMsg = '📉 <strong style="color:#e0a060;">乞丐跑环策略</strong>：目标100-110级书铁或保底。建议80环用善恶点或跳过，变异任务交普通或跳过，只交低价物品。<br>💡 成本最低，保底收益。';
             tagText = '🛡️ 乞丐模式';
         } else {
-            // 保底
             strategyMsg = '⚠️ <strong style="color:#e06060;">保底策略</strong>：当前积分偏低，建议以保底修炼果为目标。80环以上全部跳过，变异任务跳过或交普通，只交60环、烹饪、三药等低价物品。<br>💡 控制成本，等待下一轮。';
             tagText = '💤 保底模式';
         }
