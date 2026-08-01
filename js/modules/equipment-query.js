@@ -1,7 +1,7 @@
 // ============================================================
 //  ⚔️ 装备打造 & 熔炼查询 + 🐾 宠装查询（整合版）
 //  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
-//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部
+//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部 + 装备评分
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -13,7 +13,8 @@ const EquipmentQueryModule = {
         btnTextColor: '#ffffff',
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
-        fontSize: 14
+        fontSize: 14,
+        scoreBgColor: '#1a2a3a'
     },
 
     // ========== 人物装备数据 ==========
@@ -206,10 +207,10 @@ const EquipmentQueryModule = {
     },
 
     render() {
-        // 只更新数据，不重建整个页面（按钮样式由 updateButtonStates 单独管理）
         this.updateMeltInputs();
         this.updateQueryResult();
         this.calculateMelt();
+        this.calculateScore();
         this.updatePetInputs();
         this.updatePetQueryResult();
         this.updatePetValueResult();
@@ -227,7 +228,8 @@ const EquipmentQueryModule = {
             btnTextColor: '#ffffff',
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
-            fontSize: 14
+            fontSize: 14,
+            scoreBgColor: '#1a2a3a'
         };
     },
 
@@ -254,6 +256,11 @@ const EquipmentQueryModule = {
             el.style.setProperty('color', s.textColor, 'important');
         });
 
+        // 评分卡片背景
+        container.querySelectorAll('.eq-score-module').forEach(el => {
+            el.style.setProperty('background', s.scoreBgColor || '#1a2a3a', 'important');
+        });
+
         const fontSize = s.fontSize + 'px';
         container.querySelectorAll('.module .title, .eq-label, .eq-value, .eq-desc, .eq-result-box, .eq-calc-box, select, input, button').forEach(el => {
             el.style.setProperty('font-size', fontSize, 'important');
@@ -265,34 +272,29 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  🏗️ 构建UI（按钮版）- 只在页面初始化时执行一次
+    //  🏗️ 构建UI
     // ============================================================
     buildUI() {
         const container = document.getElementById('equipmentQueryContainer');
         if (!container) return;
 
-        // ---- 构建等级按钮 ----
         const levelBtns = this.levels.map(l => 
             `<button class="eq-btn-level ${l === this.currentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.currentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.currentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
         ).join('');
 
-        // ---- 构建部位按钮 ----
         const parts = Object.keys(this.equipmentData[this.currentLevel] || {});
         const partBtns = parts.map(p => 
             `<button class="eq-btn-part ${p === this.currentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.currentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.currentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
         ).join('');
 
-        // ---- 构建打造方式按钮 ----
         const typeBtns = ['普通', '强化'].map(t => 
             `<button class="eq-btn-type ${t === this.currentType ? 'active' : ''}" data-value="${t}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${t === this.currentType ? '#4CAF50' : '#f0f4f8'};color:${t === this.currentType ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${t}</button>`
         ).join('');
 
-        // ---- 宠装等级按钮 ----
         const petLevelBtns = this.petLevels.map(l => 
             `<button class="pe-btn-level ${l === this.petCurrentLevel ? 'active' : ''}" data-value="${l}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${l === this.petCurrentLevel ? '#4CAF50' : '#f0f4f8'};color:${l === this.petCurrentLevel ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${l}</button>`
         ).join('');
 
-        // ---- 宠装部位按钮 ----
         const petPartBtns = ['护腕', '项圈', '铠甲'].map(p => 
             `<button class="pe-btn-part ${p === this.petCurrentPart ? 'active' : ''}" data-value="${p}" style="padding:4px 12px;border-radius:16px;border:1px solid #bccad9;background:${p === this.petCurrentPart ? '#4CAF50' : '#f0f4f8'};color:${p === this.petCurrentPart ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
         ).join('');
@@ -323,6 +325,10 @@ const EquipmentQueryModule = {
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">📝 文字色</label>
                             <input type="color" id="eqTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">⭐ 评分卡片</label>
+                            <input type="color" id="eqScoreBgColor" value="${this.uiSettings.scoreBgColor || '#1a2a3a'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🔤 字体大小</label>
@@ -392,6 +398,18 @@ const EquipmentQueryModule = {
                 </div>
             </div>
 
+            <!-- ⭐ 装备评分 -->
+            <div class="module eq-score-module" style="margin-top:14px;background:${this.uiSettings.scoreBgColor || '#1a2a3a'};border-radius:16px;border:1px solid #3a5a6a;">
+                <div class="module-header">
+                    <div class="title" style="color:#e8eef5;">⭐ 装备评分 <span class="hint" style="color:#8ab0c8;">— 综合评估装备价值</span></div>
+                </div>
+                <div class="module-body">
+                    <div id="eqScoreResult" style="font-size:0.95rem;color:#b0c8e0;padding:4px 0;">
+                        请输入属性值后自动评估
+                    </div>
+                </div>
+            </div>
+
             <!-- 🐾 宠装查询 -->
             <div style="border-bottom:2px solid #d0dce8;padding-bottom:6px;margin:24px 0 14px 0;">
                 <span style="font-weight:700;font-size:1.1rem;color:#1f3b53;">🐾 召唤兽装备查询</span>
@@ -446,10 +464,9 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  🎨 更新按钮高亮样式（不重建页面）
+    //  🎨 更新按钮高亮样式
     // ============================================================
     updateButtonStates() {
-        // 人物装备 - 等级
         document.querySelectorAll('.eq-btn-level').forEach(btn => {
             const val = parseInt(btn.dataset.value);
             if (val === this.currentLevel) {
@@ -463,7 +480,6 @@ const EquipmentQueryModule = {
             }
         });
 
-        // 人物装备 - 部位
         document.querySelectorAll('.eq-btn-part').forEach(btn => {
             const val = btn.dataset.value;
             if (val === this.currentPart) {
@@ -477,7 +493,6 @@ const EquipmentQueryModule = {
             }
         });
 
-        // 人物装备 - 打造方式
         document.querySelectorAll('.eq-btn-type').forEach(btn => {
             const val = btn.dataset.value;
             if (val === this.currentType) {
@@ -491,7 +506,6 @@ const EquipmentQueryModule = {
             }
         });
 
-        // 宠装 - 等级
         document.querySelectorAll('.pe-btn-level').forEach(btn => {
             const val = parseInt(btn.dataset.value);
             if (val === this.petCurrentLevel) {
@@ -505,7 +519,6 @@ const EquipmentQueryModule = {
             }
         });
 
-        // 宠装 - 部位
         document.querySelectorAll('.pe-btn-part').forEach(btn => {
             const val = btn.dataset.value;
             if (val === this.petCurrentPart) {
@@ -545,6 +558,12 @@ const EquipmentQueryModule = {
             EquipmentQueryModule.applyUISettings();
             EquipmentQueryModule.saveUISettings();
         });
+        document.getElementById('eqScoreBgColor').addEventListener('input', function() {
+            EquipmentQueryModule.uiSettings.scoreBgColor = this.value;
+            EquipmentQueryModule.applyUISettings();
+            EquipmentQueryModule.calculateScore();
+            EquipmentQueryModule.saveUISettings();
+        });
         document.getElementById('eqFontSize').addEventListener('input', function() {
             const val = parseInt(this.value);
             document.getElementById('eqFontSizeDisplay').textContent = val;
@@ -560,12 +579,14 @@ const EquipmentQueryModule = {
                     btnTextColor: '#ffffff',
                     cardBgColor: '#ffffff',
                     textColor: '#1a1a2e',
-                    fontSize: 14
+                    fontSize: 14,
+                    scoreBgColor: '#1a2a3a'
                 };
                 document.getElementById('eqBgColor').value = EquipmentQueryModule.uiSettings.bgColor;
                 document.getElementById('eqCardColor').value = EquipmentQueryModule.uiSettings.cardBgColor;
                 document.getElementById('eqBtnColor').value = EquipmentQueryModule.uiSettings.btnColor;
                 document.getElementById('eqTextColor').value = EquipmentQueryModule.uiSettings.textColor;
+                document.getElementById('eqScoreBgColor').value = EquipmentQueryModule.uiSettings.scoreBgColor;
                 document.getElementById('eqFontSize').value = EquipmentQueryModule.uiSettings.fontSize;
                 document.getElementById('eqFontSizeDisplay').textContent = EquipmentQueryModule.uiSettings.fontSize;
                 EquipmentQueryModule.applyUISettings();
@@ -579,17 +600,14 @@ const EquipmentQueryModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 人物装备 - 等级按钮 =====
+        // ===== 人物装备按钮 =====
         document.querySelectorAll('.eq-btn-level').forEach(btn => {
             btn.addEventListener('click', function() {
                 EquipmentQueryModule.currentLevel = parseInt(this.dataset.value);
                 EquipmentQueryModule.render();
-                // 重新绑定清除按钮和放大事件（因为 render 会重建输入框）
                 EquipmentQueryModule.bindInputEvents();
             });
         });
-
-        // ===== 人物装备 - 部位按钮 =====
         document.querySelectorAll('.eq-btn-part').forEach(btn => {
             btn.addEventListener('click', function() {
                 EquipmentQueryModule.currentPart = this.dataset.value;
@@ -597,8 +615,6 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.bindInputEvents();
             });
         });
-
-        // ===== 人物装备 - 打造类型按钮 =====
         document.querySelectorAll('.eq-btn-type').forEach(btn => {
             btn.addEventListener('click', function() {
                 EquipmentQueryModule.currentType = this.dataset.value;
@@ -607,7 +623,7 @@ const EquipmentQueryModule = {
             });
         });
 
-        // ===== 宠装 - 等级按钮 =====
+        // ===== 宠装按钮 =====
         document.querySelectorAll('.pe-btn-level').forEach(btn => {
             btn.addEventListener('click', function() {
                 EquipmentQueryModule.petCurrentLevel = parseInt(this.dataset.value);
@@ -615,8 +631,6 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.bindInputEvents();
             });
         });
-
-        // ===== 宠装 - 部位按钮 =====
         document.querySelectorAll('.pe-btn-part').forEach(btn => {
             btn.addEventListener('click', function() {
                 EquipmentQueryModule.petCurrentPart = this.dataset.value;
@@ -625,7 +639,7 @@ const EquipmentQueryModule = {
             });
         });
 
-        // ===== 人物装备属性输入 =====
+        // ===== 属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
                 const attr = e.target.id.replace('eqAttr_', '');
@@ -635,10 +649,9 @@ const EquipmentQueryModule = {
                 }
                 EquipmentQueryModule.calculateMelt();
                 EquipmentQueryModule.updateQueryResult();
+                EquipmentQueryModule.calculateScore();
             }
         });
-
-        // ===== 宠装属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('pe-attr-input')) {
                 const attr = e.target.id.replace('peAttr_', '');
@@ -651,7 +664,7 @@ const EquipmentQueryModule = {
             }
         });
 
-        // ===== 人物装备 - 一键重置所有输入 =====
+        // ===== 重置全部 =====
         document.getElementById('eqResetAllBtn')?.addEventListener('click', function() {
             if (confirm('确定要清空当前人物装备的所有输入值吗？')) {
                 const inputs = document.querySelectorAll('#eqAttrInputArea .eq-attr-input');
@@ -664,8 +677,6 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.bindInputEvents();
             }
         });
-
-        // ===== 宠装 - 一键重置所有输入 =====
         document.getElementById('peResetAllBtn')?.addEventListener('click', function() {
             if (confirm('确定要清空当前宠装的所有输入值吗？')) {
                 const inputs = document.querySelectorAll('#peAttrInputArea .pe-attr-input');
@@ -681,10 +692,9 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  🔧 绑定输入框事件（清除按钮 + 放大效果）
+    //  🔧 绑定输入框事件
     // ============================================================
     bindInputEvents() {
-        // 人物装备 - 清除按钮
         document.querySelectorAll('#eqAttrInputArea .eq-clear-btn').forEach(btn => {
             btn.removeEventListener('click', btn._clearHandler);
             btn._clearHandler = function() {
@@ -698,8 +708,6 @@ const EquipmentQueryModule = {
             };
             btn.addEventListener('click', btn._clearHandler);
         });
-
-        // 人物装备 - 放大效果
         document.querySelectorAll('#eqAttrInputArea .eq-attr-input').forEach(input => {
             input.removeEventListener('focus', input._focusHandler);
             input.removeEventListener('blur', input._blurHandler);
@@ -719,7 +727,6 @@ const EquipmentQueryModule = {
             input.addEventListener('blur', input._blurHandler);
         });
 
-        // 宠装 - 清除按钮
         document.querySelectorAll('#peAttrInputArea .pe-clear-btn').forEach(btn => {
             btn.removeEventListener('click', btn._clearHandler);
             btn._clearHandler = function() {
@@ -733,8 +740,6 @@ const EquipmentQueryModule = {
             };
             btn.addEventListener('click', btn._clearHandler);
         });
-
-        // 宠装 - 放大效果
         document.querySelectorAll('#peAttrInputArea .pe-attr-input').forEach(input => {
             input.removeEventListener('focus', input._focusHandler);
             input.removeEventListener('blur', input._blurHandler);
@@ -1134,6 +1139,159 @@ const EquipmentQueryModule = {
             </div>
         `;
 
+        el.innerHTML = html;
+    },
+
+    // ============================================================
+    //  ⭐ 装备评分
+    // ============================================================
+    calculateScore() {
+        const level = this.currentLevel;
+        const part = this.currentPart;
+        const el = document.getElementById('eqScoreResult');
+        if (!el) return;
+
+        const inputs = document.querySelectorAll('.eq-attr-input');
+        const values = {};
+        for (let inp of inputs) {
+            const attr = inp.id.replace('eqAttr_', '');
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val !== 0) {
+                values[attr] = val;
+            }
+        }
+
+        if (Object.keys(values).length === 0) {
+            el.innerHTML = '<div style="color:#8ab0c8;">请输入属性值后自动评估</div>';
+            return;
+        }
+
+        const partData = this.equipmentData[level]?.[part];
+        if (!partData) {
+            el.innerHTML = '<div style="color:#8ab0c8;">暂无数据</div>';
+            return;
+        }
+
+        let craftData = {};
+        if (level === 160) {
+            craftData = partData['强化'] || {};
+        } else {
+            craftData = partData['强化'] || partData['普通'] || {};
+        }
+
+        const statAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
+        const isWeaponOrCloth = (part === '武器' || part === '衣服');
+
+        let totalScore = 0;
+        let maxScore = 0;
+        let scoreDetails = [];
+
+        for (let [attr, val] of Object.entries(values)) {
+            if (attr === '耐久') continue;
+            if (part === '武器' && (attr === '伤害' || attr === '命中')) continue;
+
+            let maxVal = null;
+            let attrLabel = attr;
+
+            if (statAttrs.includes(attr) && isWeaponOrCloth) {
+                let positiveCount = 0;
+                let hasNegative = false;
+                for (let sa of statAttrs) {
+                    if (values[sa] !== undefined && values[sa] > 0) positiveCount++;
+                    if (values[sa] !== undefined && values[sa] < 0) hasNegative = true;
+                }
+                const green = this.greenLimit[level];
+                if (!green) continue;
+
+                if (positiveCount === 1 && !hasNegative) {
+                    maxVal = green.single;
+                    attrLabel = attr + '(单加)';
+                } else if (positiveCount === 1 && hasNegative) {
+                    if (val > 0) {
+                        maxVal = green.plusMinus;
+                        attrLabel = attr + '(一加一减正)';
+                    } else {
+                        continue;
+                    }
+                } else if (positiveCount >= 2) {
+                    maxVal = green.double;
+                    attrLabel = attr + '(双加)';
+                } else {
+                    continue;
+                }
+            } else if (craftData && craftData[attr]) {
+                maxVal = craftData[attr][1];
+            }
+
+            if (!maxVal || maxVal === 0) continue;
+
+            const pct = Math.min(100, (val / maxVal) * 100);
+            totalScore += pct;
+            maxScore += 100;
+            scoreDetails.push({
+                attr: attrLabel,
+                val: val,
+                maxVal: maxVal,
+                pct: pct
+            });
+        }
+
+        let overallPct = 0;
+        let rating = '';
+        let ratingColor = '';
+        let ratingBg = '';
+
+        if (maxScore > 0) {
+            overallPct = totalScore / maxScore;
+            if (overallPct >= 0.9) {
+                rating = '🌟 极品';
+                ratingColor = '#f0d060';
+                ratingBg = 'rgba(240,208,96,0.15)';
+            } else if (overallPct >= 0.7) {
+                rating = '✅ 优秀';
+                ratingColor = '#60d080';
+                ratingBg = 'rgba(96,208,128,0.15)';
+            } else if (overallPct >= 0.5) {
+                rating = '📊 中等';
+                ratingColor = '#60b0e0';
+                ratingBg = 'rgba(96,176,224,0.15)';
+            } else if (overallPct >= 0.3) {
+                rating = '⚠️ 一般';
+                ratingColor = '#e0a060';
+                ratingBg = 'rgba(224,160,96,0.15)';
+            } else {
+                rating = '❌ 较差';
+                ratingColor = '#e06060';
+                ratingBg = 'rgba(224,96,96,0.15)';
+            }
+        } else {
+            overallPct = 0;
+            rating = '📭 无有效属性';
+            ratingColor = '#8ab0c8';
+            ratingBg = 'rgba(138,176,200,0.10)';
+        }
+
+        let html = `
+            <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:10px;padding:12px 16px;background:${ratingBg};border-radius:12px;border:1px solid ${ratingColor}40;">
+                <div style="font-size:1.4rem;font-weight:700;color:${ratingColor};">${rating}</div>
+                <div style="font-size:1.1rem;color:#e0e8f0;">综合评分 <span style="font-weight:700;color:#ffffff;">${(overallPct * 100).toFixed(0)}%</span></div>
+                <div style="font-size:0.75rem;color:#8ab0c8;flex:1;text-align:right;">基于 ${scoreDetails.length} 项属性评估</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">
+        `;
+
+        for (let d of scoreDetails) {
+            const color = d.pct >= 80 ? '#60d080' : d.pct >= 50 ? '#60b0e0' : '#e0a060';
+            html += `
+                <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:6px 10px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:0.7rem;color:#8ab0c8;">${d.attr}</div>
+                    <div style="font-size:1rem;font-weight:600;color:#ffffff;">${d.val}</div>
+                    <div style="font-size:0.6rem;color:${color};">${d.pct.toFixed(0)}%</div>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
         el.innerHTML = html;
     },
 
