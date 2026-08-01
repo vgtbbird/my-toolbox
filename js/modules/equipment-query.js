@@ -522,31 +522,7 @@ const EquipmentQueryModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 人物装备选择事件 =====
-        document.getElementById('eqLevel').addEventListener('change', (e) => {
-            this.currentLevel = parseInt(e.target.value);
-            const partSelect = document.getElementById('eqPart');
-            const parts = Object.keys(this.equipmentData[this.currentLevel] || {});
-            partSelect.innerHTML = parts.map(p => 
-                `<option value="${p}" ${p === this.currentPart ? 'selected' : ''}>${p}</option>`
-            ).join('');
-            if (!parts.includes(this.currentPart)) {
-                this.currentPart = parts[0] || '武器';
-                partSelect.value = this.currentPart;
-            }
-            this.render();
-        });
-
-        document.getElementById('eqPart').addEventListener('change', (e) => {
-            this.currentPart = e.target.value;
-            this.render();
-        });
-
-        document.getElementById('eqType').addEventListener('change', (e) => {
-            this.currentType = e.target.value;
-            this.render();
-        });
-
+       
         // ===== 人物装备属性输入 =====
         document.addEventListener('input', function(e) {
             if (e.target.classList && e.target.classList.contains('eq-attr-input')) {
@@ -560,16 +536,6 @@ const EquipmentQueryModule = {
             }
         });
 
-        // ===== 宠装选择事件 =====
-        document.getElementById('peLevel').addEventListener('change', (e) => {
-            this.petCurrentLevel = parseInt(e.target.value);
-            this.render();
-        });
-
-        document.getElementById('pePart').addEventListener('change', (e) => {
-            this.petCurrentPart = e.target.value;
-            this.render();
-        });
 
         // ===== 宠装属性输入 =====
         document.addEventListener('input', function(e) {
