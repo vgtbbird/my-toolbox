@@ -214,6 +214,7 @@ render() {
     this.updatePetInputs();
     this.updatePetQueryResult();
     this.updatePetValueResult();
+    this.updateButtonStates(); 
     this.saveUISettings();
     setTimeout(() => this.applyUISettings(), 100);
 },
@@ -264,6 +265,77 @@ render() {
         });
     },
 
+    updateButtonStates() {
+    // 人物装备 - 等级
+    document.querySelectorAll('.eq-btn-level').forEach(btn => {
+        const val = parseInt(btn.dataset.value);
+        if (val === this.currentLevel) {
+            btn.classList.add('active');
+            btn.style.background = '#4CAF50';
+            btn.style.color = '#fff';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#f0f4f8';
+            btn.style.color = '#1f3b53';
+        }
+    });
+
+    // 人物装备 - 部位
+    document.querySelectorAll('.eq-btn-part').forEach(btn => {
+        const val = btn.dataset.value;
+        if (val === this.currentPart) {
+            btn.classList.add('active');
+            btn.style.background = '#4CAF50';
+            btn.style.color = '#fff';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#f0f4f8';
+            btn.style.color = '#1f3b53';
+        }
+    });
+
+    // 人物装备 - 打造方式
+    document.querySelectorAll('.eq-btn-type').forEach(btn => {
+        const val = btn.dataset.value;
+        if (val === this.currentType) {
+            btn.classList.add('active');
+            btn.style.background = '#4CAF50';
+            btn.style.color = '#fff';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#f0f4f8';
+            btn.style.color = '#1f3b53';
+        }
+    });
+
+    // 宠装 - 等级
+    document.querySelectorAll('.pe-btn-level').forEach(btn => {
+        const val = parseInt(btn.dataset.value);
+        if (val === this.petCurrentLevel) {
+            btn.classList.add('active');
+            btn.style.background = '#4CAF50';
+            btn.style.color = '#fff';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#f0f4f8';
+            btn.style.color = '#1f3b53';
+        }
+    });
+
+    // 宠装 - 部位
+    document.querySelectorAll('.pe-btn-part').forEach(btn => {
+        const val = btn.dataset.value;
+        if (val === this.petCurrentPart) {
+            btn.classList.add('active');
+            btn.style.background = '#4CAF50';
+            btn.style.color = '#fff';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#f0f4f8';
+            btn.style.color = '#1f3b53';
+        }
+    });
+},
     // ============================================================
     //  🏗️ 构建UI（按钮版）
     // ============================================================
@@ -506,16 +578,16 @@ buildUI() {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 人物装备 - 等级按钮 =====
-        document.querySelectorAll('.eq-btn-level').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.eq-btn-level').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                EquipmentQueryModule.currentLevel = parseInt(this.dataset.value);
-                // 同时更新部位按钮（因为部位列表可能随等级变化）
-                EquipmentQueryModule.render();
-            });
-        });
+// ===== 人物装备 - 等级按钮 =====
+document.querySelectorAll('.eq-btn-level').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.eq-btn-level').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        EquipmentQueryModule.currentLevel = parseInt(this.dataset.value);
+        EquipmentQueryModule.render();
+        EquipmentQueryModule.updateButtonStates();  // ← 新增
+    });
+});
 
         // ===== 人物装备 - 部位按钮 =====
         document.querySelectorAll('.eq-btn-part').forEach(btn => {
