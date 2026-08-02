@@ -94,7 +94,7 @@ const EquipmentQueryModule = {
         '混元金钩': { level: 80, part: '武器' },
         '斜月狼牙': { level: 80, part: '武器' },
         '黑炎魔刀': { level: 80, part: '武器' },
-        '渡魂箫': { level: 80, part: '武器' },
+        '渡魂蒿': { level: 80, part: '武器' },
         // ===== 90-150级普通打造武器 =====
         '冷月': { level: 0, part: '武器', range: '90-150' },
         '屠龙': { level: 0, part: '武器', range: '90-150' },
