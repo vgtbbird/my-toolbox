@@ -1,5 +1,7 @@
 // ============================================================
-//  🐾 抓宠收益模块 - 完整版（含月华露成本 + 卖出弹窗）
+//  🐾 抓宠收益模块 - 完整版
+//  功能：记录怪物幼儿园抓宠数据，统计收益
+//  优化：场景颜色标记 + 输入框撑满 + 宠物图标
 // ============================================================
 const PetHuntModule = {
     id: 'petHunt',
@@ -14,7 +16,11 @@ const PetHuntModule = {
         btnTextColor: '#ffffff',
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
-        fontSize: 14
+        fontSize: 14,
+        // 场景颜色
+        sceneColorCurrent: '#4CAF50',
+        sceneColorNext: '#f0d060',
+        sceneColorDone: '#6c87a0'
     },
 
     // ========== 数据 ==========
@@ -24,11 +30,13 @@ const PetHuntModule = {
     filterState: { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' },
     sortState: { field: 'date', order: 'desc' },
 
+    // ========== 场景分组 ==========
     sceneGroups: {
-        group1: ['长寿郊外', '朱紫国', '建邺城'],
-        group2: ['江南野外', '大唐国境', '北俱芦洲'],
-        group3: ['大唐境外', '麒麟山', '傲来国']
+        group1: { name: '第一组', scenes: ['长寿郊外', '朱紫国', '建邺城'] },
+        group2: { name: '第二组', scenes: ['江南野外', '大唐国境', '北俱芦洲'] },
+        group3: { name: '第三组', scenes: ['大唐境外', '麒麟山', '傲来国'] }
     },
+    groupKeys: ['group1', 'group2', 'group3'],
     allScenes: ['长寿郊外', '朱紫国', '建邺城', '江南野外', '大唐国境', '北俱芦洲', '大唐境外', '麒麟山', '傲来国'],
     sceneGroupMap: {
         '长寿郊外': 'group1', '朱紫国': 'group1', '建邺城': 'group1',
@@ -36,7 +44,15 @@ const PetHuntModule = {
         '大唐境外': 'group3', '麒麟山': 'group3', '傲来国': 'group3'
     },
 
-    quickPets: ['吸血鬼', '幽灵', '鼠先锋', '犀牛将军', '蝴蝶仙子', '雷鸟人'],
+    // ========== 常用宠物（带图标） ==========
+    quickPets: [
+        { name: '吸血鬼', icon: '🧛' },
+        { name: '幽灵', icon: '👻' },
+        { name: '鼠先锋', icon: '🐭' },
+        { name: '犀牛将军', icon: '🦏' },
+        { name: '蝴蝶仙子', icon: '🦋' },
+        { name: '雷鸟人', icon: '⚡' }
+    ],
 
     defaultPetLibrary: [
         { name: '大力金刚', level: '飞升', mustSkills: ['高级强力', '高级防御'], refPrice: 100, isRare: true },
@@ -76,7 +92,7 @@ const PetHuntModule = {
     render() {
         this.updateStats();
         this.updateRecordsTable();
-        this.updateScenePrediction();
+        this.updateSceneColors();
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
     },
@@ -92,7 +108,10 @@ const PetHuntModule = {
             btnTextColor: '#ffffff',
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
-            fontSize: 14
+            fontSize: 14,
+            sceneColorCurrent: '#4CAF50',
+            sceneColorNext: '#f0d060',
+            sceneColorDone: '#6c87a0'
         };
         this.filterState = data.filterState || { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' };
         this.sortState = data.sortState || { field: 'date', order: 'desc' };
@@ -118,7 +137,10 @@ const PetHuntModule = {
             btnTextColor: '#ffffff',
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
-            fontSize: 14
+            fontSize: 14,
+            sceneColorCurrent: '#4CAF50',
+            sceneColorNext: '#f0d060',
+            sceneColorDone: '#6c87a0'
         };
     },
 
@@ -148,6 +170,8 @@ const PetHuntModule = {
         container.querySelectorAll('.stat-item .num').forEach(el => {
             el.style.setProperty('font-size', (s.fontSize + 6) + 'px', 'important');
         });
+        // 更新场景颜色
+        this.updateSceneColors();
     },
 
     calcStats() {
@@ -158,7 +182,6 @@ const PetHuntModule = {
         const weekStartStr = weekStart.toISOString().split('T')[0];
         let todayCount = 0, weekCount = 0, totalCount = 0;
         let variantCount = 0, totalValue = 0, soldValue = 0, totalCost = 0, totalProfit = 0;
-
         for (let r of this.records) {
             const dateStr = r.date.split(' ')[0];
             totalCount++;
@@ -166,7 +189,6 @@ const PetHuntModule = {
             if (r.price && r.sold) totalValue += r.price;
             if (r.sold) soldValue += r.price || 0;
             if (r.cost) totalCost += r.cost;
-            // ✅ 只有已卖出的才计算利润
             if (r.sold && r.price && r.cost !== undefined) {
                 totalProfit += (r.price - r.cost);
             }
@@ -226,69 +248,92 @@ const PetHuntModule = {
         this.render();
     },
 
-    // ========== 卖出弹窗 ==========
     toggleSold(id) {
         const record = this.records.find(r => r.id === id);
         if (!record) return;
-
         if (record.sold) {
-            // 已卖出 → 改回未卖出
             record.sold = false;
             this.saveData();
             this.render();
             return;
         }
-
-        // 未卖出 → 卖出：弹窗输入售价
         const currentPrice = record.price || 0;
-        const defaultMsg = currentPrice > 0 ? `当前估值：${currentPrice}万` : '未设估值';
         const input = prompt(
             `🐾 ${record.petName}\n当前估值：${currentPrice}万\n月华露成本：${record.cost || 0}万\n\n请输入实际卖出价格（万）：`,
             currentPrice > 0 ? currentPrice : ''
         );
         if (input === null) return;
-
         const price = parseFloat(input);
         if (isNaN(price) || price < 0) {
             alert('请输入有效价格！');
             return;
         }
-
         record.price = price;
         record.sold = true;
         this.saveData();
         this.render();
     },
 
-    updateScenePrediction() {
+    // ========== 场景颜色更新 ==========
+    updateSceneColors() {
         const selectedScene = document.getElementById('phScene')?.value;
-        const el = document.getElementById('phScenePrediction');
-        if (!el) return;
-        if (!selectedScene || selectedScene === '') {
-            el.innerHTML = '选择场景后显示下一组预测';
+        if (!selectedScene) {
+            // 没有选择场景，恢复默认
+            document.querySelectorAll('.ph-scene-btn').forEach(btn => {
+                btn.style.background = '#f0f4f8';
+                btn.style.borderColor = '#bccad9';
+                btn.style.color = '#1f3b53';
+            });
             return;
         }
-        if (this.customScenes.includes(selectedScene)) {
-            el.innerHTML = `📍 自定义场景：${selectedScene}`;
+
+        const currentGroup = this.sceneGroupMap[selectedScene];
+        if (!currentGroup) {
+            document.querySelectorAll('.ph-scene-btn').forEach(btn => {
+                btn.style.background = '#f0f4f8';
+                btn.style.borderColor = '#bccad9';
+                btn.style.color = '#1f3b53';
+            });
             return;
         }
-        const groupKey = this.sceneGroupMap[selectedScene];
-        if (!groupKey) {
-            el.innerHTML = '未知场景';
-            return;
-        }
-        const groupIndex = parseInt(groupKey.replace('group', ''));
-        const nextGroupIndex = groupIndex === 3 ? 1 : groupIndex + 1;
-        const nextGroupKey = 'group' + nextGroupIndex;
-        const nextScenes = this.sceneGroups[nextGroupKey];
-        const currentScenes = this.sceneGroups[groupKey];
-        el.innerHTML = `
-            <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:0.8rem;padding:4px 0;">
-                <span>📍 当前组：<strong style="color:#4CAF50;">${currentScenes.join('、')}</strong></span>
-                <span>➡️ 下一组：<strong style="color:#f0d060;">${nextScenes.join('、')}</strong></span>
-                <span style="color:#8ab0c8;font-size:0.7rem;">💡 提前飞过去蹲点！</span>
-            </div>
-        `;
+
+        // 计算下一组
+        const groupIndex = this.groupKeys.indexOf(currentGroup);
+        const nextIndex = (groupIndex + 1) % this.groupKeys.length;
+        const nextGroup = this.groupKeys[nextIndex];
+
+        // 获取颜色设置
+        const colorCurrent = this.uiSettings.sceneColorCurrent || '#4CAF50';
+        const colorNext = this.uiSettings.sceneColorNext || '#f0d060';
+        const colorDone = this.uiSettings.sceneColorDone || '#6c87a0';
+
+        // 遍历所有场景按钮
+        document.querySelectorAll('.ph-scene-btn').forEach(btn => {
+            const scene = btn.dataset.scene;
+            const group = this.sceneGroupMap[scene];
+            if (!group) {
+                btn.style.background = '#f0f4f8';
+                btn.style.borderColor = '#bccad9';
+                btn.style.color = '#1f3b53';
+                return;
+            }
+            if (group === currentGroup) {
+                // 当前组：用当前色
+                btn.style.background = colorCurrent;
+                btn.style.borderColor = colorCurrent;
+                btn.style.color = '#fff';
+            } else if (group === nextGroup) {
+                // 下一组：用高亮色
+                btn.style.background = colorNext;
+                btn.style.borderColor = colorNext;
+                btn.style.color = '#1f3b53';
+            } else {
+                // 其他组：灰色（已刷过/未到）
+                btn.style.background = colorDone;
+                btn.style.borderColor = colorDone;
+                btn.style.color = '#fff';
+            }
+        });
     },
 
     // ========== 构建UI ==========
@@ -297,11 +342,13 @@ const PetHuntModule = {
         if (!container) return;
 
         const sceneOptions = this.allScenes.map(s => `<option value="${s}">${s}</option>`).join('');
+        // 场景快捷按钮
         const sceneQuickBtns = this.allScenes.map(s => 
             `<button class="ph-scene-btn" data-scene="${s}" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;margin:1px;">${s}</button>`
         ).join('');
+        // 常用宠物（带图标）
         const quickPetBtns = this.quickPets.map(p => 
-            `<button class="ph-quick-pet" data-pet="${p}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#eef4fa;cursor:pointer;font-size:0.65rem;margin:1px;">${p}</button>`
+            `<button class="ph-quick-pet" data-pet="${p.name}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#eef4fa;cursor:pointer;font-size:0.65rem;margin:1px;">${p.icon || '🐾'} ${p.name}</button>`
         ).join('');
         const skillBtns = [0,1,2,3,4,5].map(n => 
             `<button class="ph-skill-btn" data-skill="${n}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;min-width:28px;text-align:center;">${n}</button>`
@@ -312,6 +359,9 @@ const PetHuntModule = {
         const costBtns = [8, 16, 24, 32, 40].map(c => 
             `<button class="ph-cost-btn" data-cost="${c}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;">${c}万</button>`
         ).join('');
+
+        // UI颜色设置
+        const s = this.uiSettings;
 
         container.innerHTML = `
             <!-- 界面设置 -->
@@ -326,26 +376,38 @@ const PetHuntModule = {
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:8px 0;">
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🎨 背景色</label>
-                            <input type="color" id="phBgColor" value="${this.uiSettings.bgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                            <input type="color" id="phBgColor" value="${s.bgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">📦 卡片色</label>
-                            <input type="color" id="phCardColor" value="${this.uiSettings.cardBgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                            <input type="color" id="phCardColor" value="${s.cardBgColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🔘 按钮色</label>
-                            <input type="color" id="phBtnColor" value="${this.uiSettings.btnColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                            <input type="color" id="phBtnColor" value="${s.btnColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">📝 文字色</label>
-                            <input type="color" id="phTextColor" value="${this.uiSettings.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                            <input type="color" id="phTextColor" value="${s.textColor}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🔤 字体大小</label>
                             <div style="display:flex;align-items:center;gap:6px;">
-                                <input type="range" id="phFontSize" min="12" max="20" value="${this.uiSettings.fontSize}" style="width:80px;">
-                                <span id="phFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${this.uiSettings.fontSize}</span>
+                                <input type="range" id="phFontSize" min="12" max="20" value="${s.fontSize}" style="width:80px;">
+                                <span id="phFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${s.fontSize}</span>
                             </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">🟢 当前组</label>
+                            <input type="color" id="phSceneColorCurrent" value="${s.sceneColorCurrent || '#4CAF50'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">🟡 下一组</label>
+                            <input type="color" id="phSceneColorNext" value="${s.sceneColorNext || '#f0d060'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">⚪ 已刷过</label>
+                            <input type="color" id="phSceneColorDone" value="${s.sceneColorDone || '#6c87a0'}" style="width:50px;height:36px;border:2px solid #ddd;border-radius:8px;cursor:pointer;">
                         </div>
                         <div style="display:flex;align-items:center;justify-content:center;">
                             <button class="btn-small" id="phResetUI" style="background:#b48b5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">↩️ 重置</button>
@@ -382,7 +444,7 @@ const PetHuntModule = {
                         </div>
                         <div style="margin-top:6px;color:#8ab0c8;font-size:0.8rem;">
                             🔄 刷新顺序：第一组 → 第二组 → 第三组 → 第一组 → ...
-                            <br>💡 知道当前在哪一组，就能预判下一次刷新地点，提前飞过去！
+                            <br>💡 同一组内具体场景随机，颜色标记帮助判断当前在哪个阶段！
                         </div>
                     </div>
                 </div>
@@ -399,38 +461,38 @@ const PetHuntModule = {
                     </div>
                 </div>
                 <div class="module-body" id="phAddBody">
-                    <!-- 第1行 -->
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:6px;">
-                        <div style="display:flex;align-items:center;gap:4px;">
+                    <!-- 第1行：变异 + 宠物名 + 技能（撑满整行） -->
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:6px;">
+                        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
                             <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">✨ 变异</span>
                             <button class="ph-variant-btn active" data-variant="no" style="padding:3px 12px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">普通</button>
                             <button class="ph-variant-btn" data-variant="yes" style="padding:3px 12px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.7rem;font-weight:600;">变异</button>
                         </div>
-                        <div style="flex:0 0 120px;">
+                        <div style="flex:2;min-width:140px;">
                             <input type="text" id="phPetNameInput" placeholder="宠物名" style="width:100%;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;background:white;">
                             <div id="phPetMatchList" style="display:none;background:white;border:1px solid #bccad9;border-radius:8px;max-height:100px;overflow-y:auto;position:absolute;z-index:100;min-width:150px;"></div>
                             <div id="phPetInfoDisplay" style="display:none;background:#f0f5fb;border-radius:10px;padding:4px 10px;margin-top:3px;font-size:0.7rem;border:1px solid #d0dce8;"></div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:120px;">
                             <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">📊 技能</span>
                             ${skillBtns}
-                            <input type="number" id="phSkillCountInput" placeholder="手" min="0" max="20" style="width:44px;padding:3px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                            <input type="number" id="phSkillCountInput" placeholder="手" min="0" max="20" style="width:50px;padding:3px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         </div>
                     </div>
 
-                    <!-- 第2行 -->
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:6px;">
+                    <!-- 第2行：常用宠物 -->
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:6px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">🐾 常用</span>
                         ${quickPetBtns}
                     </div>
 
                     <!-- 第3行：售价 + 成本 -->
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:6px;">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:6px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">💰 估值</span>
                         ${priceBtns}
                         <input type="number" id="phPrice" placeholder="手动" min="0" step="0.1" style="width:70px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         <span style="font-size:0.7rem;color:#5a7a94;">万</span>
-                        <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-left:4px;">💊 成本</span>
+                        <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-left:2px;">💊 成本</span>
                         ${costBtns}
                         <input type="number" id="phCost" placeholder="手动" min="0" step="0.1" style="width:60px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         <span style="font-size:0.7rem;color:#5a7a94;">万</span>
@@ -439,13 +501,13 @@ const PetHuntModule = {
                         </label>
                     </div>
 
-                    <!-- 第4行 -->
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:4px;">
+                    <!-- 第4行：场景 -->
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 4px;margin-bottom:4px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">📍 场景</span>
                         ${sceneQuickBtns}
                     </div>
 
-                    <!-- 第5行 -->
+                    <!-- 第5行：场景下拉 + 预测 + 保存 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;">
                         <select id="phScene" style="flex:1;min-width:120px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;background:white;">
                             <option value="">选择场景</option>
@@ -598,6 +660,25 @@ const PetHuntModule = {
             PetHuntModule.applyUISettings();
             PetHuntModule.saveUISettings();
         });
+        // 场景颜色
+        document.getElementById('phSceneColorCurrent').addEventListener('input', function() {
+            PetHuntModule.uiSettings.sceneColorCurrent = this.value;
+            PetHuntModule.applyUISettings();
+            PetHuntModule.saveUISettings();
+            PetHuntModule.updateSceneColors();
+        });
+        document.getElementById('phSceneColorNext').addEventListener('input', function() {
+            PetHuntModule.uiSettings.sceneColorNext = this.value;
+            PetHuntModule.applyUISettings();
+            PetHuntModule.saveUISettings();
+            PetHuntModule.updateSceneColors();
+        });
+        document.getElementById('phSceneColorDone').addEventListener('input', function() {
+            PetHuntModule.uiSettings.sceneColorDone = this.value;
+            PetHuntModule.applyUISettings();
+            PetHuntModule.saveUISettings();
+            PetHuntModule.updateSceneColors();
+        });
         document.getElementById('phResetUI').addEventListener('click', function() {
             if (confirm('重置所有UI设置为默认值？')) {
                 PetHuntModule.uiSettings = {
@@ -606,7 +687,10 @@ const PetHuntModule = {
                     btnTextColor: '#ffffff',
                     cardBgColor: '#ffffff',
                     textColor: '#1a1a2e',
-                    fontSize: 14
+                    fontSize: 14,
+                    sceneColorCurrent: '#4CAF50',
+                    sceneColorNext: '#f0d060',
+                    sceneColorDone: '#6c87a0'
                 };
                 document.getElementById('phBgColor').value = PetHuntModule.uiSettings.bgColor;
                 document.getElementById('phCardColor').value = PetHuntModule.uiSettings.cardBgColor;
@@ -614,6 +698,9 @@ const PetHuntModule = {
                 document.getElementById('phTextColor').value = PetHuntModule.uiSettings.textColor;
                 document.getElementById('phFontSize').value = PetHuntModule.uiSettings.fontSize;
                 document.getElementById('phFontSizeDisplay').textContent = PetHuntModule.uiSettings.fontSize;
+                document.getElementById('phSceneColorCurrent').value = PetHuntModule.uiSettings.sceneColorCurrent;
+                document.getElementById('phSceneColorNext').value = PetHuntModule.uiSettings.sceneColorNext;
+                document.getElementById('phSceneColorDone').value = PetHuntModule.uiSettings.sceneColorDone;
                 PetHuntModule.applyUISettings();
                 PetHuntModule.saveUISettings();
                 alert('✅ UI设置已重置！');
@@ -720,37 +807,21 @@ const PetHuntModule = {
             });
         });
 
-        // 场景快捷
+        // 场景快捷 - 点击时同时更新颜色
         document.querySelectorAll('.ph-scene-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const scene = this.dataset.scene;
                 document.getElementById('phScene').value = scene;
-                document.querySelectorAll('.ph-scene-btn').forEach(b => {
-                    b.style.background = '#f0f4f8';
-                    b.style.borderColor = '#bccad9';
-                    b.style.color = '#1f3b53';
-                });
-                this.style.background = '#4CAF50';
-                this.style.borderColor = '#4CAF50';
-                this.style.color = '#fff';
+                PetHuntModule.updateSceneColors();
+                // 更新预测
                 PetHuntModule.updateScenePrediction();
             });
         });
 
-        // 场景下拉
+        // 场景下拉 - 变化时更新颜色
         document.getElementById('phScene').addEventListener('change', function() {
+            PetHuntModule.updateSceneColors();
             PetHuntModule.updateScenePrediction();
-            const val = this.value;
-            document.querySelectorAll('.ph-scene-btn').forEach(b => {
-                b.style.background = '#f0f4f8';
-                b.style.borderColor = '#bccad9';
-                b.style.color = '#1f3b53';
-                if (b.dataset.scene === val) {
-                    b.style.background = '#4CAF50';
-                    b.style.borderColor = '#4CAF50';
-                    b.style.color = '#fff';
-                }
-            });
         });
 
         // 宠物名匹配
@@ -818,7 +889,7 @@ const PetHuntModule = {
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
             });
-            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示下一组预测';
+            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示预测';
             alert('✅ 记录已保存！');
         });
 
@@ -846,7 +917,7 @@ const PetHuntModule = {
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
             });
-            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示下一组预测';
+            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示预测';
         });
 
         // 添加宠物
@@ -1023,7 +1094,6 @@ const PetHuntModule = {
             const soldText = r.sold ? '✅ 已卖' : '⏳ 未卖';
             const priceText = r.price ? r.price.toFixed(1) + '万' : '-';
             const costText = r.cost ? r.cost.toFixed(1) + '万' : '-';
-            // ✅ 只有已卖出的才显示利润
             let profitText = '-';
             if (r.sold && r.price && r.cost !== undefined) {
                 const profit = r.price - r.cost;
@@ -1068,7 +1138,6 @@ const PetHuntModule = {
             if (r.price && r.sold) totalValue += r.price;
             if (r.sold) soldValue += r.price || 0;
             if (r.cost) totalCost += r.cost;
-            // ✅ 只有已卖出的才计算利润
             if (r.sold && r.price && r.cost !== undefined) totalProfit += (r.price - r.cost);
         }
         const unsoldValue = totalValue - soldValue;
