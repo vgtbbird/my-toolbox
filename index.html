@@ -755,15 +755,23 @@
             const msg = document.getElementById('syncResultMsg');
 
             if (result.success) {
-                let detailText = '';
-                if (result.details) {
-                    const parts = [];
-                    for (let [key, val] of Object.entries(result.details)) {
-                        const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key;
-                        parts.push(`${label}: ${val.history}条`);
+            let detailText = '';
+            if (result.details) {
+                const parts = [];
+                for (let [key, val] of Object.entries(result.details)) {
+                    const label = key === 'petRing' ? '跑宠环' : key === 'treePlant' ? '种树' : key === 'petHunt' ? '抓宠' : key;
+                    let count = 0;
+                    if (key === 'petHunt') {
+                        count = val.records || 0;
+                    } else {
+                        count = (val.history || 0) + (val.records || 0);
                     }
-                    detailText = parts.join(' | ');
+                    if (count > 0) {
+                        parts.push(`${label}: ${count}条`);
+                    }
                 }
+                detailText = parts.join(' | ');
+            }
                 display.textContent = `☁️ 云端共 ${result.total} 条数据 (${detailText})`;
                 msg.textContent = `✅ 查询成功`;
                 msg.style.color = '#2d6b2d';
