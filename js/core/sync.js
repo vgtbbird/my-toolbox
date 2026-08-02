@@ -37,27 +37,35 @@ const GitHubSync = {
         return `https://gitee.com/api/v5/repos/${this.repoOwner}/${this.repoName}/contents/${this.filePath}`;
     },
 
-    countData(data) {
-        const counts = {};
-        let total = 0;
-        for (let [key, value] of Object.entries(data)) {
-            if (value && typeof value === 'object') {
-                const historyCount = value.history?.length || 0;
-                const recordsCount = value.records?.length || 0;
-                const petLibraryCount = value.petLibrary?.length || 0;
-                const customScenesCount = value.customScenes?.length || 0;
-                counts[key] = { 
-                    history: historyCount, 
-                    records: recordsCount,
-                    petLibrary: petLibraryCount,
-                    customScenes: customScenesCount
-                };
-                total += historyCount + recordsCount + petLibraryCount + customScenesCount;
+        countData(data) {
+            const counts = {};
+            let total = 0;
+            for (let [key, value] of Object.entries(data)) {
+                if (value && typeof value === 'object') {
+                    let count = 0;
+                    if (key === 'petHunt') {
+                        // petHunt 特殊处理
+                        const recordsCount = value.records?.length || 0;
+                        const petLibraryCount = value.petLibrary?.length || 0;
+                        const customScenesCount = value.customScenes?.length || 0;
+                        count = recordsCount + petLibraryCount + customScenesCount;
+                        counts[key] = { 
+                            records: recordsCount, 
+                            petLibrary: petLibraryCount, 
+                            customScenes: customScenesCount,
+                            total: count 
+                        };
+                    } else {
+                        const historyCount = value.history?.length || 0;
+                        const recordsCount = value.records?.length || 0;
+                        count = historyCount + recordsCount;
+                        counts[key] = { history: historyCount, records: recordsCount };
+                    }
+                    total += count;
+                }
             }
-        }
-        return { total, details: counts };
-    },
-
+            return { total, details: counts };
+        },
     async checkCloudData() {
         const token = this.getToken();
         if (!token) {
