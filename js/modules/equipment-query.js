@@ -1,7 +1,7 @@
 // ============================================================
 //  ⚔️ 装备打造 & 熔炼查询 + 🐾 宠装查询（整合版）
 //  数据来源：梦幻精灵 2026年7月 + 端游玩家社群整理
-//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部 + 装备评分 + 武器总伤
+//  优化：按钮式选择 + 输入框放大 + 清除按钮 + 重置全部 + 装备评分 + 武器总伤 + 截图识别
 // ============================================================
 const EquipmentQueryModule = {
     id: 'equipmentQuery',
@@ -29,6 +29,316 @@ const EquipmentQueryModule = {
     petCurrentLevel: 115,
     petCurrentPart: '护腕',
     petInputValues: {},
+
+    // ============================================================
+    //  ✅ 装备名称映射表（用于截图识别）
+    // ============================================================
+    equipmentNameMap: {
+        // ===== 60级武器 =====
+        '孔雀羽': { level: 60, part: '武器' },
+        '惊涛雪': { level: 60, part: '武器' },
+        '玲珑盏': { level: 60, part: '武器' },
+        '腾云杖': { level: 60, part: '武器' },
+        '连珠神弓': { level: 60, part: '武器' },
+        '如意宝珠': { level: 60, part: '武器' },
+        '玄铁矛': { level: 60, part: '武器' },
+        '乌金鬼头镰': { level: 60, part: '武器' },
+        '游龙剑': { level: 60, part: '武器' },
+        '赤焰双剑': { level: 60, part: '武器' },
+        '七彩罗刹': { level: 60, part: '武器' },
+        '青刚刺': { level: 60, part: '武器' },
+        '神火扇': { level: 60, part: '武器' },
+        '满天星': { level: 60, part: '武器' },
+        '震天锤': { level: 60, part: '武器' },
+        '青藤柳叶鞭': { level: 60, part: '武器' },
+        '蛇形月': { level: 60, part: '武器' },
+        '狼牙刀': { level: 60, part: '武器' },
+        '飞头盔': { level: 60, part: '武器' },
+        '破浪须': { level: 60, part: '武器' },
+        // ===== 70级武器 =====
+        '金刚伞': { level: 70, part: '武器' },
+        '醉浮生': { level: 70, part: '武器' },
+        '玉兔盏': { level: 70, part: '武器' },
+        '游鱼戏珠': { level: 70, part: '武器' },
+        '沧海明珠': { level: 70, part: '武器' },
+        '金蛇信': { level: 70, part: '武器' },
+        '狂魔镰': { level: 70, part: '武器' },
+        '北斗七星剑': { level: 70, part: '武器' },
+        '墨玉双剑': { level: 70, part: '武器' },
+        '缚神绫': { level: 70, part: '武器' },
+        '华光刺': { level: 70, part: '武器' },
+        '阴风扇': { level: 70, part: '武器' },
+        '水晶棒': { level: 70, part: '武器' },
+        '巨灵神锤': { level: 70, part: '武器' },
+        '雷鸣嗜血鞭': { level: 70, part: '武器' },
+        '子母双月': { level: 70, part: '武器' },
+        '龙鳞宝刀': { level: 70, part: '武器' },
+        '竹叶青': { level: 70, part: '武器' },
+        '雷公木': { level: 70, part: '武器' },
+        // ===== 80级武器 =====
+        '落梅伞': { level: 80, part: '武器' },
+        '沉默天戊': { level: 80, part: '武器' },
+        '冰心盏': { level: 80, part: '武器' },
+        '碧玺杖': { level: 80, part: '武器' },
+        '灵犀望月': { level: 80, part: '武器' },
+        '无量玉璧': { level: 80, part: '武器' },
+        '丈八点钢矛': { level: 80, part: '武器' },
+        '鲛煞': { level: 80, part: '武器' },
+        '碧玉剑': { level: 80, part: '武器' },
+        '梅花双剑': { level: 80, part: '武器' },
+        '九天仙绫': { level: 80, part: '武器' },
+        '龙鳞刺': { level: 80, part: '武器' },
+        '风云雷电': { level: 80, part: '武器' },
+        '日月光华': { level: 80, part: '武器' },
+        '天崩地裂': { level: 80, part: '武器' },
+        '混元金钩': { level: 80, part: '武器' },
+        '斜月狼牙': { level: 80, part: '武器' },
+        '黑炎魔刀': { level: 80, part: '武器' },
+        '渡魂箫': { level: 80, part: '武器' },
+        // ===== 90-150级普通打造武器 =====
+        '冷月': { level: 0, part: '武器', range: '90-150' },
+        '屠龙': { level: 0, part: '武器', range: '90-150' },
+        '血刃': { level: 0, part: '武器', range: '90-150' },
+        '鱼肠': { level: 0, part: '武器', range: '90-150' },
+        '倚天': { level: 0, part: '武器', range: '90-150' },
+        '湛卢': { level: 0, part: '武器', range: '90-150' },
+        '蟠龙': { level: 0, part: '武器', range: '90-150' },
+        '云鹤': { level: 0, part: '武器', range: '90-150' },
+        '风荷': { level: 0, part: '武器', range: '90-150' },
+        '暗夜': { level: 0, part: '武器', range: '90-150' },
+        '梨花': { level: 0, part: '武器', range: '90-150' },
+        '霹雳': { level: 0, part: '武器', range: '90-150' },
+        '彩虹': { level: 0, part: '武器', range: '90-150' },
+        '流云': { level: 0, part: '武器', range: '90-150' },
+        '碧波': { level: 0, part: '武器', range: '90-150' },
+        '撕天': { level: 0, part: '武器', range: '90-150' },
+        '毒牙': { level: 0, part: '武器', range: '90-150' },
+        '胭脂': { level: 0, part: '武器', range: '90-150' },
+        '如意': { level: 0, part: '武器', range: '90-150' },
+        '乾坤': { level: 0, part: '武器', range: '90-150' },
+        '月光': { level: 0, part: '武器', range: '90-150' },
+        '离火': { level: 0, part: '武器', range: '90-150' },
+        '飞星': { level: 0, part: '武器', range: '90-150' },
+        '月华': { level: 0, part: '武器', range: '90-150' },
+        '斩海': { level: 0, part: '武器', range: '90-150' },
+        '惊魔': { level: 0, part: '武器', range: '90-150' },
+        '燎天': { level: 0, part: '武器', range: '90-150' },
+        '鬼骨': { level: 0, part: '武器', range: '90-150' },
+        '云梦': { level: 0, part: '武器', range: '90-150' },
+        '枕霞': { level: 0, part: '武器', range: '90-150' },
+        '太极': { level: 0, part: '武器', range: '90-150' },
+        '玉龙': { level: 0, part: '武器', range: '90-150' },
+        '秋风': { level: 0, part: '武器', range: '90-150' },
+        '八卦': { level: 0, part: '武器', range: '90-150' },
+        '鬼牙': { level: 0, part: '武器', range: '90-150' },
+        '雷神': { level: 0, part: '武器', range: '90-150' },
+        '非攻': { level: 0, part: '武器', range: '90-150' },
+        '百鬼': { level: 0, part: '武器', range: '90-150' },
+        '幽篁': { level: 0, part: '武器', range: '90-150' },
+        '业焰': { level: 0, part: '武器', range: '90-150' },
+        '玉辉': { level: 0, part: '武器', range: '90-150' },
+        '鹿鸣': { level: 0, part: '武器', range: '90-150' },
+        '破魄': { level: 0, part: '武器', range: '90-150' },
+        '肃魂': { level: 0, part: '武器', range: '90-150' },
+        '无敌': { level: 0, part: '武器', range: '90-150' },
+        '沧海': { level: 0, part: '武器', range: '90-150' },
+        '红莲': { level: 0, part: '武器', range: '90-150' },
+        '盘龙': { level: 0, part: '武器', range: '90-150' },
+        '昆吾': { level: 0, part: '武器', range: '90-150' },
+        '弦歌': { level: 0, part: '武器', range: '90-150' },
+        '鸦九': { level: 0, part: '武器', range: '90-150' },
+        // ===== 120-140级强化打造武器 =====
+        '秋水澄流': { level: 0, part: '武器', range: '120-140' },
+        '腾蛇郁刃': { level: 0, part: '武器', range: '120-140' },
+        '墨骨枯麟': { level: 0, part: '武器', range: '120-140' },
+        '冥火薄天': { level: 0, part: '武器', range: '120-140' },
+        '太极流光': { level: 0, part: '武器', range: '120-140' },
+        '龙鸣寒水': { level: 0, part: '武器', range: '120-140' },
+        '刑天之逆': { level: 0, part: '武器', range: '120-140' },
+        '五虎断魂': { level: 0, part: '武器', range: '120-140' },
+        '飞龙在天': { level: 0, part: '武器', range: '120-140' },
+        '五丁开山': { level: 0, part: '武器', range: '120-140' },
+        '元神禁锢': { level: 0, part: '武器', range: '120-140' },
+        '护法灭魔': { level: 0, part: '武器', range: '120-140' },
+        '魏武青虹': { level: 0, part: '武器', range: '120-140' },
+        '灵犀神剑': { level: 0, part: '武器', range: '120-140' },
+        '四法青云': { level: 0, part: '武器', range: '120-140' },
+        '画龙点睛': { level: 0, part: '武器', range: '120-140' },
+        '秋水人家': { level: 0, part: '武器', range: '120-140' },
+        '逍遥江湖': { level: 0, part: '武器', range: '120-140' },
+        '混元金锤': { level: 0, part: '武器', range: '120-140' },
+        '九瓣莲花': { level: 0, part: '武器', range: '120-140' },
+        '鬼王蚀日': { level: 0, part: '武器', range: '120-140' },
+        '偃月青龙': { level: 0, part: '武器', range: '120-140' },
+        '晓风残月': { level: 0, part: '武器', range: '120-140' },
+        '斩妖泣血': { level: 0, part: '武器', range: '120-140' },
+        '庄周梦蝶': { level: 0, part: '武器', range: '120-140' },
+        '凤翼流珠': { level: 0, part: '武器', range: '120-140' },
+        '雪鳞霜寒': { level: 0, part: '武器', range: '120-140' },
+        '回风舞雪': { level: 0, part: '武器', range: '120-140' },
+        '紫金葫芦': { level: 0, part: '武器', range: '120-140' },
+        '裂云啸日': { level: 0, part: '武器', range: '120-140' },
+        '架海金梁': { level: 0, part: '武器', range: '120-140' },
+        '擎天玉柱': { level: 0, part: '武器', range: '120-140' },
+        '随心铁杆': { level: 0, part: '武器', range: '120-140' },
+        '游龙惊鸿': { level: 0, part: '武器', range: '120-140' },
+        '仙人指路': { level: 0, part: '武器', range: '120-140' },
+        '血之刺藤': { level: 0, part: '武器', range: '120-140' },
+        '金风玉露': { level: 0, part: '武器', range: '120-140' },
+        '凰火燎原': { level: 0, part: '武器', range: '120-140' },
+        '风露清愁': { level: 0, part: '武器', range: '120-140' },
+        '秋水落霞': { level: 0, part: '武器', range: '120-140' },
+        '晃金仙绳': { level: 0, part: '武器', range: '120-140' },
+        '此最相思': { level: 0, part: '武器', range: '120-140' },
+        '九阴勾魂': { level: 0, part: '武器', range: '120-140' },
+        '雪蚕之刺': { level: 0, part: '武器', range: '120-140' },
+        '贯霜之牙': { level: 0, part: '武器', range: '120-140' },
+        '别情离恨': { level: 0, part: '武器', range: '120-140' },
+        '金玉双环': { level: 0, part: '武器', range: '120-140' },
+        '九天金线': { level: 0, part: '武器', range: '120-140' },
+        '月影星痕': { level: 0, part: '武器', range: '120-140' },
+        '雪羽穿云': { level: 0, part: '武器', range: '120-140' },
+        '碧火琉璃': { level: 0, part: '武器', range: '120-140' },
+        '降魔玉杵': { level: 0, part: '武器', range: '120-140' },
+        '青藤玉树': { level: 0, part: '武器', range: '120-140' },
+        '墨玉骷髅': { level: 0, part: '武器', range: '120-140' },
+        '金龙双剪': { level: 0, part: '武器', range: '120-140' },
+        '连理双树': { level: 0, part: '武器', range: '120-140' },
+        '祖龙对剑': { level: 0, part: '武器', range: '120-140' },
+        // ===== 150级强化打造武器 =====
+        '晴雪': { level: 150, part: '武器' },
+        '荒尘': { level: 150, part: '武器' },
+        '若木': { level: 150, part: '武器' },
+        '弑星': { level: 150, part: '武器' },
+        '擒龙': { level: 150, part: '武器' },
+        '九霄': { level: 150, part: '武器' },
+        '星瀚': { level: 150, part: '武器' },
+        '碎寂': { level: 150, part: '武器' },
+        '朝夕': { level: 150, part: '武器' },
+        '长息': { level: 150, part: '武器' },
+        '弦月': { level: 150, part: '武器' },
+        '赤明': { level: 150, part: '武器' },
+        '裂天': { level: 150, part: '武器' },
+        '浮屠': { level: 150, part: '武器' },
+        '离钩': { level: 150, part: '武器' },
+        '醍醐': { level: 150, part: '武器' },
+        '霜陨': { level: 150, part: '武器' },
+        '鸣鸿': { level: 150, part: '武器' },
+        // ===== 160级强化打造武器 =====
+        '晴雪': { level: 160, part: '武器' },
+        '荒尘': { level: 160, part: '武器' },
+        '若木': { level: 160, part: '武器' },
+        '弑皇': { level: 160, part: '武器' },
+        '擒龙': { level: 160, part: '武器' },
+        '九霄': { level: 160, part: '武器' },
+        '星瀚': { level: 160, part: '武器' },
+        '碎寂': { level: 160, part: '武器' },
+        '朝夕': { level: 160, part: '武器' },
+        '长息': { level: 160, part: '武器' },
+        '弦月': { level: 160, part: '武器' },
+        '赤明': { level: 160, part: '武器' },
+        '裂天': { level: 160, part: '武器' },
+        '浮犀': { level: 160, part: '武器' },
+        '离钩': { level: 160, part: '武器' },
+        '醍醐': { level: 160, part: '武器' },
+        '霜陨': { level: 160, part: '武器' },
+        '鸣鸿': { level: 160, part: '武器' },
+
+        // ===== 60级防具 =====
+        '水晶帽': { level: 60, part: '帽子' },
+        '玉女发冠': { level: 60, part: '帽子' },
+        '夜魔披风': { level: 60, part: '衣服' },
+        '霓裳羽衣': { level: 60, part: '衣服' },
+        '追星踏月': { level: 60, part: '鞋子' },
+        '攫魂铃': { level: 60, part: '腰带' },
+        '双魂引': { level: 60, part: '腰带' },
+        '风月宝链': { level: 60, part: '项链' },
+        '八卦坠': { level: 60, part: '项链' },
+        // ===== 70级防具 =====
+        '乾坤帽': { level: 70, part: '帽子' },
+        '魔女发冠': { level: 70, part: '帽子' },
+        '龙骨甲': { level: 70, part: '衣服' },
+        '流云素裙': { level: 70, part: '衣服' },
+        '九州履': { level: 70, part: '鞋子' },
+        '兽王腰带': { level: 70, part: '腰带' },
+        '百宝云': { level: 70, part: '腰带' },
+        '碧水青龙': { level: 70, part: '项链' },
+        '鬼牙攫魂': { level: 70, part: '项链' },
+        // ===== 80级防具 =====
+        '黑魔冠': { level: 80, part: '帽子' },
+        '七彩花环': { level: 80, part: '帽子' },
+        '死亡斗篷': { level: 80, part: '衣服' },
+        '七宝天衣': { level: 80, part: '衣服' },
+        '万里追云履': { level: 80, part: '鞋子' },
+        '八卦锻带': { level: 80, part: '腰带' },
+        '圣王坠': { level: 80, part: '腰带' },
+        '万里卷云': { level: 80, part: '项链' },
+        '疾风之铃': { level: 80, part: '项链' },
+        // ===== 90级防具 =====
+        '白玉龙冠': { level: 90, part: '帽子' },
+        '凤翅金翎': { level: 90, part: '帽子' },
+        '神谕披风': { level: 90, part: '衣服' },
+        '飞天羽衣': { level: 90, part: '衣服' },
+        '踏雪无痕': { level: 90, part: '鞋子' },
+        '幻彩玉带': { level: 90, part: '腰带' },
+        '七彩玲珑': { level: 90, part: '项链' },
+        // ===== 100级防具 =====
+        '水晶虁帽': { level: 100, part: '帽子' },
+        '寒雉霜蚕': { level: 100, part: '帽子' },
+        '珊瑚玉衣': { level: 100, part: '衣服' },
+        '霞花翠裙': { level: 100, part: '衣服' },
+        '平步青云': { level: 100, part: '鞋子' },
+        '珠翠玉环': { level: 100, part: '腰带' },
+        '黄玉琉佩': { level: 100, part: '项链' },
+        // ===== 110级防具 =====
+        '翡翠曜冠': { level: 110, part: '帽子' },
+        '曜月嵌星': { level: 110, part: '帽子' },
+        '金蚕披风': { level: 110, part: '衣服' },
+        '金蚕丝裙': { level: 110, part: '衣服' },
+        '追云逐电': { level: 110, part: '鞋子' },
+        '金蟾含珠': { level: 110, part: '腰带' },
+        '鸾飞凤舞': { level: 110, part: '项链' },
+        // ===== 120级防具 =====
+        '金丝黑玉冠': { level: 120, part: '帽子' },
+        '郁金流苏簪': { level: 120, part: '帽子' },
+        '乾坤护心甲': { level: 120, part: '衣服' },
+        '紫香金乌裙': { level: 120, part: '衣服' },
+        '乾坤天罡履': { level: 120, part: '鞋子' },
+        '乾坤紫玉带': { level: 120, part: '腰带' },
+        '衔珠金凤佩': { level: 120, part: '项链' },
+        // ===== 130级防具 =====
+        '白玉琉璃冠': { level: 130, part: '帽子' },
+        '玉簪附蝉翎': { level: 130, part: '帽子' },
+        '蝉翼金丝甲': { level: 130, part: '衣服' },
+        '碧霞彩云衣': { level: 130, part: '衣服' },
+        '七星逐月靴': { level: 130, part: '鞋子' },
+        '琉璃寒玉带': { level: 130, part: '腰带' },
+        '七璜珠玉佩': { level: 130, part: '项链' },
+        // ===== 140级防具 =====
+        '兽鬼珐琅面': { level: 140, part: '帽子' },
+        '弯羽九凤冠': { level: 140, part: '帽子' },
+        '金丝鱼鳞甲': { level: 140, part: '衣服' },
+        '金丝蝉翼衫': { level: 140, part: '衣服' },
+        '碧霞流云履': { level: 140, part: '鞋子' },
+        '蝉翼鱼佩带': { level: 140, part: '腰带' },
+        '鎏金点翠佩': { level: 140, part: '项链' },
+        // ===== 150级防具 =====
+        '紫金磐龙冠': { level: 150, part: '帽子' },
+        '金珰紫焰冠': { level: 150, part: '帽子' },
+        '紫金磐龙甲': { level: 150, part: '衣服' },
+        '五彩凤翅衣': { level: 150, part: '衣服' },
+        '金丝逐日履': { level: 150, part: '鞋子' },
+        '磐龙凤翔带': { level: 150, part: '腰带' },
+        '紫金碧玺佩': { level: 150, part: '项链' },
+        // ===== 160级防具 =====
+        '浑天玄火盔': { level: 160, part: '帽子' },
+        '乾元鸣凤冕': { level: 160, part: '帽子' },
+        '混元一气甲': { level: 160, part: '衣服' },
+        '鎏金浣月衣': { level: 160, part: '衣服' },
+        '辟尘分光履': { level: 160, part: '鞋子' },
+        '紫霄云芒带': { level: 160, part: '腰带' },
+        '落霞陨星坠': { level: 160, part: '项链' },
+    },
 
     // ============================================================
     //  ✅ 人物装备 - 基础主属性数据（已锁定 60-160级）
@@ -370,6 +680,17 @@ const EquipmentQueryModule = {
                     </div>
                 </div>
                 <div class="module-body">
+                    <!-- 📷 截图识别 -->
+                    <div style="margin-bottom:10px;padding:10px 14px;background:#f0f5fb;border-radius:12px;border:1px dashed #6b8baa;text-align:center;" id="eqOcrDropZone">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+                            <span style="font-size:0.8rem;color:#1f3b53;">📷 截图识别</span>
+                            <button class="btn-small" id="eqOcrBtn" style="background:#6b8baa;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">📤 上传截图</button>
+                            <span style="font-size:0.65rem;color:#5a7a94;">支持 JPG/PNG，拖拽或点击上传</span>
+                        </div>
+                        <div id="eqOcrResult" style="font-size:0.75rem;color:#5a7a94;margin-top:4px;min-height:20px;">点击上传装备截图，自动识别属性</div>
+                        <input type="file" id="eqOcrFileInput" accept="image/*" style="display:none;">
+                    </div>
+
                     <div style="margin-bottom:8px;">
                         <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
                         <div style="display:flex;flex-wrap:wrap;gap:4px;">${levelBtns}</div>
@@ -716,6 +1037,54 @@ const EquipmentQueryModule = {
                 EquipmentQueryModule.bindInputEvents();
             }
         });
+
+        // ===== 📷 截图识别 =====
+        const ocrBtn = document.getElementById('eqOcrBtn');
+        const fileInput = document.getElementById('eqOcrFileInput');
+        const dropZone = document.getElementById('eqOcrDropZone');
+
+        if (ocrBtn && fileInput) {
+            ocrBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    EquipmentQueryModule.recognizeEquipment(ev.target.result);
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = '';
+            });
+        }
+
+        if (dropZone) {
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#4CAF50';
+                this.style.background = '#e8f5e9';
+            });
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#6b8baa';
+                this.style.background = '#f0f5fb';
+            });
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#6b8baa';
+                this.style.background = '#f0f5fb';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        EquipmentQueryModule.recognizeEquipment(ev.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
     },
 
     // ============================================================
@@ -788,6 +1157,194 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
+    //  📷 截图识别核心
+    // ============================================================
+    async recognizeEquipment(imageSource) {
+        const resultEl = document.getElementById('eqOcrResult');
+        if (!resultEl) return;
+
+        if (typeof Tesseract === 'undefined') {
+            resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
+            resultEl.style.color = '#e06060';
+            return;
+        }
+
+        resultEl.textContent = '⏳ 正在识别中（约3-8秒），请稍候...';
+        resultEl.style.color = '#8ab0c8';
+
+        try {
+            const worker = await Tesseract.createWorker('chi_sim');
+            const { data: { text } } = await worker.recognize(imageSource);
+            await worker.terminate();
+
+            console.log('📷 OCR原始结果:', text);
+
+            const parsed = this.parseEquipmentText(text);
+            if (!parsed || !parsed.name) {
+                resultEl.textContent = '⚠️ 未能识别出有效装备信息，请确认截图清晰或手动输入';
+                resultEl.style.color = '#e0a060';
+                return;
+            }
+
+            let previewText = `✅ 识别到：${parsed.name}`;
+            if (parsed.level) previewText += ` | ${parsed.level}级`;
+            if (parsed.part) previewText += ` | ${parsed.part}`;
+            if (parsed.craftType) previewText += ` | ${parsed.craftType}打造`;
+            if (Object.keys(parsed.attrs || {}).length > 0) {
+                const attrCount = Object.keys(parsed.attrs).length;
+                previewText += ` | ${attrCount}项属性`;
+            }
+            resultEl.textContent = previewText;
+            resultEl.style.color = '#60d080';
+
+            this.fillRecognizedData(parsed);
+
+            if (Object.keys(parsed.attrs || {}).length > 0) {
+                this.render();
+            }
+
+        } catch (err) {
+            console.error('OCR识别失败:', err);
+            resultEl.textContent = '❌ 识别失败：' + err.message;
+            resultEl.style.color = '#e06060';
+        }
+    },
+
+    // ============================================================
+    //  📝 解析装备文本
+    // ============================================================
+    parseEquipmentText(text) {
+        const lines = text.split('\n').map(s => s.trim()).filter(s => s);
+        const fullText = lines.join(' ');
+
+        console.log('📝 解析文本:', fullText);
+
+        const result = {
+            name: null,
+            level: null,
+            part: null,
+            craftType: null,
+            attrs: {}
+        };
+
+        // 1. 提取等级
+        const levelMatch = fullText.match(/等级\s*(\d+)/);
+        if (levelMatch) {
+            result.level = parseInt(levelMatch[1]);
+        }
+
+        // 2. 提取装备名称（从映射表匹配）
+        let foundName = null;
+        let foundLevel = null;
+        let foundPart = null;
+
+        const nameKeys = Object.keys(this.equipmentNameMap).sort((a, b) => b.length - a.length);
+        for (let name of nameKeys) {
+            if (fullText.includes(name)) {
+                const info = this.equipmentNameMap[name];
+                if (result.level === info.level || info.level === 0 || !result.level) {
+                    foundName = name;
+                    foundLevel = info.level;
+                    foundPart = info.part;
+                    break;
+                }
+            }
+        }
+
+        if (foundName && foundLevel === 0 && result.level) {
+            foundLevel = result.level;
+        }
+
+        result.name = foundName;
+        result.level = foundLevel || result.level;
+        result.part = foundPart;
+
+        // 3. 提取打造方式
+        if (fullText.includes('强化')) {
+            result.craftType = '强化';
+        } else if (fullText.includes('普通')) {
+            result.craftType = '普通';
+        }
+
+        // 4. 提取属性值
+        const attrPatterns = {
+            '伤害': /伤害[+\s]*(\d+\.?\d*)/,
+            '命中': /命中[+\s]*(\d+\.?\d*)/,
+            '防御': /防御[+\s]*(\d+\.?\d*)/,
+            '灵力': /灵力[+\s]*(\d+\.?\d*)/,
+            '气血': /气血[+\s]*(\d+\.?\d*)/,
+            '魔法': /魔法[+\s]*(\d+\.?\d*)/,
+            '敏捷': /敏捷[+\s]*(\d+\.?\d*)/,
+            '体质': /体质[+\s]*(\d+\.?\d*)/,
+            '魔力': /魔力[+\s]*(\d+\.?\d*)/,
+            '力量': /力量[+\s]*(\d+\.?\d*)/,
+            '耐力': /耐力[+\s]*(\d+\.?\d*)/,
+            '耐久': /耐久度[+\s]*(\d+\.?\d*)/
+        };
+
+        for (let [attr, pattern] of Object.entries(attrPatterns)) {
+            const match = fullText.match(pattern);
+            if (match) {
+                const val = parseFloat(match[1]);
+                if (!isNaN(val) && val > 0) {
+                    result.attrs[attr] = val;
+                }
+            }
+        }
+
+        return result;
+    },
+
+    // ============================================================
+    //  🖊️ 填入识别数据
+    // ============================================================
+    fillRecognizedData(parsed) {
+        if (!parsed) return;
+
+        // 自动切换等级
+        if (parsed.level && this.levels.includes(parsed.level)) {
+            this.currentLevel = parsed.level;
+            // 更新按钮状态
+            document.querySelectorAll('.eq-btn-level').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.value) === parsed.level);
+            });
+        }
+
+        // 自动切换部位
+        if (parsed.part) {
+            const parts = Object.keys(this.equipmentData[this.currentLevel] || {});
+            if (parts.includes(parsed.part)) {
+                this.currentPart = parsed.part;
+                document.querySelectorAll('.eq-btn-part').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.value === parsed.part);
+                });
+            }
+        }
+
+        // 自动切换打造方式
+        if (parsed.craftType && ['普通', '强化'].includes(parsed.craftType)) {
+            this.currentType = parsed.craftType;
+            document.querySelectorAll('.eq-btn-type').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === parsed.craftType);
+            });
+        }
+
+        // 填入属性值
+        if (parsed.attrs) {
+            for (let [attr, val] of Object.entries(parsed.attrs)) {
+                const input = document.getElementById(`eqAttr_${attr}`);
+                if (input) {
+                    input.value = val;
+                    this.inputValues[attr] = val;
+                }
+            }
+        }
+
+        // 重新渲染界面
+        this.render();
+    },
+
+    // ============================================================
     //  人物装备 - 更新输入框
     // ============================================================
     updateMeltInputs() {
@@ -801,13 +1358,11 @@ const EquipmentQueryModule = {
             return;
         }
 
-        // 使用"可输入"列表，如果没有则使用"可熔炼"
         const attrList = meltInfo.可输入 || meltInfo.可熔炼;
         let html = '';
         for (let attr of attrList) {
             const val = this.inputValues[attr] !== undefined ? this.inputValues[attr] : '';
             const placeholder = attr === '耐久' ? '输入耐久' : '输入数值(负值允许)';
-            // 判断是否可熔炼（用于显示提示）
             const isMeltable = meltInfo.可熔炼 && meltInfo.可熔炼.includes(attr);
             const hint = (!isMeltable && part === '武器' && (attr === '伤害' || attr === '命中')) ? ' ⚠️不可熔炼' : '';
             html += `
@@ -1218,7 +1773,6 @@ const EquipmentQueryModule = {
 
         for (let [attr, val] of Object.entries(values)) {
             if (attr === '耐久') continue;
-            // 武器伤害和命中不参与评分（由武器总伤单独评价）
             if (part === '武器' && (attr === '伤害' || attr === '命中')) continue;
 
             let maxVal = null;
@@ -1335,7 +1889,6 @@ const EquipmentQueryModule = {
         const el = document.getElementById('eqWeaponResult');
         if (!el) return;
 
-        // 只在武器部位显示
         if (part !== '武器') {
             el.innerHTML = '';
             return;
@@ -1354,13 +1907,11 @@ const EquipmentQueryModule = {
         const damage = values['伤害'] || 0;
         const hit = values['命中'] || 0;
 
-        // 如果没有输入伤害和命中，显示提示
         if (!damage && !hit) {
             el.innerHTML = '<div style="color:#8ab0c8;">请输入伤害和命中后自动计算</div>';
             return;
         }
 
-        // 获取当前打造类型的数据
         const type = this.currentType;
         const partData = this.equipmentData[level]?.[part];
         if (!partData) {
@@ -1378,23 +1929,18 @@ const EquipmentQueryModule = {
         const damageRange = data['伤害'] || [0, 0];
         const hitRange = data['命中'] || [0, 0];
 
-        // 总伤 = 伤害 + 命中/3
         const totalDamage = damage + hit / 3;
 
-        // 满属性总伤 = 满伤害 + 满命中/3
         const maxDamage = damageRange[1] || 0;
         const maxHit = hitRange[1] || 0;
         const maxTotalDamage = maxDamage + maxHit / 3;
 
-        // 国标总伤 = 国标伤害 + 国标命中/3
         const minDamage = damageRange[0] || 0;
         const minHit = hitRange[0] || 0;
         const minTotalDamage = minDamage + minHit / 3;
 
-        // 计算百分比
         const pct = maxTotalDamage > 0 ? (totalDamage / maxTotalDamage * 100) : 0;
 
-        // 评价等级
         let rating = '';
         let ratingColor = '';
         let ratingBg = '';
@@ -1420,7 +1966,6 @@ const EquipmentQueryModule = {
             ratingBg = 'rgba(224,96,96,0.15)';
         }
 
-        // 构建HTML
         let html = `
             <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:10px;padding:12px 16px;background:${ratingBg};border-radius:12px;border:1px solid ${ratingColor}40;">
                 <div style="font-size:1.4rem;font-weight:700;color:${ratingColor};">${rating}</div>
@@ -1566,121 +2111,121 @@ const EquipmentQueryModule = {
     // ============================================================
     //  🐾 宠装 - 价值评估
     // ============================================================
-updatePetValueResult() {
-    const level = this.petCurrentLevel;
-    const el = document.getElementById('peValueResult');
+    updatePetValueResult() {
+        const level = this.petCurrentLevel;
+        const el = document.getElementById('peValueResult');
 
-    const inputs = document.querySelectorAll('.pe-attr-input');
-    const values = {};
-    for (let inp of inputs) {
-        const attr = inp.id.replace('peAttr_', '');
-        const val = parseFloat(inp.value);
-        if (!isNaN(val) && val !== 0) {
-            values[attr] = val;
+        const inputs = document.querySelectorAll('.pe-attr-input');
+        const values = {};
+        for (let inp of inputs) {
+            const attr = inp.id.replace('peAttr_', '');
+            const val = parseFloat(inp.value);
+            if (!isNaN(val) && val !== 0) {
+                values[attr] = val;
+            }
         }
+
+        if (Object.keys(values).length === 0) {
+            el.innerHTML = '<div style="color:#5a7a94;">输入属性后自动评估价值</div>';
+            return;
+        }
+
+        const limits = this.petLimitData[level];
+        if (!limits) {
+            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
+            return;
+        }
+
+        const damage = values['伤害'] || 0;
+        const strength = values['力量'] || 0;
+        const attackValue = damage + strength;
+
+        const mana = values['法力'] || 0;
+        const spirit = values['灵力'] || 0;
+        const magicValue = mana + spirit;
+
+        const speed = values['速度'] || 0;
+        const agility = values['敏捷'] || 0;
+        const speedValue = speed + agility;
+
+        const defense = values['防御'] || 0;
+
+        const scoreBg = this.uiSettings.scoreBgColor || '#1a2a3a';
+
+        let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
+
+        const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
+        let attackRating = '', attackColor = '#5a7a94';
+        if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
+        else if (attackValue >= attackLimit * 0.7) { attackRating = '🔥 极品'; attackColor = '#2d6b2d'; }
+        else if (attackValue >= attackLimit * 0.5) { attackRating = '📊 优秀'; attackColor = '#b48b3a'; }
+        else if (attackValue > 0) { attackRating = '📉 一般'; attackColor = '#5a7a94'; }
+        else { attackRating = '⬇️ 低价值'; attackColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:600;color:#e0e8f0;">⚔️ 攻宠价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${attackColor};">${attackValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#8ab0c8;">伤害+力量 = ${damage.toFixed(1)} + ${strength.toFixed(1)} | 极限 ${attackLimit}</div>
+                <div style="font-weight:600;color:${attackColor};">${attackRating}</div>
+            </div>
+        `;
+
+        const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
+        let magicRating = '', magicColor = '#5a7a94';
+        if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
+        else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
+        else if (magicValue >= magicLimit * 0.5) { magicRating = '📊 优秀'; magicColor = '#b48b3a'; }
+        else if (magicValue > 0) { magicRating = '📉 一般'; magicColor = '#5a7a94'; }
+        else { magicRating = '⬇️ 低价值'; magicColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:600;color:#e0e8f0;">🔮 法宠价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#8ab0c8;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
+                <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
+            </div>
+        `;
+
+        const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
+        let speedRating = '', speedColor = '#5a7a94';
+        if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
+        else if (speedValue >= speedLimit * 0.7) { speedRating = '🔥 极品'; speedColor = '#2d6b2d'; }
+        else if (speedValue >= speedLimit * 0.5) { speedRating = '📊 优秀'; speedColor = '#b48b3a'; }
+        else if (speedValue > 0) { speedRating = '📉 一般'; speedColor = '#5a7a94'; }
+        else { speedRating = '⬇️ 低价值'; speedColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:600;color:#e0e8f0;">💨 配速价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${speedColor};">${speedValue.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#8ab0c8;">速度+敏捷 = ${speed.toFixed(1)} + ${agility.toFixed(1)} | 极限 ${speedLimit}</div>
+                <div style="font-weight:600;color:${speedColor};">${speedRating}</div>
+            </div>
+        `;
+
+        const defLimit = limits['防御'] || 0;
+        let defRating = '', defColor = '#5a7a94';
+        if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
+        else if (defense >= defLimit * 0.7) { defRating = '🔥 极品'; defColor = '#2d6b2d'; }
+        else if (defense >= defLimit * 0.5) { defRating = '📊 优秀'; defColor = '#b48b3a'; }
+        else if (defense > 0) { defRating = '📉 一般'; defColor = '#5a7a94'; }
+        else { defRating = '⬇️ 低价值'; defColor = '#8a6a8a'; }
+
+        html += `
+            <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:600;color:#e0e8f0;">🛡️ 防御价值</div>
+                <div style="font-size:1.2rem;font-weight:700;color:${defColor};">${defense.toFixed(1)}</div>
+                <div style="font-size:0.7rem;color:#8ab0c8;">防御 = ${defense.toFixed(1)} | 极限 ${defLimit}</div>
+                <div style="font-weight:600;color:${defColor};">${defRating}</div>
+            </div>
+        `;
+
+        html += `</div>`;
+
+        el.innerHTML = html;
     }
-
-    if (Object.keys(values).length === 0) {
-        el.innerHTML = '<div style="color:#5a7a94;">输入属性后自动评估价值</div>';
-        return;
-    }
-
-    const limits = this.petLimitData[level];
-    if (!limits) {
-        el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无数据</div>';
-        return;
-    }
-
-    const damage = values['伤害'] || 0;
-    const strength = values['力量'] || 0;
-    const attackValue = damage + strength;
-
-    const mana = values['法力'] || 0;
-    const spirit = values['灵力'] || 0;
-    const magicValue = mana + spirit;
-
-    const speed = values['速度'] || 0;
-    const agility = values['敏捷'] || 0;
-    const speedValue = speed + agility;
-
-    const defense = values['防御'] || 0;
-
-    const scoreBg = this.uiSettings.scoreBgColor || '#1a2a3a';
-
-    let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
-
-    const attackLimit = (limits['伤害'] || 0) + (limits['力量'] || 0);
-    let attackRating = '', attackColor = '#5a7a94';
-    if (attackValue >= attackLimit * 0.9) { attackRating = '🌟 超极品！'; attackColor = '#dbbd7c'; }
-    else if (attackValue >= attackLimit * 0.7) { attackRating = '🔥 极品'; attackColor = '#2d6b2d'; }
-    else if (attackValue >= attackLimit * 0.5) { attackRating = '📊 优秀'; attackColor = '#b48b3a'; }
-    else if (attackValue > 0) { attackRating = '📉 一般'; attackColor = '#5a7a94'; }
-    else { attackRating = '⬇️ 低价值'; attackColor = '#8a6a8a'; }
-
-    html += `
-        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
-            <div style="font-weight:600;color:#e0e8f0;">⚔️ 攻宠价值</div>
-            <div style="font-size:1.2rem;font-weight:700;color:${attackColor};">${attackValue.toFixed(1)}</div>
-            <div style="font-size:0.7rem;color:#8ab0c8;">伤害+力量 = ${damage.toFixed(1)} + ${strength.toFixed(1)} | 极限 ${attackLimit}</div>
-            <div style="font-weight:600;color:${attackColor};">${attackRating}</div>
-        </div>
-    `;
-
-    const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
-    let magicRating = '', magicColor = '#5a7a94';
-    if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
-    else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
-    else if (magicValue >= magicLimit * 0.5) { magicRating = '📊 优秀'; magicColor = '#b48b3a'; }
-    else if (magicValue > 0) { magicRating = '📉 一般'; magicColor = '#5a7a94'; }
-    else { magicRating = '⬇️ 低价值'; magicColor = '#8a6a8a'; }
-
-    html += `
-        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
-            <div style="font-weight:600;color:#e0e8f0;">🔮 法宠价值</div>
-            <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
-            <div style="font-size:0.7rem;color:#8ab0c8;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
-            <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
-        </div>
-    `;
-
-    const speedLimit = (limits['速度'] || 0) + (limits['敏捷'] || 0);
-    let speedRating = '', speedColor = '#5a7a94';
-    if (speedValue >= speedLimit * 0.9) { speedRating = '🌟 超极品！'; speedColor = '#dbbd7c'; }
-    else if (speedValue >= speedLimit * 0.7) { speedRating = '🔥 极品'; speedColor = '#2d6b2d'; }
-    else if (speedValue >= speedLimit * 0.5) { speedRating = '📊 优秀'; speedColor = '#b48b3a'; }
-    else if (speedValue > 0) { speedRating = '📉 一般'; speedColor = '#5a7a94'; }
-    else { speedRating = '⬇️ 低价值'; speedColor = '#8a6a8a'; }
-
-    html += `
-        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
-            <div style="font-weight:600;color:#e0e8f0;">💨 配速价值</div>
-            <div style="font-size:1.2rem;font-weight:700;color:${speedColor};">${speedValue.toFixed(1)}</div>
-            <div style="font-size:0.7rem;color:#8ab0c8;">速度+敏捷 = ${speed.toFixed(1)} + ${agility.toFixed(1)} | 极限 ${speedLimit}</div>
-            <div style="font-weight:600;color:${speedColor};">${speedRating}</div>
-        </div>
-    `;
-
-    const defLimit = limits['防御'] || 0;
-    let defRating = '', defColor = '#5a7a94';
-    if (defense >= defLimit * 0.9) { defRating = '🌟 超极品！'; defColor = '#dbbd7c'; }
-    else if (defense >= defLimit * 0.7) { defRating = '🔥 极品'; defColor = '#2d6b2d'; }
-    else if (defense >= defLimit * 0.5) { defRating = '📊 优秀'; defColor = '#b48b3a'; }
-    else if (defense > 0) { defRating = '📉 一般'; defColor = '#5a7a94'; }
-    else { defRating = '⬇️ 低价值'; defColor = '#8a6a8a'; }
-
-    html += `
-        <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
-            <div style="font-weight:600;color:#e0e8f0;">🛡️ 防御价值</div>
-            <div style="font-size:1.2rem;font-weight:700;color:${defColor};">${defense.toFixed(1)}</div>
-            <div style="font-size:0.7rem;color:#8ab0c8;">防御 = ${defense.toFixed(1)} | 极限 ${defLimit}</div>
-            <div style="font-weight:600;color:${defColor};">${defRating}</div>
-        </div>
-    `;
-
-    html += `</div>`;
-
-    el.innerHTML = html;
-}
 };
 
 // ===== 自动初始化 =====
