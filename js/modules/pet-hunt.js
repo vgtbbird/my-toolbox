@@ -369,7 +369,7 @@ const PetHuntModule = {
                             <button class="ph-variant-btn active" data-variant="no" style="padding:3px 12px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">普通</button>
                             <button class="ph-variant-btn" data-variant="yes" style="padding:3px 12px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.7rem;font-weight:600;">变异</button>
                         </div>
-                        <div style="flex:1;min-width:120px;">
+                       <div style="flex:0 0 120px;">
                             <input type="text" id="phPetNameInput" placeholder="宠物名" style="width:100%;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;background:white;">
                             <div id="phPetMatchList" style="display:none;background:white;border:1px solid #bccad9;border-radius:8px;max-height:100px;overflow-y:auto;position:absolute;z-index:100;min-width:150px;"></div>
                             <div id="phPetInfoDisplay" style="display:none;background:#f0f5fb;border-radius:10px;padding:4px 10px;margin-top:3px;font-size:0.7rem;border:1px solid #d0dce8;"></div>
