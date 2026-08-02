@@ -259,7 +259,7 @@ const TreePlantModule = {
                 </div>
                 <div class="module-body">
                     <div class="tree-current-box">
-                        <div class="info-item">🌱 树苗成本: <span class="val" id="trSeedCost">45</span> 万</div>
+                        <div class="info-item">🌱 树苗成本: <input type="number" id="trSeedCostInput" value="${this.current.seedCost || 45}" min="0" step="1" style="width:60px;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;"> 万</div>
                         <div class="info-item">🔄 基础摇树: <span class="val" id="trBaseShakes">6</span> 次</div>
                         <div class="info-item">📌 当前次数: <span class="val highlight" id="trCurrentShakes">6</span> 次</div>
                         <div class="info-item">🎯 已触发事件: <span class="val" id="trEventsDisplay">无</span></div>
@@ -667,6 +667,14 @@ const TreePlantModule = {
     },
 
     updateCurrent() {
+            // 同步树苗成本输入框
+        const costInput = document.getElementById('trSeedCostInput');
+        if (costInput) {
+            const val = parseFloat(costInput.value);
+            if (!isNaN(val) && val >= 0) {
+                this.current.seedCost = val;
+            }
+        }
         const stats = this.calcStats();
         const totalTrees = stats.count;
         const el = (id) => document.getElementById(id);
