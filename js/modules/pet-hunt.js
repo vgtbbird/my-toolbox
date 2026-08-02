@@ -2,7 +2,7 @@
 //  🐾 抓宠收益模块 - 完整版
 //  功能：记录怪物幼儿园抓宠数据，统计收益
 //  数据来源：端游玩家社群整理 + 梦幻精灵
-//  新增：场景快速按钮 + 刷新预测 + 卖出状态切换
+//  优化：卡片式变异切换 + 常用宠物快捷按钮 + 技能快捷卡片 + 售价快捷卡片 + 场景自定义
 // ============================================================
 const PetHuntModule = {
     id: 'petHunt',
@@ -23,6 +23,7 @@ const PetHuntModule = {
     // ========== 数据 ==========
     records: [],
     petLibrary: [],
+    customScenes: [],
     filterState: { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' },
     sortState: { field: 'date', order: 'desc' },
 
@@ -38,8 +39,9 @@ const PetHuntModule = {
         '江南野外': 'group2', '大唐国境': 'group2', '北俱芦洲': 'group2',
         '大唐境外': 'group3', '麒麟山': 'group3', '傲来国': 'group3'
     },
-    // 当前场景所属组（用于预测）
-    currentGroup: null,
+
+    // ========== 常用宠物（快捷按钮） ==========
+    quickPets: ['吸血鬼', '幽灵', '鼠先锋', '犀牛将军', '蝴蝶仙子', '雷鸟人'],
 
     // ========== 默认宠物库 ==========
     defaultPetLibrary: [
@@ -63,6 +65,7 @@ const PetHuntModule = {
         { name: '古代瑞兽', level: 45, mustSkills: ['高级神迹'], refPrice: 2, isRare: false },
         { name: '鼠先锋', level: 85, mustSkills: ['高级敏捷', '夜战'], refPrice: 2, isRare: false },
         { name: '泪妖', level: 85, mustSkills: ['法术暴击'], refPrice: 2, isRare: false },
+        { name: '犀牛将军', level: 75, mustSkills: ['高级必杀'], refPrice: 3, isRare: false },
         // 个性宠
         { name: '牛头', level: 35, mustSkills: ['鬼魂术', '夜战'], refPrice: 1, isRare: false },
         { name: '马面', level: 35, mustSkills: ['鬼魂术', '夜战', '高级必杀'], refPrice: 1, isRare: false },
@@ -93,6 +96,7 @@ const PetHuntModule = {
         const data = Storage.get(this.storageKey, {});
         this.records = data.records || [];
         this.petLibrary = data.petLibrary || [...this.defaultPetLibrary];
+        this.customScenes = data.customScenes || [];
         this.uiSettings = data.uiSettings || {
             bgColor: '#eef2f7',
             btnColor: '#4CAF50',
@@ -103,12 +107,15 @@ const PetHuntModule = {
         };
         this.filterState = data.filterState || { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' };
         this.sortState = data.sortState || { field: 'date', order: 'desc' };
+        // 合并场景列表
+        this.allScenes = [...this.allScenes, ...this.customScenes];
     },
 
     saveData() {
         Storage.set(this.storageKey, {
             records: this.records,
             petLibrary: this.petLibrary,
+            customScenes: this.customScenes,
             uiSettings: this.uiSettings,
             filterState: this.filterState,
             sortState: this.sortState
@@ -212,6 +219,17 @@ const PetHuntModule = {
         return true;
     },
 
+    // ========== 添加场景 ==========
+    addScene(sceneName) {
+        if (this.customScenes.includes(sceneName) || this.allScenes.includes(sceneName)) {
+            return false;
+        }
+        this.customScenes.push(sceneName);
+        this.allScenes.push(sceneName);
+        this.saveData();
+        return true;
+    },
+
     // ========== 添加记录 ==========
     addRecord(petName, isVariant, skillCount, price, sold, scene, notes) {
         const record = {
@@ -250,14 +268,23 @@ const PetHuntModule = {
     // ========== 更新场景预测 ==========
     updateScenePrediction() {
         const selectedScene = document.getElementById('phScene')?.value;
-        if (!selectedScene) {
-            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示下一组预测';
+        const el = document.getElementById('phScenePrediction');
+        if (!el) return;
+
+        if (!selectedScene || selectedScene === '') {
+            el.innerHTML = '选择场景后显示下一组预测';
+            return;
+        }
+
+        // 如果是自定义场景，不显示预测
+        if (this.customScenes.includes(selectedScene)) {
+            el.innerHTML = `📍 自定义场景：${selectedScene}`;
             return;
         }
 
         const groupKey = this.sceneGroupMap[selectedScene];
         if (!groupKey) {
-            document.getElementById('phScenePrediction').innerHTML = '未知场景';
+            el.innerHTML = '未知场景';
             return;
         }
 
@@ -267,7 +294,7 @@ const PetHuntModule = {
         const nextScenes = this.sceneGroups[nextGroupKey];
 
         const currentScenes = this.sceneGroups[groupKey];
-        document.getElementById('phScenePrediction').innerHTML = `
+        el.innerHTML = `
             <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:0.8rem;padding:4px 0;">
                 <span>📍 当前组：<strong style="color:#4CAF50;">${currentScenes.join('、')}</strong></span>
                 <span>➡️ 下一组：<strong style="color:#f0d060;">${nextScenes.join('、')}</strong></span>
@@ -281,13 +308,29 @@ const PetHuntModule = {
         const container = document.getElementById('petHuntContainer');
         if (!container) return;
 
+        // 场景选项
         const sceneOptions = this.allScenes.map(s => 
             `<option value="${s}">${s}</option>`
         ).join('');
 
-        // 场景快速按钮
+        // 场景快速按钮（只显示9个幼儿园场景 + 自定义场景）
         const sceneQuickBtns = this.allScenes.map(s => 
             `<button class="ph-scene-btn" data-scene="${s}" style="padding:2px 10px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:2px;">${s}</button>`
+        ).join('');
+
+        // 常用宠物快捷按钮
+        const quickPetBtns = this.quickPets.map(p => 
+            `<button class="ph-quick-pet" data-pet="${p}" style="padding:3px 12px;border-radius:14px;border:1px solid #bccad9;background:#eef4fa;cursor:pointer;font-size:0.7rem;margin:2px;">${p}</button>`
+        ).join('');
+
+        // 技能快捷卡片
+        const skillBtns = [0,1,2,3,4,5].map(n => 
+            `<button class="ph-skill-btn" data-skill="${n}" style="padding:4px 12px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.7rem;margin:2px;min-width:32px;text-align:center;">${n}</button>`
+        ).join('');
+
+        // 售价快捷按钮
+        const priceBtns = [30, 50, 100].map(p => 
+            `<button class="ph-price-btn" data-price="${p}" style="padding:3px 12px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.7rem;margin:2px;">${p}万</button>`
         ).join('');
 
         container.innerHTML = `
@@ -366,61 +409,78 @@ const PetHuntModule = {
             <!-- 添加抓宠记录 -->
             <div class="module">
                 <div class="module-header">
-                    <div class="title">📝 添加抓宠记录 <span class="hint">— 输入宠物名自动匹配</span></div>
+                    <div class="title">📝 添加抓宠记录 <span class="hint">— 点击按钮快速录入</span></div>
                     <div>
                         <button class="btn-small" id="phAddPetBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">➕ 添加宠物</button>
+                        <button class="btn-small" id="phAddSceneBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">📍 添加场景</button>
                         <button class="toggle-btn" id="phToggleAddBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
                     </div>
                 </div>
                 <div class="module-body" id="phAddBody">
-                    <!-- 场景快速按钮 -->
+                    <!-- 变异卡片切换 -->
                     <div style="margin-bottom:8px;">
-                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📍 快速选择场景</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${sceneQuickBtns}</div>
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">✨ 是否变异</div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="ph-variant-btn active" data-variant="no" style="padding:6px 20px;border-radius:20px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.8rem;font-weight:600;">普通</button>
+                            <button class="ph-variant-btn" data-variant="yes" style="padding:6px 20px;border-radius:20px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.8rem;font-weight:600;">变异</button>
+                        </div>
                     </div>
-                    <!-- 场景预测提示 -->
+
+                    <!-- 常用宠物快捷按钮 -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">🐾 常用宠物（点击快速填入）</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${quickPetBtns}</div>
+                    </div>
+
+                    <!-- 宠物名输入 -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">🐾 宠物名（支持手动输入自动匹配）</div>
+                        <input type="text" id="phPetNameInput" placeholder="输入宠物名自动匹配" style="width:100%;padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
+                        <div id="phPetMatchList" style="display:none;background:white;border:1px solid #bccad9;border-radius:8px;max-height:120px;overflow-y:auto;position:absolute;z-index:100;min-width:200px;margin-top:2px;"></div>
+                        <div id="phPetInfoDisplay" style="display:none;background:#f0f5fb;border-radius:12px;padding:6px 12px;margin-top:4px;font-size:0.8rem;border:1px solid #d0dce8;"></div>
+                    </div>
+
+                    <!-- 技能快捷卡片 -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📊 技能数（点击选择）</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                            ${skillBtns}
+                            <input type="number" id="phSkillCountInput" placeholder="手动" min="0" max="20" style="width:60px;padding:4px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                        </div>
+                    </div>
+
+                    <!-- 售价快捷按钮 -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">💰 售价（点击快速填入）</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                            ${priceBtns}
+                            <input type="number" id="phPrice" placeholder="手动输入" min="0" step="0.1" style="width:100px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                            <span style="font-size:0.7rem;color:#5a7a94;">万</span>
+                        </div>
+                    </div>
+
+                    <!-- 场景快速按钮 + 下拉 -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📍 场景</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${sceneQuickBtns}</div>
+                        <select id="phScene" style="width:100%;padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
+                            <option value="">选择场景</option>
+                            ${sceneOptions}
+                        </select>
+                    </div>
+
+                    <!-- 场景预测 -->
                     <div id="phScenePrediction" style="background:#1a2a3a;border-radius:10px;padding:6px 12px;margin-bottom:8px;color:#f2eee4;font-size:0.8rem;border-left:3px solid #f0d060;">
                         选择场景后显示下一组预测
                     </div>
 
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px 12px;padding:8px 0;">
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">🐾 宠物名</label>
-                            <input type="text" id="phPetNameInput" placeholder="输入宠物名自动匹配" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
-                            <div id="phPetMatchList" style="display:none;background:white;border:1px solid #bccad9;border-radius:8px;max-height:120px;overflow-y:auto;position:absolute;z-index:100;min-width:150px;margin-top:38px;"></div>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">✨ 是否变异</label>
-                            <div style="display:flex;gap:12px;padding:4px 0;">
-                                <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;"><input type="radio" name="phVariant" value="no" checked> 否</label>
-                                <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;"><input type="radio" name="phVariant" value="yes"> 是</label>
-                            </div>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📊 技能数</label>
-                            <select id="phSkillCount" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
-                                ${[0,1,2,3,4,5,6,7,8].map(n => `<option value="${n}">${n}技能</option>`).join('')}
-                            </select>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">💰 售价/估价(万)</label>
-                            <input type="number" id="phPrice" placeholder="0" min="0" step="0.1" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📍 场景</label>
-                            <select id="phScene" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
-                                ${sceneOptions}
-                            </select>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:3px;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">✅ 已卖出</label>
-                            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-                                <input type="checkbox" id="phSold">
-                                <span style="font-size:0.8rem;color:#5a7a94;">标记为已卖出</span>
-                            </div>
-                        </div>
+                    <!-- 已卖出 -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <input type="checkbox" id="phSold">
+                        <label style="font-size:0.8rem;color:#1f3b53;">✅ 已卖出</label>
                     </div>
-                    <div id="phPetInfoDisplay" style="display:none;background:#f0f5fb;border-radius:12px;padding:8px 12px;margin:6px 0;font-size:0.8rem;border:1px solid #d0dce8;"></div>
+
+                    <!-- 保存按钮 -->
                     <div style="display:flex;gap:8px;margin-top:6px;">
                         <button class="btn-complete" id="phSaveBtn" style="background:#4c7a5c;color:#fff;border:none;padding:6px 20px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.8rem;">📥 保存记录</button>
                         <button class="btn-small" id="phClearBtn" style="background:#b48b5f;color:#fff;border:none;padding:6px 16px;border-radius:30px;cursor:pointer;font-size:0.7rem;">🗑️ 清空表单</button>
@@ -511,6 +571,22 @@ const PetHuntModule = {
                     </div>
                 </div>
             </div>
+
+            <!-- 添加场景弹窗 -->
+            <div class="modal-overlay" id="phAddSceneModal">
+                <div class="modal-box" style="max-width:400px;">
+                    <h3>📍 添加场景</h3>
+                    <div class="modal-desc">添加自定义场景（非幼儿园场景），如：D5、庙里等。</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;padding:8px 0;">
+                        <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📍 场景名称 *</label>
+                        <input type="text" id="phNewSceneName" placeholder="如：D5" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;">
+                    </div>
+                    <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                        <button class="btn-cancel" id="phAddSceneCancel" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">取消</button>
+                        <button class="btn-confirm" id="phAddSceneConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 添加</button>
+                    </div>
+                </div>
+            </div>
         `;
     },
 
@@ -595,15 +671,80 @@ const PetHuntModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
+        // ===== 变异卡片切换 =====
+        document.querySelectorAll('.ph-variant-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.ph-variant-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = '#f0f4f8';
+                    b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
+                });
+                this.classList.add('active');
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            });
+        });
+
+        // ===== 常用宠物快捷按钮 =====
+        document.querySelectorAll('.ph-quick-pet').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const pet = this.dataset.pet;
+                document.getElementById('phPetNameInput').value = pet;
+                PetHuntModule.displayPetInfo(pet);
+                // 高亮
+                document.querySelectorAll('.ph-quick-pet').forEach(b => {
+                    b.style.background = '#eef4fa';
+                    b.style.borderColor = '#bccad9';
+                });
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            });
+        });
+
+        // ===== 技能快捷卡片 =====
+        document.querySelectorAll('.ph-skill-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const skill = this.dataset.skill;
+                document.getElementById('phSkillCountInput').value = skill;
+                document.querySelectorAll('.ph-skill-btn').forEach(b => {
+                    b.style.background = '#f0f4f8';
+                    b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
+                });
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            });
+        });
+
+        // ===== 售价快捷按钮 =====
+        document.querySelectorAll('.ph-price-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const price = this.dataset.price;
+                document.getElementById('phPrice').value = price;
+                document.querySelectorAll('.ph-price-btn').forEach(b => {
+                    b.style.background = '#f0f4f8';
+                    b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
+                });
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            });
+        });
+
         // ===== 场景快速按钮 =====
         document.querySelectorAll('.ph-scene-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const scene = this.dataset.scene;
                 document.getElementById('phScene').value = scene;
-                // 高亮当前选中的场景按钮
                 document.querySelectorAll('.ph-scene-btn').forEach(b => {
                     b.style.background = '#f0f4f8';
                     b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
                 });
                 this.style.background = '#4CAF50';
                 this.style.borderColor = '#4CAF50';
@@ -615,14 +756,11 @@ const PetHuntModule = {
         // ===== 场景下拉变化 =====
         document.getElementById('phScene').addEventListener('change', function() {
             PetHuntModule.updateScenePrediction();
-            // 取消场景按钮高亮
+            const val = this.value;
             document.querySelectorAll('.ph-scene-btn').forEach(b => {
                 b.style.background = '#f0f4f8';
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
-            });
-            const val = this.value;
-            document.querySelectorAll('.ph-scene-btn').forEach(b => {
                 if (b.dataset.scene === val) {
                     b.style.background = '#4CAF50';
                     b.style.borderColor = '#4CAF50';
@@ -679,25 +817,43 @@ const PetHuntModule = {
                 alert('请输入宠物名！');
                 return;
             }
-            const isVariant = document.querySelector('input[name="phVariant"]:checked').value === 'yes';
-            const skillCount = parseInt(document.getElementById('phSkillCount').value) || 0;
+            const isVariant = document.querySelector('.ph-variant-btn.active')?.dataset.variant === 'yes';
+            const skillCount = parseInt(document.getElementById('phSkillCountInput').value) || 0;
             const price = parseFloat(document.getElementById('phPrice').value) || 0;
             const scene = document.getElementById('phScene').value;
             const sold = document.getElementById('phSold').checked;
 
+            if (!scene) {
+                alert('请选择场景！');
+                return;
+            }
+
             PetHuntModule.addRecord(petName, isVariant, skillCount, price, sold, scene, '');
+            // 清空表单
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
+            document.getElementById('phSkillCountInput').value = '';
             document.getElementById('phSold').checked = false;
             document.getElementById('phPetInfoDisplay').style.display = 'none';
-            document.querySelector('input[name="phVariant"][value="no"]').checked = true;
-            document.getElementById('phSkillCount').value = '0';
-            // 重置场景按钮高亮
-            document.querySelectorAll('.ph-scene-btn').forEach(b => {
+            document.getElementById('phScene').value = '';
+            // 重置变异按钮
+            document.querySelectorAll('.ph-variant-btn').forEach(b => {
+                b.classList.remove('active');
                 b.style.background = '#f0f4f8';
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
             });
+            document.querySelector('.ph-variant-btn[data-variant="no"]').classList.add('active');
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.background = '#4CAF50';
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.borderColor = '#4CAF50';
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.color = '#fff';
+            // 重置高亮
+            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-scene-btn').forEach(b => {
+                b.style.background = '#f0f4f8';
+                b.style.borderColor = '#bccad9';
+                b.style.color = '#1f3b53';
+            });
+            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示下一组预测';
             alert('✅ 记录已保存！');
         });
 
@@ -705,15 +861,26 @@ const PetHuntModule = {
         document.getElementById('phClearBtn').addEventListener('click', function() {
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
+            document.getElementById('phSkillCountInput').value = '';
             document.getElementById('phSold').checked = false;
             document.getElementById('phPetInfoDisplay').style.display = 'none';
-            document.querySelector('input[name="phVariant"][value="no"]').checked = true;
-            document.getElementById('phSkillCount').value = '0';
-            document.querySelectorAll('.ph-scene-btn').forEach(b => {
+            document.getElementById('phScene').value = '';
+            document.querySelectorAll('.ph-variant-btn').forEach(b => {
+                b.classList.remove('active');
                 b.style.background = '#f0f4f8';
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
             });
+            document.querySelector('.ph-variant-btn[data-variant="no"]').classList.add('active');
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.background = '#4CAF50';
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.borderColor = '#4CAF50';
+            document.querySelector('.ph-variant-btn[data-variant="no"]').style.color = '#fff';
+            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-scene-btn').forEach(b => {
+                b.style.background = '#f0f4f8';
+                b.style.borderColor = '#bccad9';
+                b.style.color = '#1f3b53';
+            });
+            document.getElementById('phScenePrediction').innerHTML = '选择场景后显示下一组预测';
         });
 
         // ===== 添加宠物 =====
@@ -750,6 +917,35 @@ const PetHuntModule = {
             document.getElementById('phNewPetSkills').value = '';
             document.getElementById('phNewPetRare').checked = false;
             alert('✅ 宠物已添加到库！');
+            PetHuntModule.buildUI();
+            PetHuntModule.bindEvents();
+            PetHuntModule.render();
+        });
+
+        // ===== 添加场景 =====
+        document.getElementById('phAddSceneBtn').addEventListener('click', function() {
+            document.getElementById('phAddSceneModal').classList.add('show');
+        });
+        document.getElementById('phAddSceneCancel').addEventListener('click', function() {
+            document.getElementById('phAddSceneModal').classList.remove('show');
+        });
+        document.getElementById('phAddSceneModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+        document.getElementById('phAddSceneConfirm').addEventListener('click', function() {
+            const scene = document.getElementById('phNewSceneName').value.trim();
+            if (!scene) {
+                alert('请输入场景名称！');
+                return;
+            }
+            const success = PetHuntModule.addScene(scene);
+            if (!success) {
+                alert('⚠️ 该场景已存在！');
+                return;
+            }
+            document.getElementById('phAddSceneModal').classList.remove('show');
+            document.getElementById('phNewSceneName').value = '';
+            alert('✅ 场景已添加到库！');
             PetHuntModule.buildUI();
             PetHuntModule.bindEvents();
             PetHuntModule.render();
@@ -792,7 +988,7 @@ const PetHuntModule = {
             PetHuntModule.render();
         });
 
-        // ===== 删除/卖出切换（事件委托） =====
+        // ===== 删除/卖出切换 =====
         container.addEventListener('click', function(e) {
             const delBtn = e.target.closest('.ph-del-btn');
             if (delBtn) {
