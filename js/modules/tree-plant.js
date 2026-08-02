@@ -535,7 +535,10 @@ const TreePlantModule = {
 
     undo() {
         let hasLoot = false;
-        for (let key of this.LOOT_TYPES.map(t => t.key)) {
+        // 从后往前遍历，撤销最新添加的产出
+        const keys = this.LOOT_TYPES.map(t => t.key);
+        for (let i = keys.length - 1; i >= 0; i--) {
+            const key = keys[i];
             if (this.current.loot[key] > 0) {
                 this.current.loot[key]--;
                 hasLoot = true;
@@ -550,9 +553,7 @@ const TreePlantModule = {
                 for (let e of this.current.events) {
                     if (e === 'xiaozai') this.current.shakes += 1;
                     else if (e === 'chongzai') this.current.shakes += 2;
-                    else if (e === 'zaoshu') {
-                        hasZaoshu = true;
-                    }
+                    else if (e === 'zaoshu') hasZaoshu = true;
                 }
                 if (hasZaoshu) {
                     this.current.shakes = 6;
