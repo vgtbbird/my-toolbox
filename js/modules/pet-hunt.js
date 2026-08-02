@@ -168,7 +168,8 @@ const PetHuntModule = {
             if (r.price) totalValue += r.price;
             if (r.sold) soldValue += r.price;
             if (r.cost) totalCost += r.cost;
-            if (r.price && r.cost !== undefined) {
+            // 利润：只有已卖出的才计算
+            if (r.sold && r.price && r.cost !== undefined) {
                 const profit = r.price - (r.cost || 0);
                 totalProfit += profit;
             }
@@ -1048,7 +1049,8 @@ const PetHuntModule = {
             if (r.price) totalValue += r.price;
             if (r.sold) soldValue += r.price;
             if (r.cost) totalCost += r.cost;
-            if (r.price && r.cost !== undefined) totalProfit += (r.price - r.cost);
+            // 利润：只有已卖出的才计算
+            if (r.sold && r.price && r.cost !== undefined) totalProfit += (r.price - r.cost);
         }
         const unsoldValue = totalValue - soldValue;
         document.getElementById('phAnaTotal').textContent = count;
