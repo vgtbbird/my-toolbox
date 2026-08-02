@@ -1482,212 +1482,159 @@ const EquipmentQueryModule = {
     // ============================================================
     //  人物装备 - 熔炼计算
     // ============================================================
-    calculateMelt() {
-        const level = this.currentLevel;
-        const part = this.currentPart;
-        const el = document.getElementById('eqMeltResult');
+calculateMelt() {
+    const level = this.currentLevel;
+    const part = this.currentPart;
+    const el = document.getElementById('eqMeltResult');
 
-        const inputs = document.querySelectorAll('.eq-attr-input');
-        const values = {};
-        let hasValue = false;
-        for (let inp of inputs) {
-            const attr = inp.id.replace('eqAttr_', '');
-            const val = parseFloat(inp.value);
-            if (!isNaN(val) && val !== 0) {
-                values[attr] = val;
-                hasValue = true;
+    const inputs = document.querySelectorAll('.eq-attr-input');
+    const values = {};
+    let hasValue = false;
+    for (let inp of inputs) {
+        const attr = inp.id.replace('eqAttr_', '');
+        const val = parseFloat(inp.value);
+        if (!isNaN(val) && val !== 0) {
+            values[attr] = val;
+            hasValue = true;
+        }
+    }
+
+    if (!hasValue) {
+        el.innerHTML = '<div style="color:#5a7a94;font-size:0.95rem;">请输入属性值后自动计算</div>';
+        return;
+    }
+
+    const meltInfo = this.meltData[part];
+    if (!meltInfo) {
+        el.innerHTML = '<div style="color:#c0392b;font-size:0.95rem;">⚠️ 该部位暂无熔炼数据</div>';
+        return;
+    }
+
+    const partData = this.equipmentData[level]?.[part];
+    let craftData = {};
+    if (partData) {
+        if (level === 160) {
+            craftData = partData['强化'] || {};
+        } else {
+            craftData = partData['强化'] || partData['普通'] || {};
+        }
+    }
+
+    const green = this.greenLimit[level];
+    if (!green) {
+        el.innerHTML = '<div style="color:#c0392b;font-size:0.95rem;">⚠️ 该等级暂无绿字熔炼数据</div>';
+        return;
+    }
+
+    const statAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
+    const isWeaponOrCloth = (part === '武器' || part === '衣服');
+
+    let greenType = 'none';
+    let positiveStats = [];
+    let negativeStats = [];
+    let positiveCount = 0;
+    let hasNegative = false;
+
+    if (isWeaponOrCloth) {
+        for (let attr of statAttrs) {
+            if (values[attr] !== undefined && values[attr] !== 0) {
+                if (values[attr] > 0) {
+                    positiveStats.push(attr);
+                    positiveCount++;
+                } else if (values[attr] < 0) {
+                    negativeStats.push(attr);
+                    hasNegative = true;
+                }
             }
         }
 
-        if (!hasValue) {
-            el.innerHTML = '<div style="color:#5a7a94;">请输入属性值后自动计算</div>';
-            return;
+        if (positiveCount === 1 && !hasNegative) {
+            greenType = 'single';
+        } else if (positiveCount === 1 && hasNegative) {
+            greenType = 'plusMinus';
+        } else if (positiveCount >= 2) {
+            greenType = 'double';
+        }
+    }
+
+    let html = `<div style="font-weight:600;color:#1f3b53;margin-bottom:8px;font-size:1rem;">📊 ${level}级 ${part} 熔炼分析</div>`;
+
+    if (isWeaponOrCloth && greenType !== 'none') {
+        const typeLabels = {
+            'single': '单加',
+            'plusMinus': '一加一减',
+            'double': '双加'
+        };
+        const typeColors = {
+            'single': '#2d6b2d',
+            'plusMinus': '#b48b3a',
+            'double': '#2980b9'
+        };
+        html += `<div style="background:#f0f5fb;border-radius:10px;padding:6px 14px;margin-bottom:8px;font-size:0.9rem;border:1px solid #d0dce8;">
+            <span style="font-weight:600;">📌 识别为：</span>
+            <span style="font-weight:700;color:${typeColors[greenType]};">${typeLabels[greenType]}</span>
+            ${greenType === 'plusMinus' ? `（正面: ${positiveStats.join('、')}，负面: ${negativeStats.join('、')}）` : ''}
+            ${greenType === 'single' ? `（正面: ${positiveStats.join('、')}）` : ''}
+            ${greenType === 'double' ? `（正面: ${positiveStats.join('、')}）` : ''}
+        </div>`;
+    }
+
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">`;
+
+    let hasResult = false;
+
+    for (let [attr, val] of Object.entries(values)) {
+        if (val === 0) continue;
+
+        // 跳过伤害和命中（不可熔炼）
+        if (part === '武器' && (attr === '伤害' || attr === '命中')) {
+            continue;
         }
 
-        const meltInfo = this.meltData[part];
-        if (!meltInfo) {
-            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该部位暂无熔炼数据</div>';
-            return;
-        }
+        if (statAttrs.includes(attr) && isWeaponOrCloth) {
+            let maxValue = null;
+            let formulaType = '';
+            let limitName = '';
 
-        const partData = this.equipmentData[level]?.[part];
-        let craftData = {};
-        if (partData) {
-            if (level === 160) {
-                craftData = partData['强化'] || {};
+            if (greenType === 'single') {
+                maxValue = green.single;
+                formulaType = 'green';
+                limitName = `单加上限 ${maxValue}`;
+            } else if (greenType === 'plusMinus') {
+                if (val > 0) {
+                    maxValue = green.plusMinus;
+                    formulaType = 'green';
+                    limitName = `一加一减(正)上限 ${maxValue}`;
+                } else {
+                    maxValue = green.negativeMax;
+                    formulaType = 'negative';
+                    limitName = `一加一减(负)上限 -1`;
+                }
+            } else if (greenType === 'double') {
+                maxValue = green.double;
+                formulaType = 'green';
+                limitName = `双加上限 ${maxValue}`;
             } else {
-                craftData = partData['强化'] || partData['普通'] || {};
-            }
-        }
-
-        const green = this.greenLimit[level];
-        if (!green) {
-            el.innerHTML = '<div style="color:#c0392b;">⚠️ 该等级暂无绿字熔炼数据</div>';
-            return;
-        }
-
-        const statAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
-        const isWeaponOrCloth = (part === '武器' || part === '衣服');
-
-        let greenType = 'none';
-        let positiveStats = [];
-        let negativeStats = [];
-        let positiveCount = 0;
-        let hasNegative = false;
-
-        if (isWeaponOrCloth) {
-            for (let attr of statAttrs) {
-                if (values[attr] !== undefined && values[attr] !== 0) {
-                    if (values[attr] > 0) {
-                        positiveStats.push(attr);
-                        positiveCount++;
-                    } else if (values[attr] < 0) {
-                        negativeStats.push(attr);
-                        hasNegative = true;
-                    }
-                }
-            }
-
-            if (positiveCount === 1 && !hasNegative) {
-                greenType = 'single';
-            } else if (positiveCount === 1 && hasNegative) {
-                greenType = 'plusMinus';
-            } else if (positiveCount >= 2) {
-                greenType = 'double';
-            }
-        }
-
-        let html = `<div style="font-weight:600;color:#1f3b53;margin-bottom:8px;">📊 ${level}级 ${part} 熔炼分析</div>`;
-
-        if (isWeaponOrCloth && greenType !== 'none') {
-            const typeLabels = {
-                'single': '单加',
-                'plusMinus': '一加一减',
-                'double': '双加'
-            };
-            const typeColors = {
-                'single': '#2d6b2d',
-                'plusMinus': '#b48b3a',
-                'double': '#2980b9'
-            };
-            html += `<div style="background:#f0f5fb;border-radius:10px;padding:4px 12px;margin-bottom:8px;font-size:0.8rem;border:1px solid #d0dce8;">
-                <span style="font-weight:600;">📌 识别为：</span>
-                <span style="font-weight:700;color:${typeColors[greenType]};">${typeLabels[greenType]}</span>
-                ${greenType === 'plusMinus' ? `（正面: ${positiveStats.join('、')}，负面: ${negativeStats.join('、')}）` : ''}
-                ${greenType === 'single' ? `（正面: ${positiveStats.join('、')}）` : ''}
-                ${greenType === 'double' ? `（正面: ${positiveStats.join('、')}）` : ''}
-            </div>`;
-        }
-
-        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;">`;
-
-        let hasResult = false;
-
-        for (let [attr, val] of Object.entries(values)) {
-            if (val === 0) continue;
-
-            // 跳过伤害和命中（不可熔炼）
-            if (part === '武器' && (attr === '伤害' || attr === '命中')) {
-                continue;
-            }
-
-            if (statAttrs.includes(attr) && isWeaponOrCloth) {
-                let maxValue = null;
-                let formulaType = '';
-                let limitName = '';
-
-                if (greenType === 'single') {
-                    maxValue = green.single;
-                    formulaType = 'green';
-                    limitName = `单加上限 ${maxValue}`;
-                } else if (greenType === 'plusMinus') {
-                    if (val > 0) {
-                        maxValue = green.plusMinus;
-                        formulaType = 'green';
-                        limitName = `一加一减(正)上限 ${maxValue}`;
-                    } else {
-                        maxValue = green.negativeMax;
-                        formulaType = 'negative';
-                        limitName = `一加一减(负)上限 -1`;
-                    }
-                } else if (greenType === 'double') {
-                    maxValue = green.double;
-                    formulaType = 'green';
-                    limitName = `双加上限 ${maxValue}`;
-                } else {
-                    html += `
-                        <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;color:#b45a5a;">
-                            <span>${attr}</span>
-                            <span>⚠️ 无法识别绿字类型</span>
-                        </div>
-                    `;
-                    continue;
-                }
-
-                let canMelt;
-                if (formulaType === 'negative') {
-                    canMelt = maxValue - val;
-                    if (canMelt < 0) canMelt = 0;
-                    canMelt = Math.round(canMelt * 10) / 10;
-                } else {
-                    canMelt = maxValue - val;
-                    if (canMelt < 0) canMelt = 0;
-                    canMelt = Math.round(canMelt * 10) / 10;
-                }
-
-                const maxFinal = val + canMelt;
-                const isMaxed = canMelt <= 0.1;
-
-                let statusIcon = isMaxed ? '✅ 已达上限' : `可熔炼 +${canMelt.toFixed(1)}`;
-                let statusColor = isMaxed ? '#c0392b' : '#2d6b2d';
-
                 html += `
-                    <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;border-radius:4px;grid-column:1/-1;background:${isMaxed ? '#f5f0e8' : '#f8faff'};">
-                        <span style="font-weight:500;">${attr}</span>
-                        <span style="text-align:right;">
-                            <div style="font-size:0.75rem;color:#5a7a94;">当前: <span style="font-weight:600;color:#1f3b53;">${val}</span></div>
-                            <div style="font-size:0.75rem;color:${statusColor};font-weight:600;">${statusIcon}</div>
-                            <div style="font-size:0.7rem;color:#5a7a94;">上限: <span style="font-weight:600;color:#1f3b53;">${maxFinal.toFixed(1)}</span></div>
-                            <div style="font-size:0.6rem;color:#8a9aa8;">${limitName}</div>
-                        </span>
-                    </div>
-                `;
-                hasResult = true;
-                continue;
-            }
-
-            if (attr === '耐久') {
-                html += `
-                    <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;">
-                        <span>耐久</span>
-                        <span style="font-weight:600;color:#1f3b53;">当前 ${val} ${val >= 100 ? '✅ 可熔炼' : '⚠️ 不足100'}</span>
-                    </div>
-                `;
-                continue;
-            }
-
-            if (part === '武器' && (attr === '伤害' || attr === '命中')) {
-                continue;
-            }
-
-            let maxCraft = null;
-            if (craftData && craftData[attr]) {
-                maxCraft = craftData[attr][1];
-            }
-
-            if (maxCraft === null || maxCraft === 0) {
-                html += `
-                    <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;grid-column:1/-1;color:#b45a5a;">
+                    <div style="grid-column:1/-1;display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f0f4f8;color:#b45a5a;font-size:0.9rem;">
                         <span>${attr}</span>
-                        <span>⚠️ 暂无熔炼数据</span>
+                        <span>⚠️ 无法识别绿字类型</span>
                     </div>
                 `;
                 continue;
             }
 
-            let canMelt = (maxCraft - val) / 1.5;
-            if (canMelt < 0) canMelt = 0;
-            canMelt = Math.round(canMelt * 10) / 10;
+            let canMelt;
+            if (formulaType === 'negative') {
+                canMelt = maxValue - val;
+                if (canMelt < 0) canMelt = 0;
+                canMelt = Math.round(canMelt * 10) / 10;
+            } else {
+                canMelt = maxValue - val;
+                if (canMelt < 0) canMelt = 0;
+                canMelt = Math.round(canMelt * 10) / 10;
+            }
+
             const maxFinal = val + canMelt;
             const isMaxed = canMelt <= 0.1;
 
@@ -1695,37 +1642,90 @@ const EquipmentQueryModule = {
             let statusColor = isMaxed ? '#c0392b' : '#2d6b2d';
 
             html += `
-                <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f4f8;border-radius:4px;background:${isMaxed ? '#f5f0e8' : '#f8faff'};">
-                    <span style="font-weight:500;">${attr}</span>
+                <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f4f8;border-radius:6px;background:${isMaxed ? '#f5f0e8' : '#f8faff'};font-size:0.9rem;">
+                    <span style="font-weight:500;min-width:60px;">${attr}</span>
                     <span style="text-align:right;">
-                        <div style="font-size:0.75rem;color:#5a7a94;">当前: <span style="font-weight:600;color:#1f3b53;">${val}</span></div>
-                        <div style="font-size:0.75rem;color:${statusColor};font-weight:600;">${statusIcon}</div>
-                        <div style="font-size:0.7rem;color:#5a7a94;">上限: <span style="font-weight:600;color:#1f3b53;">${maxFinal.toFixed(1)}</span></div>
-                        <div style="font-size:0.6rem;color:#8a9aa8;">强化最高 ${maxCraft} → 熔炼上限</div>
+                        <div style="color:#5a7a94;">当前: <span style="font-weight:600;color:#1f3b53;">${val}</span></div>
+                        <div style="color:${statusColor};font-weight:600;">${statusIcon}</div>
+                        <div style="color:#5a7a94;">上限: <span style="font-weight:600;color:#1f3b53;">${maxFinal.toFixed(1)}</span></div>
+                        <div style="font-size:0.7rem;color:#8a9aa8;">${limitName}</div>
                     </span>
                 </div>
             `;
             hasResult = true;
+            continue;
         }
 
-        html += `</div>`;
-
-        if (!hasResult) {
-            html += '<div style="color:#5a7a94;padding:8px 0;">请输入可熔炼的属性值</div>';
+        if (attr === '耐久') {
+            html += `
+                <div style="grid-column:1/-1;display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f0f4f8;font-size:0.9rem;">
+                    <span>耐久</span>
+                    <span style="font-weight:600;color:#1f3b53;">当前 ${val} ${val >= 100 ? '✅ 可熔炼' : '⚠️ 不足100'}</span>
+                </div>
+            `;
+            continue;
         }
+
+        if (part === '武器' && (attr === '伤害' || attr === '命中')) {
+            continue;
+        }
+
+        let maxCraft = null;
+        if (craftData && craftData[attr]) {
+            maxCraft = craftData[attr][1];
+        }
+
+        if (maxCraft === null || maxCraft === 0) {
+            html += `
+                <div style="grid-column:1/-1;display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f0f4f8;color:#b45a5a;font-size:0.9rem;">
+                    <span>${attr}</span>
+                    <span>⚠️ 暂无熔炼数据</span>
+                </div>
+            `;
+            continue;
+        }
+
+        let canMelt = (maxCraft - val) / 1.5;
+        if (canMelt < 0) canMelt = 0;
+        canMelt = Math.round(canMelt * 10) / 10;
+        const maxFinal = val + canMelt;
+        const isMaxed = canMelt <= 0.1;
+
+        let statusIcon = isMaxed ? '✅ 已达上限' : `可熔炼 +${canMelt.toFixed(1)}`;
+        let statusColor = isMaxed ? '#c0392b' : '#2d6b2d';
 
         html += `
-            <div style="font-size:0.7rem;color:#5a7a94;margin-top:8px;padding-top:6px;border-top:1px solid #eef2f7;">
-                💡 <strong>绿字熔炼：</strong>上限值 - 当前值（负面属性最高到 -1）
-                <br>💡 <strong>基础主属性熔炼：</strong>(强化最高 - 当前值) ÷ 1.5（差距±1）
-                <br>💡 不管装备是不是强化打造，统一按强化打造的"最高属性"计算
-                <br>💡 武器只能熔炼绿字属性，伤害和命中无法熔炼
-                <br>💡 熔炼条件：装备等级 ≥ 60、当前耐久 ≥ 100
+            <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f4f8;border-radius:6px;background:${isMaxed ? '#f5f0e8' : '#f8faff'};font-size:0.9rem;">
+                <span style="font-weight:500;min-width:60px;">${attr}</span>
+                <span style="text-align:right;">
+                    <div style="color:#5a7a94;">当前: <span style="font-weight:600;color:#1f3b53;">${val}</span></div>
+                    <div style="color:${statusColor};font-weight:600;">${statusIcon}</div>
+                    <div style="color:#5a7a94;">上限: <span style="font-weight:600;color:#1f3b53;">${maxFinal.toFixed(1)}</span></div>
+                    <div style="font-size:0.7rem;color:#8a9aa8;">强化最高 ${maxCraft} → 熔炼上限</div>
+                </span>
             </div>
         `;
+        hasResult = true;
+    }
 
-        el.innerHTML = html;
-    },
+    html += `</div>`;
+
+    if (!hasResult) {
+        html += '<div style="color:#5a7a94;padding:8px 0;font-size:0.9rem;">请输入可熔炼的属性值</div>';
+    }
+
+    html += `
+        <div style="font-size:0.75rem;color:#5a7a94;margin-top:8px;padding-top:6px;border-top:1px solid #eef2f7;line-height:1.6;">
+            💡 <strong>绿字熔炼：</strong>上限值 - 当前值（负面属性最高到 -1）
+            <br>💡 <strong>基础主属性熔炼：</strong>(强化最高 - 当前值) ÷ 1.5（差距±1）
+            <br>💡 不管装备是不是强化打造，统一按强化打造的"最高属性"计算
+            <br>💡 武器只能熔炼绿字属性，伤害和命中无法熔炼
+            <br>💡 熔炼条件：装备等级 ≥ 60、当前耐久 ≥ 100
+        </div>
+    `;
+
+    el.innerHTML = html;
+},
 
     // ============================================================
     //  ⭐ 装备评分
