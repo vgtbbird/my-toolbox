@@ -271,6 +271,7 @@ const TreePlantModule = {
                         <button class="evt-btn" data-event="chongzai">🐛 虫灾 <span class="sub">(+2次)</span></button>
                         <button class="evt-btn" data-event="zaoshu">🌿 早熟 <span class="sub">(强制6次)</span></button>
                         <button class="evt-btn" data-event="none">⏭️ 无事件 <span class="sub">(重置)</span></button>
+                        <button class="evt-btn" data-event="forget">😴 忘记照顾 <span class="sub">(仅1次)</span></button>
                     </div>
 
                     <div style="font-weight:600;font-size:0.8rem;color:#1f3b53;margin:10px 0 4px;">💎 元宝产出 (点击记录)</div>
@@ -505,34 +506,34 @@ const TreePlantModule = {
         this.render();
     },
 
-    addEvent(evt) {
-        if (this.current.isSettled) {
-            alert('这棵树已结算，请开始新的记录！');
-            return;
-        }
-
-        if (evt === 'none') {
-            this.current.events = [];
-            this.current.shakes = this.current.baseShakes;
-        } else {
-            this.current.events.push(evt);
-            this.current.shakes = this.current.baseShakes;
-            let hasZaoshu = false;
-            for (let e of this.current.events) {
-                if (e === 'xiaozai') this.current.shakes += 1;
-                else if (e === 'chongzai') this.current.shakes += 2;
-                else if (e === 'zaoshu') {
-                    hasZaoshu = true;
+        addEvent(evt) {
+            if (this.current.isSettled) {
+                alert('这棵树已结算，请开始新的记录！');
+                return;
+            }
+        
+            if (evt === 'none') {
+                this.current.events = [];
+                this.current.shakes = this.current.baseShakes;
+            } else if (evt === 'forget') {
+                this.current.events.push(evt);
+                this.current.shakes = 1;
+            } else {
+                this.current.events.push(evt);
+                this.current.shakes = this.current.baseShakes;
+                let hasZaoshu = false;
+                for (let e of this.current.events) {
+                    if (e === 'xiaozai') this.current.shakes += 1;
+                    else if (e === 'chongzai') this.current.shakes += 2;
+                    else if (e === 'zaoshu') hasZaoshu = true;
+                }
+                if (hasZaoshu) {
+                    this.current.shakes = 6;
                 }
             }
-            if (hasZaoshu) {
-                this.current.shakes = 6;
-            }
-        }
-        this.saveData();
-        this.render();
-    },
-
+            this.saveData();
+            this.render();
+        },
     undo() {
         let hasLoot = false;
         // 从后往前遍历，撤销最新添加的产出
