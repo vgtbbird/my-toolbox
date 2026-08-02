@@ -1,5 +1,8 @@
 // ============================================================
-//  🐾 抓宠收益模块 - 完整版（紧凑布局）
+//  🐾 抓宠收益模块 - 完整版（含月华露成本）
+//  功能：记录怪物幼儿园抓宠数据，统计收益
+//  数据来源：端游玩家社群整理 + 梦幻精灵
+//  优化：卡片式变异切换 + 常用宠物快捷按钮 + 技能快捷卡片 + 售价快捷卡片 + 月华露成本
 // ============================================================
 const PetHuntModule = {
     id: 'petHunt',
@@ -157,17 +160,22 @@ const PetHuntModule = {
         weekStart.setDate(now.getDate() - now.getDay());
         const weekStartStr = weekStart.toISOString().split('T')[0];
         let todayCount = 0, weekCount = 0, totalCount = 0;
-        let variantCount = 0, totalValue = 0, soldValue = 0;
+        let variantCount = 0, totalValue = 0, soldValue = 0, totalCost = 0, totalProfit = 0;
         for (let r of this.records) {
             const dateStr = r.date.split(' ')[0];
             totalCount++;
             if (r.isVariant) variantCount++;
             if (r.price) totalValue += r.price;
             if (r.sold) soldValue += r.price;
+            if (r.cost) totalCost += r.cost;
+            if (r.price && r.cost !== undefined) {
+                const profit = r.price - (r.cost || 0);
+                totalProfit += profit;
+            }
             if (dateStr === today) todayCount++;
             if (dateStr >= weekStartStr) weekCount++;
         }
-        return { todayCount, weekCount, totalCount, variantCount, totalValue, soldValue, unsoldValue: totalValue - soldValue };
+        return { todayCount, weekCount, totalCount, variantCount, totalValue, soldValue, unsoldValue: totalValue - soldValue, totalCost, totalProfit };
     },
 
     getPetInfo(name) {
@@ -195,7 +203,7 @@ const PetHuntModule = {
         return true;
     },
 
-    addRecord(petName, isVariant, skillCount, price, sold, scene, notes) {
+    addRecord(petName, isVariant, skillCount, price, sold, scene, cost, notes) {
         const record = {
             id: Date.now(),
             date: new Date().toLocaleString(),
@@ -205,6 +213,7 @@ const PetHuntModule = {
             price: parseFloat(price) || 0,
             sold: sold || false,
             scene: scene || '未知',
+            cost: parseFloat(cost) || 0,
             notes: notes || ''
         };
         this.records.push(record);
@@ -277,6 +286,10 @@ const PetHuntModule = {
         const priceBtns = [30, 50, 100].map(p => 
             `<button class="ph-price-btn" data-price="${p}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;">${p}万</button>`
         ).join('');
+        // 月华露成本快捷按钮
+        const costBtns = [8, 16, 24, 32, 40].map(c => 
+            `<button class="ph-cost-btn" data-cost="${c}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;">${c}万</button>`
+        ).join('');
 
         container.innerHTML = `
             <!-- 界面设置 -->
@@ -320,11 +333,13 @@ const PetHuntModule = {
             </div>
 
             <!-- 统计卡片 -->
-            <div class="ph-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
-                <div class="stat-item"><div class="num" id="phTodayCount">0</div><div class="label">📅 今日抓宠</div></div>
-                <div class="stat-item"><div class="num" id="phWeekCount">0</div><div class="label">📆 本周抓宠</div></div>
-                <div class="stat-item" id="phVariantStat"><div class="num" id="phVariantCount">0</div><div class="label">✨ 变异数量</div></div>
-                <div class="stat-item" id="phValueStat"><div class="num" id="phTotalValue">0</div><div class="label">💰 总价值(万)</div></div>
+            <div class="ph-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px;">
+                <div class="stat-item"><div class="num" id="phTodayCount">0</div><div class="label">📅 今日</div></div>
+                <div class="stat-item"><div class="num" id="phWeekCount">0</div><div class="label">📆 本周</div></div>
+                <div class="stat-item" id="phVariantStat"><div class="num" id="phVariantCount">0</div><div class="label">✨ 变异</div></div>
+                <div class="stat-item" id="phValueStat"><div class="num" id="phTotalValue">0</div><div class="label">💰 总价值</div></div>
+                <div class="stat-item" id="phCostStat"><div class="num" id="phTotalCost">0</div><div class="label">📦 总成本</div></div>
+                <div class="stat-item" id="phProfitStat"><div class="num" id="phTotalProfit">0</div><div class="label">📈 总利润</div></div>
             </div>
 
             <!-- 场景刷新规则 -->
@@ -369,15 +384,15 @@ const PetHuntModule = {
                             <button class="ph-variant-btn active" data-variant="no" style="padding:3px 12px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">普通</button>
                             <button class="ph-variant-btn" data-variant="yes" style="padding:3px 12px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.7rem;font-weight:600;">变异</button>
                         </div>
-                       <div style="flex:1;min-width:120px;">
+                        <div style="flex:1;min-width:120px;">
                             <input type="text" id="phPetNameInput" placeholder="宠物名" style="width:100%;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;background:white;">
                             <div id="phPetMatchList" style="display:none;background:white;border:1px solid #bccad9;border-radius:8px;max-height:100px;overflow-y:auto;position:absolute;z-index:100;min-width:150px;"></div>
                             <div id="phPetInfoDisplay" style="display:none;background:#f0f5fb;border-radius:10px;padding:4px 10px;margin-top:3px;font-size:0.7rem;border:1px solid #d0dce8;"></div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
+                        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                             <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">📊 技能</span>
                             ${skillBtns}
-                            <input type="number" id="phSkillCountInput" placeholder="手" min="0" max="20" style="width:60px;padding:3px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.65rem;text-align:center;">
+                            <input type="number" id="phSkillCountInput" placeholder="手" min="0" max="20" style="width:44px;padding:3px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         </div>
                     </div>
 
@@ -387,11 +402,15 @@ const PetHuntModule = {
                         ${quickPetBtns}
                     </div>
 
-                    <!-- 第3行：售价 -->
+                    <!-- 第3行：售价 + 月华露成本 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:6px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">💰 售价</span>
                         ${priceBtns}
                         <input type="number" id="phPrice" placeholder="手动" min="0" step="0.1" style="width:70px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                        <span style="font-size:0.7rem;color:#5a7a94;">万</span>
+                        <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-left:4px;">💊 成本</span>
+                        ${costBtns}
+                        <input type="number" id="phCost" placeholder="手动" min="0" step="0.1" style="width:60px;padding:3px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         <span style="font-size:0.7rem;color:#5a7a94;">万</span>
                         <label style="display:flex;align-items:center;gap:4px;font-size:0.7rem;color:#1f3b53;cursor:pointer;margin-left:4px;">
                             <input type="checkbox" id="phSold"> 已卖出
@@ -436,7 +455,8 @@ const PetHuntModule = {
                             <div class="a-item"><div class="a-num" id="phAnaValue">0</div><div class="a-label">总价值(万)</div></div>
                             <div class="a-item"><div class="a-num" id="phAnaSold">0</div><div class="a-label">已售价值</div></div>
                             <div class="a-item"><div class="a-num" id="phAnaUnsold">0</div><div class="a-label">未售价值</div></div>
-                            <div class="a-item"><div class="a-num" id="phAnaAvgPrice">0</div><div class="a-label">平均售价</div></div>
+                            <div class="a-item"><div class="a-num" id="phAnaCost">0</div><div class="a-label">总成本(万)</div></div>
+                            <div class="a-item"><div class="a-num" id="phAnaProfit">0</div><div class="a-label">总利润(万)</div></div>
                         </div>
                         <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px 16px;padding-top:8px;border-top:1px solid #dce5ef;">
                             <div class="filter-item"><label>📅 日期从</label><input type="date" id="phFilterDateFrom"></div>
@@ -447,7 +467,7 @@ const PetHuntModule = {
                         </div>
                     </div>
                     <div class="ph-table-wrap" style="width:100%;overflow-x:auto;max-height:320px;overflow-y:auto;border-radius:16px;border:1px solid #d0dce8;background:white;">
-                        <table style="width:100%;min-width:750px;border-collapse:collapse;font-size:0.85rem;">
+                        <table style="width:100%;min-width:850px;border-collapse:collapse;font-size:0.85rem;">
                             <thead>
                                 <tr>
                                     <th style="width:36px;min-width:36px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">#</th>
@@ -455,14 +475,16 @@ const PetHuntModule = {
                                     <th style="min-width:60px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">🐾 宠物</th>
                                     <th style="min-width:50px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">✨ 变异</th>
                                     <th style="min-width:50px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📊 技能</th>
-                                    <th style="min-width:70px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">💰 价值</th>
+                                    <th style="min-width:65px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">💰 售价</th>
+                                    <th style="min-width:65px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📦 成本</th>
+                                    <th style="min-width:65px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📈 利润</th>
                                     <th style="min-width:70px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📌 状态</th>
                                     <th style="min-width:60px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📍 场景</th>
                                     <th style="min-width:70px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">⚙️ 操作</th>
                                 </tr>
                             </thead>
                             <tbody id="phRecordsTableBody">
-                                <tr><td colspan="9" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>
+                                <tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -660,6 +682,22 @@ const PetHuntModule = {
             });
         });
 
+        // 月华露成本快捷
+        document.querySelectorAll('.ph-cost-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const cost = this.dataset.cost;
+                document.getElementById('phCost').value = cost;
+                document.querySelectorAll('.ph-cost-btn').forEach(b => {
+                    b.style.background = '#f0f4f8';
+                    b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
+                });
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            });
+        });
+
         // 场景快速按钮
         document.querySelectorAll('.ph-scene-btn').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -738,13 +776,15 @@ const PetHuntModule = {
             const isVariant = document.querySelector('.ph-variant-btn.active')?.dataset.variant === 'yes';
             const skillCount = parseInt(document.getElementById('phSkillCountInput').value) || 0;
             const price = parseFloat(document.getElementById('phPrice').value) || 0;
+            const cost = parseFloat(document.getElementById('phCost').value) || 0;
             const scene = document.getElementById('phScene').value;
             const sold = document.getElementById('phSold').checked;
             if (!scene) { alert('请选择场景！'); return; }
-            PetHuntModule.addRecord(petName, isVariant, skillCount, price, sold, scene, '');
+            PetHuntModule.addRecord(petName, isVariant, skillCount, price, sold, scene, cost, '');
             // 清空
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
+            document.getElementById('phCost').value = '';
             document.getElementById('phSkillCountInput').value = '';
             document.getElementById('phSold').checked = false;
             document.getElementById('phPetInfoDisplay').style.display = 'none';
@@ -759,7 +799,7 @@ const PetHuntModule = {
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.background = '#4CAF50';
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.borderColor = '#4CAF50';
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.color = '#fff';
-            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-scene-btn').forEach(b => {
+            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-cost-btn, .ph-scene-btn').forEach(b => {
                 b.style.background = '#f0f4f8';
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
@@ -772,6 +812,7 @@ const PetHuntModule = {
         document.getElementById('phClearBtn').addEventListener('click', function() {
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
+            document.getElementById('phCost').value = '';
             document.getElementById('phSkillCountInput').value = '';
             document.getElementById('phSold').checked = false;
             document.getElementById('phPetInfoDisplay').style.display = 'none';
@@ -786,7 +827,7 @@ const PetHuntModule = {
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.background = '#4CAF50';
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.borderColor = '#4CAF50';
             document.querySelector('.ph-variant-btn[data-variant="no"]').style.color = '#fff';
-            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-scene-btn').forEach(b => {
+            document.querySelectorAll('.ph-quick-pet, .ph-skill-btn, .ph-price-btn, .ph-cost-btn, .ph-scene-btn').forEach(b => {
                 b.style.background = '#f0f4f8';
                 b.style.borderColor = '#bccad9';
                 b.style.color = '#1f3b53';
@@ -928,10 +969,16 @@ const PetHuntModule = {
         document.getElementById('phWeekCount').textContent = stats.weekCount;
         document.getElementById('phVariantCount').textContent = stats.variantCount;
         document.getElementById('phTotalValue').textContent = stats.totalValue.toFixed(1);
+        document.getElementById('phTotalCost').textContent = stats.totalCost.toFixed(1);
+        document.getElementById('phTotalProfit').textContent = stats.totalProfit.toFixed(1);
         const vs = document.getElementById('phVariantStat');
         vs.className = 'stat-item' + (stats.variantCount > 0 ? ' profit' : '');
         const valS = document.getElementById('phValueStat');
         valS.className = 'stat-item' + (stats.totalValue > 0 ? ' profit' : '');
+        const costS = document.getElementById('phCostStat');
+        costS.className = 'stat-item' + (stats.totalCost > 0 ? ' profit' : '');
+        const profitS = document.getElementById('phProfitStat');
+        profitS.className = 'stat-item' + (stats.totalProfit > 0 ? ' profit' : stats.totalProfit < 0 ? ' loss' : '');
     },
 
     updateRecordsTable() {
@@ -940,7 +987,7 @@ const PetHuntModule = {
         const count = this.records.length;
         countEl.textContent = `共 ${count} 条`;
         if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>';
             return;
         }
         let data = [...this.records];
@@ -961,6 +1008,8 @@ const PetHuntModule = {
             const variantText = r.isVariant ? '✨ 是' : '否';
             const soldText = r.sold ? '✅ 已卖' : '⏳ 未卖';
             const priceText = r.price ? r.price.toFixed(1) + '万' : '-';
+            const costText = r.cost ? r.cost.toFixed(1) + '万' : '-';
+            const profit = r.price && r.cost !== undefined ? (r.price - r.cost).toFixed(1) : '-';
             html += `<tr>
                 <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;text-align:center;padding:6px 4px;">${row}</td>
                 <td style="padding:6px 4px;text-align:center;">${r.date || '未知'}</td>
@@ -968,6 +1017,8 @@ const PetHuntModule = {
                 <td style="padding:6px 4px;text-align:center;${r.isVariant ? 'color:#dbbd7c;font-weight:700;' : ''}">${variantText}</td>
                 <td style="padding:6px 4px;text-align:center;">${r.skillCount || 0}</td>
                 <td style="padding:6px 4px;text-align:center;font-weight:600;color:${r.price > 0 ? '#2d6b2d' : '#5a7a94'};">${priceText}</td>
+                <td style="padding:6px 4px;text-align:center;font-weight:600;color:${r.cost > 0 ? '#b48b3a' : '#5a7a94'};">${costText}</td>
+                <td style="padding:6px 4px;text-align:center;font-weight:600;color:${profit !== '-' && parseFloat(profit) >= 0 ? '#2d6b2d' : '#c0392b'};">${profit !== '-' ? profit + '万' : '-'}</td>
                 <td style="padding:6px 4px;text-align:center;${r.sold ? 'color:#2d6b2d;' : 'color:#b48b3a;'}">
                     ${soldText}
                     <button class="ph-sold-btn" data-id="${r.id}" style="background:${r.sold ? '#f5d0d0' : '#d4edda'};border:none;border-radius:30px;padding:2px 10px;font-size:0.55rem;cursor:pointer;margin-left:4px;color:${r.sold ? '#8f3a3a' : '#2d6b2d'};font-weight:600;">${r.sold ? '↩️ 改未卖' : '💰 卖出'}</button>
@@ -987,23 +1038,26 @@ const PetHuntModule = {
         const data = this.records;
         const count = data.length;
         if (count === 0) {
-            ['phAnaTotal', 'phAnaVariant', 'phAnaValue', 'phAnaSold', 'phAnaUnsold', 'phAnaAvgPrice'].forEach(id => document.getElementById(id).textContent = '0');
+            ['phAnaTotal', 'phAnaVariant', 'phAnaValue', 'phAnaSold', 'phAnaUnsold', 'phAnaCost', 'phAnaProfit']
+                .forEach(id => document.getElementById(id).textContent = '0');
             return;
         }
-        let variantCount = 0, totalValue = 0, soldValue = 0;
+        let variantCount = 0, totalValue = 0, soldValue = 0, totalCost = 0, totalProfit = 0;
         for (let r of data) {
             if (r.isVariant) variantCount++;
             if (r.price) totalValue += r.price;
             if (r.sold) soldValue += r.price;
+            if (r.cost) totalCost += r.cost;
+            if (r.price && r.cost !== undefined) totalProfit += (r.price - r.cost);
         }
         const unsoldValue = totalValue - soldValue;
-        const avgPrice = count > 0 ? totalValue / count : 0;
         document.getElementById('phAnaTotal').textContent = count;
         document.getElementById('phAnaVariant').textContent = variantCount;
         document.getElementById('phAnaValue').textContent = totalValue.toFixed(1);
         document.getElementById('phAnaSold').textContent = soldValue.toFixed(1);
         document.getElementById('phAnaUnsold').textContent = unsoldValue.toFixed(1);
-        document.getElementById('phAnaAvgPrice').textContent = avgPrice.toFixed(1);
+        document.getElementById('phAnaCost').textContent = totalCost.toFixed(1);
+        document.getElementById('phAnaProfit').textContent = totalProfit.toFixed(1);
     }
 };
 
