@@ -1779,7 +1779,7 @@ const PetRingModule = {
 
         predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
         // 保存20环预测数据
-        const runRings = stats.ringCount;
+          
         if (runRings === 20) {
             this._prediction20 = Math.round(expectedFinal);
         } else if (runRings < 20) {
