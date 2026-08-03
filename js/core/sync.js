@@ -1,9 +1,9 @@
 // ============================================================
-//  ☁️ 同步核心 - 最终修复版
+//  ☁️ 同步核心 - 支持动态用户名
 // ============================================================
 const GitHubSync = {
     token: '',
-    repoOwner: 'FFzelda',
+    repoOwner: localStorage.getItem('gitee_username') || 'FFzelda',
     repoName: 'my-data',
     filePath: 'db.json',
 
@@ -11,6 +11,10 @@ const GitHubSync = {
         Object.assign(this, options);
         if (options.token) {
             localStorage.setItem('gitee_token', options.token);
+        }
+        if (options.repoOwner) {
+            localStorage.setItem('gitee_username', options.repoOwner);
+            this.repoOwner = options.repoOwner;
         }
     },
 
@@ -29,6 +33,20 @@ const GitHubSync = {
         localStorage.setItem('gitee_token', token);
     },
 
+    getUser() {
+        const stored = localStorage.getItem('gitee_username');
+        if (stored) {
+            this.repoOwner = stored;
+            return stored;
+        }
+        return '';
+    },
+
+    setUser(username) {
+        this.repoOwner = username;
+        localStorage.setItem('gitee_username', username);
+    },
+
     hasToken() {
         return !!this.getToken();
     },
@@ -37,18 +55,15 @@ const GitHubSync = {
         return `https://gitee.com/api/v5/repos/${this.repoOwner}/${this.repoName}/contents/${this.filePath}`;
     },
 
-    // ===== countData 只统计实际记录，不统计宠物库 =====
     countData(data) {
         const counts = {};
         let total = 0;
         for (let [key, value] of Object.entries(data)) {
             if (value && typeof value === 'object') {
-                // 所有模块统一：只统计 history + records
                 const historyCount = value.history?.length || 0;
                 const recordsCount = value.records?.length || 0;
-                const count = historyCount + recordsCount;
                 counts[key] = { history: historyCount, records: recordsCount };
-                total += count;
+                total += historyCount + recordsCount;
             }
         }
         return { total, details: counts };
@@ -84,8 +99,8 @@ const GitHubSync = {
             const content = JSON.parse(jsonStr);
 
             const stats = this.countData(content.modules || {});
-            return {
-                success: true,
+            return { 
+                success: true, 
                 message: `✅ 云端共有 ${stats.total} 条数据`,
                 total: stats.total,
                 details: stats.details,
@@ -125,7 +140,7 @@ const GitHubSync = {
         }
 
         let allData = Storage.getAll();
-
+        
         for (let [key, value] of Object.entries(allData)) {
             if (value && typeof value === 'object') {
                 if (value.history && Array.isArray(value.history)) {
@@ -162,78 +177,44 @@ const GitHubSync = {
                     if (cloudData.modules) {
                         for (let [key, cloudValue] of Object.entries(cloudData.modules)) {
                             if (allData[key]) {
-                                // petHunt 特殊处理：petLibrary 保留云端，不参与合并
-                                if (key === 'petHunt') {
-                                    // 只合并 records 和 history
-                                    if (cloudValue.records && allData[key].records) {
-                                        const combined = [...cloudValue.records, ...allData[key].records];
-                                        const seen = new Set();
-                                        const unique = [];
-                                        for (let item of combined) {
-                                            const key2 = item.date || JSON.stringify(item);
-                                            if (!seen.has(key2)) {
-                                                seen.add(key2);
-                                                unique.push(item);
-                                            }
+                                if (cloudValue.history && allData[key].history) {
+                                    const combined = [...cloudValue.history, ...allData[key].history];
+                                    const seen = new Set();
+                                    const unique = [];
+                                    for (let item of combined) {
+                                        const key2 = item.date || JSON.stringify(item);
+                                        if (!seen.has(key2)) {
+                                            seen.add(key2);
+                                            unique.push(item);
                                         }
-                                        allData[key].records = unique;
                                     }
-                                    if (cloudValue.history && allData[key].history) {
-                                        const combined = [...cloudValue.history, ...allData[key].history];
-                                        const seen = new Set();
-                                        const unique = [];
-                                        for (let item of combined) {
-                                            const key2 = item.date || JSON.stringify(item);
-                                            if (!seen.has(key2)) {
-                                                seen.add(key2);
-                                                unique.push(item);
-                                            }
+                                    unique.sort((a, b) => {
+                                        if (a.date && b.date) {
+                                            return new Date(b.date) - new Date(a.date);
                                         }
-                                        allData[key].history = unique;
-                                    }
-                                    // petLibrary 不合并，保留本地
-                                    // customScenes 不合并，保留本地
-                                } else {
-                                    // 其他模块正常合并
-                                    if (cloudValue.history && allData[key].history) {
-                                        const combined = [...cloudValue.history, ...allData[key].history];
-                                        const seen = new Set();
-                                        const unique = [];
-                                        for (let item of combined) {
-                                            const key2 = item.date || JSON.stringify(item);
-                                            if (!seen.has(key2)) {
-                                                seen.add(key2);
-                                                unique.push(item);
-                                            }
+                                        return 0;
+                                    });
+                                    allData[key].history = unique;
+                                }
+                                if (cloudValue.records && allData[key].records) {
+                                    const combined = [...cloudValue.records, ...allData[key].records];
+                                    const seen = new Set();
+                                    const unique = [];
+                                    for (let item of combined) {
+                                        const key2 = item.date || JSON.stringify(item);
+                                        if (!seen.has(key2)) {
+                                            seen.add(key2);
+                                            unique.push(item);
                                         }
-                                        unique.sort((a, b) => {
-                                            if (a.date && b.date) {
-                                                return new Date(b.date) - new Date(a.date);
-                                            }
-                                            return 0;
-                                        });
-                                        allData[key].history = unique;
                                     }
-                                    if (cloudValue.records && allData[key].records) {
-                                        const combined = [...cloudValue.records, ...allData[key].records];
-                                        const seen = new Set();
-                                        const unique = [];
-                                        for (let item of combined) {
-                                            const key2 = item.date || JSON.stringify(item);
-                                            if (!seen.has(key2)) {
-                                                seen.add(key2);
-                                                unique.push(item);
-                                            }
-                                        }
-                                        allData[key].records = unique;
-                                    }
+                                    allData[key].records = unique;
                                 }
                             }
                         }
                     }
                 }
             }
-        } catch (e) {
+        } catch(e) {
             console.log('⚠️ 无法读取云端数据，将创建新文件');
         }
 
@@ -282,8 +263,8 @@ const GitHubSync = {
             if (putRes.ok) {
                 console.log('✅ 同步成功！');
                 const checkResult = await this.checkCloudData();
-                return {
-                    success: true,
+                return { 
+                    success: true, 
                     message: checkResult.success ? `✅ 同步成功！云端共 ${checkResult.total} 条数据` : '✅ 同步成功！',
                     total: checkResult.total || stats.total,
                     details: checkResult.details || stats.details
@@ -321,7 +302,7 @@ const GitHubSync = {
             }
 
             const data = await res.json();
-
+            
             if (!data.content) {
                 return { success: false, message: '❌ 数据格式错误' };
             }
@@ -331,21 +312,24 @@ const GitHubSync = {
 
             const cloudStats = this.countData(content.modules || {});
             console.log('☁️ 云端数据:', cloudStats.total, '条');
+            console.log('☁️ treePlant.history:', content.modules?.treePlant?.history?.length || 0, '条');
+            console.log('☁️ petRing.history:', content.modules?.petRing?.history?.length || 0, '条');
 
             if (content.modules) {
-                // 直接覆盖本地
+                // ✅ 直接覆盖本地
                 Storage.mergeAll(content.modules);
-
+                
                 const afterStats = this.countData(Storage.getAll());
                 console.log('📊 拉取后本地数据:', afterStats.total, '条');
-
+                
+                // ✅ 强制刷新页面
                 setTimeout(() => {
                     console.log('🔄 页面刷新...');
                     location.reload();
                 }, 500);
-
-                return {
-                    success: true,
+                
+                return { 
+                    success: true, 
                     message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${afterStats.total} 条`,
                     cloudTotal: cloudStats.total,
                     localTotal: afterStats.total,
