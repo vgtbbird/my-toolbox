@@ -227,6 +227,7 @@ const PetHuntModule = {
     },
 
     addRecord(petName, isVariant, skillCount, price, sold, scene, cost, notes) {
+        const rate = this.uiSettings.exchangeRate || 0.08;   // ← 先定义 rate
         const record = {
             id: Date.now(),
             date: new Date().toLocaleString(),
@@ -237,8 +238,8 @@ const PetHuntModule = {
             sold: sold || false,
             scene: scene || '未知',
             cost: parseFloat(cost) || 0,
-            notes: notes || ''，
-            exchangeRate: rate  
+            notes: notes || '',    
+            exchangeRate: rate     // ← 使用定义的 rate
         };
         this.records.push(record);
         this.saveData();
