@@ -88,7 +88,8 @@ const TotalStatsModule = {
         if (petHunt && petHunt.records) {
             for (let r of petHunt.records) {
                 const profit = r.sold ? (r.price || 0) - (r.cost || 0) : -(r.cost || 0);
-                const rmb = profit * 0.08;
+                const rate = r.exchangeRate || 0.08;
+                const rmb = profit * rate;
                 const variantText = r.isVariant ? '变异' : '普通';
                 const soldText = r.sold ? '已卖' : '未卖';
                 const priceText = r.sold ? `${r.price}万` : '';
