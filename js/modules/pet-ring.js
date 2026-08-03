@@ -1,6 +1,8 @@
 // ============================================================
 //  🏃 跑宠环模块 - 完整版
 //  功能：跑环记录 + 期望值计算 + 策略建议 + 100环结算弹窗 + 修炼点价值计入
+//  新增：书铁按钮选择（书/铁切换 + 等级按钮 + 书种类选择）
+//  新增：历史表格「书铁」和「随机奖励」分列显示
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
@@ -16,7 +18,7 @@ const PetRingModule = {
     extraRewards: { points: 0, fruits: 0, furnitures: 0 },
     pendingSettle: null,
     exchangeRate: 0.08,
-    fruitPrice: 80,  // 修炼果单价，保存到本地
+    fruitPrice: 80,
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -28,16 +30,16 @@ const PetRingModule = {
         deductColor: '#d4a0a0'
     },
 
-    // ========== 概率表（用于期望值计算） ==========
+    // ========== 概率表 ==========
     taskProb: {
         find: 0.43,
-        ring60: 0.11,
-        ring70: 0.07,
-        ring80: 0.04,
+        ring60: 0.10,
+        ring70: 0.05,
+        ring80: 0.05,
         flower: 0.04,
         cook: 0.16,
-        furn1: 0.10,
-        furn2: 0.04,
+        furn1: 0.07,
+        furn2: 0.05,
         var_spec: 0.01
     },
     taskScore: {
@@ -235,8 +237,16 @@ const PetRingModule = {
         const fruitValue = fruitPrice;
         const furnValue = furnPrice;
 
+        // 书种类列表
+        const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '衣服', '项链', '帽子', '腰带', '鞋子'];
+
+        // 初始状态
+        let currentBookType = '书';
+        let currentLevel = 130;
+        let currentBookName = '';
+
         const modalHTML = `
-            <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:580px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:600px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
                 <h3 style="color:#1f3b53;margin-bottom:8px;font-size:1.2rem;">🎯 100环结算报告</h3>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px 14px;background:#f0f5fb;border-radius:12px;margin-bottom:14px;font-size:0.8rem;border:1px solid #dce5ef;">
                     <div><span style="color:#5a7a94;">总成本</span> <strong>${stats.totalCost.toFixed(1)}万</strong></div>
@@ -252,33 +262,33 @@ const PetRingModule = {
                     <div style="font-size:0.65rem;color:#5a7a94;">${stats.totalPoints}点 × (修炼果单价${fruitPrice}万 / 170点) = ${pointsValue.toFixed(1)}万</div>
                 </div>
 
+                <!-- 📘 书铁奖励 -->
                 <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
                     <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">📘 书铁奖励（必得，二选一）</div>
-                    <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;">
-                        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;">
-                            <input type="radio" name="bookType" value="书" checked> 书
-                        </label>
-                        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;">
-                            <input type="radio" name="bookType" value="铁"> 铁
-                        </label>
+                    <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+                        <button class="ph-book-type-btn active" data-type="书" style="padding:4px 20px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:600;">📕 书</button>
+                        <button class="ph-book-type-btn" data-type="铁" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">📗 铁</button>
                     </div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                        <div style="display:flex;align-items:center;gap:4px;font-size:0.85rem;">
-                            <label style="font-weight:500;">等级</label>
-                            <input type="number" id="settleBookLevel" placeholder="130" min="1" max="160" style="width:60px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;font-size:0.85rem;flex:1;min-width:150px;">
-                            <label style="font-weight:500;">名称</label>
-                            <input type="text" id="settleBookName" placeholder="选「书」时填写，如：项链" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;font-size:0.85rem;">
-                            <label style="font-weight:500;">价值(万)</label>
-                            <input type="number" id="settleBookValue" placeholder="80" style="width:80px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择等级</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleLevelContainer">
+                            <!-- JS 生成 -->
                         </div>
                     </div>
-                    <div style="font-size:0.65rem;color:#8ab0c8;margin-top:4px;">💡 选「书」时填写具体书名（如：项链），选「铁」时名称会自动生成</div>
+                    <div style="margin-bottom:8px;" id="settleBookNameContainer">
+                        <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
+                            <!-- JS 生成 -->
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                        <label style="font-weight:500;font-size:0.8rem;color:#1f3b53;">💰 价值(万)</label>
+                        <input type="number" id="settleBookValue" placeholder="输入价值" style="width:100px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                    </div>
+                    <div style="font-size:0.65rem;color:#8ab0c8;margin-top:4px;" id="settleBookDisplay">💡 当前选择：<span id="settleBookDisplayText">请选择</span></div>
                 </div>
 
+                <!-- 🎁 三选一 -->
                 <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
                     <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">🎁 随机奖励（三选一）</div>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -294,6 +304,7 @@ const PetRingModule = {
                     </div>
                 </div>
 
+                <!-- 预览 -->
                 <div style="padding:10px 16px;background:#f5f8fc;border-radius:12px;margin-bottom:14px;border:1px solid #dce5ef;">
                     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;">
                         <span style="color:#5a7a94;">📊 收入合计</span>
@@ -322,9 +333,113 @@ const PetRingModule = {
         overlay.innerHTML = modalHTML;
         document.body.appendChild(overlay);
 
+        // ===== 书铁交互逻辑 =====
+        const levelContainer = document.getElementById('settleLevelContainer');
+        const bookNameContainer = document.getElementById('settleBookNameContainer');
+        const bookNameList = document.getElementById('settleBookNameList');
+
+        function renderLevels(type) {
+            const levels = type === '书' ? [80, 90, 100, 110, 120, 130, 140, 150] : [80, 90, 100, 110, 120, 130, 140, 150, 160];
+            let html = '';
+            levels.forEach(l => {
+                const label = l === 160 ? '战魄' : l + '级';
+                const active = l === currentLevel ? 'active' : '';
+                const bg = l === currentLevel ? '#4CAF50' : '#f0f4f8';
+                const color = l === currentLevel ? '#fff' : '#1f3b53';
+                html += `<button class="ph-level-btn ${active}" data-level="${l}" style="padding:2px 12px;border-radius:12px;border:1px solid ${l === currentLevel ? '#4CAF50' : '#bccad9'};background:${bg};color:${color};cursor:pointer;font-size:0.7rem;margin:2px;min-width:38px;">${label}</button>`;
+            });
+            levelContainer.innerHTML = html;
+            levelContainer.querySelectorAll('.ph-level-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    levelContainer.querySelectorAll('.ph-level-btn').forEach(b => {
+                        b.style.background = '#f0f4f8';
+                        b.style.borderColor = '#bccad9';
+                        b.style.color = '#1f3b53';
+                    });
+                    this.style.background = '#4CAF50';
+                    this.style.borderColor = '#4CAF50';
+                    this.style.color = '#fff';
+                    currentLevel = parseInt(this.dataset.level);
+                    updateDisplayText();
+                    updatePreview();
+                });
+            });
+        }
+
+        function renderBookNames() {
+            let html = '';
+            bookTypeList.forEach(t => {
+                const active = t === currentBookName ? 'active' : '';
+                const bg = t === currentBookName ? '#4CAF50' : '#f0f4f8';
+                const color = t === currentBookName ? '#fff' : '#1f3b53';
+                html += `<button class="ph-book-name-btn ${active}" data-name="${t}" style="padding:2px 10px;border-radius:12px;border:1px solid ${t === currentBookName ? '#4CAF50' : '#bccad9'};background:${bg};color:${color};cursor:pointer;font-size:0.65rem;margin:2px;">${t}</button>`;
+            });
+            bookNameList.innerHTML = html;
+            bookNameList.querySelectorAll('.ph-book-name-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    bookNameList.querySelectorAll('.ph-book-name-btn').forEach(b => {
+                        b.style.background = '#f0f4f8';
+                        b.style.borderColor = '#bccad9';
+                        b.style.color = '#1f3b53';
+                    });
+                    this.style.background = '#4CAF50';
+                    this.style.borderColor = '#4CAF50';
+                    this.style.color = '#fff';
+                    currentBookName = this.dataset.name;
+                    updateDisplayText();
+                    updatePreview();
+                });
+            });
+        }
+
+        function updateDisplayText() {
+            const typeText = currentBookType === '书' ? '📕 书' : '📗 铁';
+            let detailText = '';
+            if (currentBookType === '书') {
+                const levelLabel = currentLevel + '级';
+                const nameLabel = currentBookName || '请选择种类';
+                detailText = `${typeText} ${levelLabel} ${nameLabel}书`;
+                document.getElementById('settleBookNameContainer').style.display = 'block';
+            } else {
+                const levelLabel = currentLevel === 160 ? '战魄' : currentLevel + '级铁';
+                detailText = `${typeText} ${levelLabel}`;
+                document.getElementById('settleBookNameContainer').style.display = 'none';
+            }
+            document.getElementById('settleBookDisplayText').textContent = detailText;
+        }
+
+        // 书/铁切换
+        document.querySelectorAll('.ph-book-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.ph-book-type-btn').forEach(b => {
+                    b.style.background = '#f0f4f8';
+                    b.style.borderColor = '#bccad9';
+                    b.style.color = '#1f3b53';
+                });
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+                currentBookType = this.dataset.type;
+                renderLevels(currentBookType);
+                if (currentBookType === '书') {
+                    document.getElementById('settleBookNameContainer').style.display = 'block';
+                    renderBookNames();
+                } else {
+                    document.getElementById('settleBookNameContainer').style.display = 'none';
+                    currentBookName = '';
+                }
+                updateDisplayText();
+                updatePreview();
+            });
+        });
+
+        // 初始化
+        renderLevels('书');
+        renderBookNames();
+        updateDisplayText();
+
+        // ===== 预览更新 =====
         const updatePreview = () => {
-            const bookType = document.querySelector('input[name="bookType"]:checked')?.value || '书';
-            const bookLevel = parseInt(document.getElementById('settleBookLevel').value) || 0;
             const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
             const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
 
@@ -343,52 +458,56 @@ const PetRingModule = {
                 rewardLabel = '家具图×1';
             }
 
-            let bookNameDisplay = '';
-            if (bookType === '铁') {
-                bookNameDisplay = `${bookLevel}级铁`;
+            let bookDisplay = '';
+            if (currentBookType === '铁') {
+                bookDisplay = currentLevel === 160 ? '战魄' : currentLevel + '级铁';
             } else {
-                const nameInput = document.getElementById('settleBookName').value.trim();
-                bookNameDisplay = nameInput ? `${bookLevel}级${nameInput}书` : `${bookLevel}级书（请填名称）`;
+                bookDisplay = currentBookName ? currentLevel + '级' + currentBookName + '书' : '请选择书';
             }
 
             const totalIncome = pointsVal + bookValue + rewardVal;
             const profit = totalIncome - stats.totalCost;
 
             document.getElementById('settlePreviewTotal').textContent =
-                `修炼点${pointsVal.toFixed(1)} + ${bookNameDisplay}${bookValue}万 + ${rewardLabel}${rewardVal.toFixed(1)}万 = ${totalIncome.toFixed(1)}万`;
+                `修炼点${pointsVal.toFixed(1)} + ${bookDisplay}(${bookValue}万) + ${rewardLabel}(${rewardVal.toFixed(1)}万) = ${totalIncome.toFixed(1)}万`;
             document.getElementById('settlePreviewProfit').textContent =
                 `${profit >= 0 ? '✅' : '❌'} ${profit.toFixed(1)}万`;
             document.getElementById('settlePreviewProfit').style.color = profit >= 0 ? '#2d6b2d' : '#c0392b';
         };
 
-        document.querySelectorAll('input[name="bookType"], input[name="rewardType"]').forEach(el => {
+        // 绑定预览事件
+        document.getElementById('settleBookValue').addEventListener('input', updatePreview);
+        document.querySelectorAll('input[name="rewardType"]').forEach(el => {
             el.addEventListener('change', updatePreview);
         });
-        document.getElementById('settleBookLevel').addEventListener('input', updatePreview);
-        document.getElementById('settleBookValue').addEventListener('input', updatePreview);
-        document.getElementById('settleBookName').addEventListener('input', updatePreview);
 
-        setTimeout(updatePreview, 100);
+        setTimeout(updatePreview, 200);
 
+        // ===== 取消 =====
         document.getElementById('settleFullCancel').addEventListener('click', function() {
             overlay.remove();
         });
-
         overlay.addEventListener('click', function(e) {
             if (e.target === overlay) overlay.remove();
         });
 
+        // ===== 确认结算 =====
         document.getElementById('settleFullConfirm').addEventListener('click', () => {
-            const bookType = document.querySelector('input[name="bookType"]:checked')?.value || '书';
-            const bookLevel = parseInt(document.getElementById('settleBookLevel').value) || 0;
+            const bookType = currentBookType;
+            const bookLevel = currentLevel;
+            const bookNameInput = currentBookName;
             const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
-            const bookNameInput = document.getElementById('settleBookName').value.trim();
 
-            if (bookLevel <= 0) { alert('请填写书铁等级！'); return; }
+            if (bookLevel <= 0) { alert('请选择书铁等级！'); return; }
             if (bookValue <= 0) { alert('请填写书铁价值！'); return; }
-            if (bookType === '书' && !bookNameInput) { alert('请填写书名（如：项链）！'); return; }
+            if (bookType === '书' && !bookNameInput) { alert('请选择书种类！'); return; }
 
-            let bookDisplayName = bookType === '铁' ? `${bookLevel}级铁` : `${bookLevel}级${bookNameInput}书`;
+            let bookDisplayName = '';
+            if (bookType === '铁') {
+                bookDisplayName = bookLevel === 160 ? '战魄' : `${bookLevel}级铁`;
+            } else {
+                bookDisplayName = `${bookLevel}级${bookNameInput}书`;
+            }
 
             const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
             const pointsVal = stats.totalPoints * (fruitPrice / 170);
@@ -430,7 +549,8 @@ const PetRingModule = {
                 typeCount: typeCount,
                 rewards: rewardsDesc,
                 exchangeRate: this.exchangeRate,
-                rewardType: rewardType
+                rewardType: rewardType,
+                prediction20: this._prediction20 || null
             };
 
             this.history.push(entry);
@@ -488,7 +608,9 @@ const PetRingModule = {
             rewards: rewards || (income.bookIncome > 0 ? `书铁${income.bookIncome.toFixed(1)}万` : ''),
             exchangeRate: this.exchangeRate,
             pointsValue: pointsValue,
-            prediction20: this._prediction20 || null  
+            bookDisplayName: null,
+            rewardType: null,
+            prediction20: this._prediction20 || null
         };
         this.history.push(entry);
         this.records = [];
@@ -919,7 +1041,6 @@ const PetRingModule = {
                             <div class="a-item"><div class="a-num" id="prAnaWinCount">0</div><div class="a-label">盈利轮数</div></div>
                             <div class="a-item"><div class="a-num" id="prAnaLoseCount">0</div><div class="a-label">亏损轮数</div></div>
                         </div>
-                        <!-- 预测对比 -->
                         <div id="prAnaPredictionCompare" style="padding:4px 0;margin:8px 0;"></div>
                         <div class="task-stats-row" id="prTaskStatsRow"></div>
                         <div class="filter-row">
@@ -940,7 +1061,8 @@ const PetRingModule = {
                                     <th style="min-width:55px;">⭐ 积分</th>
                                     <th style="min-width:60px;">💰 成本</th>
                                     <th style="min-width:80px;">📈 修炼点</th>
-                                    <th style="min-width:120px;">📦 获得物品</th>
+                                    <th style="min-width:100px;">📘 书铁</th>
+                                    <th style="min-width:80px;">🎁 随机奖励</th>
                                     <th style="min-width:60px;">💰 收入</th>
                                     <th style="min-width:60px;">📈 利润</th>
                                     <th style="min-width:52px;">📊 详情</th>
@@ -948,7 +1070,7 @@ const PetRingModule = {
                                 </tr>
                             </thead>
                             <tbody id="prHistoryTableBody">
-                                <tr><td colspan="10" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>
+                                <tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1598,29 +1720,28 @@ const PetRingModule = {
         const tbody = document.getElementById('prHistoryTableBody');
         const count = this.history.length;
         document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
-    
+
         if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
             return;
         }
-    
+
         let data = this.getFilteredData();
-    
+
         if (data.length === 0 && count > 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
             return;
         }
-    
+
         const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
         data = [...data].sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             return (dateA - dateB) * sortOrder;
         });
-    
-        // 获取当前修炼果单价（用于计算修炼点价值）
+
         const fruitPrice = this.fruitPrice || 80;
-    
+
         let html = '';
         const total = data.length;
         for (let i = 0; i < data.length; i++) {
@@ -1629,7 +1750,7 @@ const PetRingModule = {
             const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
             const idx = this.history.indexOf(h);
             const rmb = h.profit * this.exchangeRate;
-    
+
             // ===== 修炼点显示 =====
             const points = h.totalPoints || 0;
             const pointsValue = points * (fruitPrice / 170);
@@ -1637,21 +1758,17 @@ const PetRingModule = {
             if (points > 0) {
                 pointsDisplay += ` (${pointsValue.toFixed(1)}万)`;
             }
-    
-            // ===== 获得物品显示 =====
-            let itemsDisplay = '-';
-            const itemParts = [];
-    
-            // 书铁
+
+            // ===== 📘 书铁显示 =====
+            let bookDisplay = '-';
             if (h.bookDisplayName) {
-                const bookVal = h.bookIncome || 0;
-                itemParts.push(`${h.bookDisplayName}(${bookVal.toFixed(1)}万)`);
+                bookDisplay = h.bookDisplayName;
             } else if (h.bookIncome && h.bookIncome > 0) {
-                // 兼容旧数据
-                itemParts.push(`书铁(${h.bookIncome.toFixed(1)}万)`);
+                bookDisplay = `书铁(${h.bookIncome.toFixed(1)}万)`;
             }
-    
-            // 三选一奖励
+
+            // ===== 🎁 随机奖励显示 =====
+            let rewardDisplay = '-';
             let rewardLabel = '';
             if (h.rewardType === 'points200') {
                 rewardLabel = '200修炼点';
@@ -1662,20 +1779,15 @@ const PetRingModule = {
             }
             const rewardVal = (h.fruitIncome || 0) + (h.furnitureIncome || 0);
             if (rewardLabel && rewardVal > 0) {
-                itemParts.push(`${rewardLabel}(${rewardVal.toFixed(1)}万)`);
-            } else if (h.rewards && h.rewards !== '无') {
-                // 兼容旧数据
-                itemParts.push(h.rewards);
+                rewardDisplay = `${rewardLabel}(${rewardVal.toFixed(1)}万)`;
+            } else if (h.rewards && h.rewards !== '无' && !h.bookDisplayName) {
+                rewardDisplay = h.rewards;
             }
-    
-            if (itemParts.length > 0) {
-                itemsDisplay = itemParts.join(' + ');
-            }
-    
+
             // ===== 总收入 =====
             const totalIncome = h.totalIncome || 0;
-    
-            // ===== 详情（任务类型统计） =====
+
+            // ===== 详情 =====
             let detailStr = '';
             if (h.typeCount) {
                 const details = [];
@@ -1687,7 +1799,7 @@ const PetRingModule = {
                 }
                 detailStr = details.join(' | ');
             }
-    
+
             html += `<tr>
                 <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
                 <td>${h.date || '未知'}</td>
@@ -1695,25 +1807,27 @@ const PetRingModule = {
                 <td><strong>${h.totalScore || 0}</strong></td>
                 <td>${(h.totalCost || 0).toFixed(1)}</td>
                 <td style="font-size:0.75rem;">${pointsDisplay}</td>
-                <td style="font-size:0.75rem;max-width:200px;word-break:break-all;">${itemsDisplay}</td>
+                <td style="font-size:0.75rem;">${bookDisplay}</td>
+                <td style="font-size:0.75rem;">${rewardDisplay}</td>
                 <td><strong>${totalIncome.toFixed(1)}</strong></td>
                 <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
                 <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
                 <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
             </tr>
             <tr class="detail-row" data-idx="${idx}">
-                <td colspan="11" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'}</td>
+                <td colspan="12" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'}</td>
             </tr>`;
         }
         tbody.innerHTML = html;
-    
+
         const icon = document.getElementById('prSortIcon');
         if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
-    
+
         if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
             this.updateAnalysis(data);
         }
     },
+
     // ========== 决策建议 ==========
     updateAdvice() {
         const stats = this.calcStats();
@@ -1778,13 +1892,14 @@ const PetRingModule = {
         }
 
         predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
+
         // 保存20环预测数据
-          
         if (runRings === 20) {
             this._prediction20 = Math.round(expectedFinal);
         } else if (runRings < 20) {
-            this._prediction20 = null;  // 还没到20环，清空
+            this._prediction20 = null;
         }
+
         strat.style.display = 'block';
         let strategyMsg = '';
         let tagText = '';
@@ -1814,147 +1929,138 @@ const PetRingModule = {
         stratText.innerHTML = strategyMsg;
         tag.textContent = tagText;
     },
-     // ========== 数据分析 ==========
+
+    // ========== 数据分析 ==========
     updateAnalysis(data) {
-    const count = data.length;
-    if (count === 0) {
-        ['prAnaTotalRuns', 'prAnaTotalCost', 'prAnaTotalIncome', 'prAnaTotalProfit', 'prAnaAvgProfit',
-            'prAnaMaxProfit', 'prAnaMinProfit', 'prAnaAvgRings', 'prAnaTotalRings', 'prAnaWinCount',
-            'prAnaLoseCount'
-        ].forEach(id => document.getElementById(id).textContent = '0');
-        document.getElementById('prAnaWinRate').textContent = '0%';
-        document.getElementById('prAnaTotalProfitWrap').className = 'a-item';
-        document.getElementById('prTaskStatsRow').innerHTML =
-            '<div style="grid-column:1/-1;text-align:center;color:#6c87a0;font-size:0.7rem;padding:4px;">无数据</div>';
-        // 预测对比置空
-        document.getElementById('prAnaPredictionCompare').innerHTML = '无数据';
-        return;
-    }
+        const count = data.length;
+        if (count === 0) {
+            ['prAnaTotalRuns', 'prAnaTotalCost', 'prAnaTotalIncome', 'prAnaTotalProfit', 'prAnaAvgProfit',
+                'prAnaMaxProfit', 'prAnaMinProfit', 'prAnaAvgRings', 'prAnaTotalRings', 'prAnaWinCount',
+                'prAnaLoseCount'
+            ].forEach(id => document.getElementById(id).textContent = '0');
+            document.getElementById('prAnaWinRate').textContent = '0%';
+            document.getElementById('prAnaTotalProfitWrap').className = 'a-item';
+            document.getElementById('prTaskStatsRow').innerHTML =
+                '<div style="grid-column:1/-1;text-align:center;color:#6c87a0;font-size:0.7rem;padding:4px;">无数据</div>';
+            document.getElementById('prAnaPredictionCompare').innerHTML = '无数据';
+            return;
+        }
 
-    let totalCost = 0, totalIncome = 0, totalProfit = 0, totalRings = 0, totalScore = 0;
-    let winCount = 0, loseCount = 0;
-    let maxProfit = -Infinity, minProfit = Infinity;
-    const taskTotals = {};
-    this.ITEM_TYPES.forEach(t => taskTotals[t.key] = 0);
+        let totalCost = 0, totalIncome = 0, totalProfit = 0, totalRings = 0, totalScore = 0;
+        let winCount = 0, loseCount = 0;
+        let maxProfit = -Infinity, minProfit = Infinity;
+        const taskTotals = {};
+        this.ITEM_TYPES.forEach(t => taskTotals[t.key] = 0);
 
-    // ===== 预测对比统计 =====
-    let predictionDiffs = [];
-    let predictionCount = 0;
+        let predictionDiffs = [];
+        let predictionCount = 0;
 
-    for (let h of data) {
-        totalCost += h.totalCost || 0;
-        totalIncome += h.totalIncome || 0;
-        totalProfit += h.profit || 0;
-        totalRings += h.ringCount || 0;
-        totalScore += h.totalScore || 0;
-        if (h.profit > 0) winCount++;
-        else if (h.profit < 0) loseCount++;
-        if (h.profit > maxProfit) maxProfit = h.profit;
-        if (h.profit < minProfit) minProfit = h.profit;
-        if (h.typeCount) {
-            for (let [key, val] of Object.entries(h.typeCount)) {
-                if (taskTotals[key] !== undefined) taskTotals[key] += val;
+        for (let h of data) {
+            totalCost += h.totalCost || 0;
+            totalIncome += h.totalIncome || 0;
+            totalProfit += h.profit || 0;
+            totalRings += h.ringCount || 0;
+            totalScore += h.totalScore || 0;
+            if (h.profit > 0) winCount++;
+            else if (h.profit < 0) loseCount++;
+            if (h.profit > maxProfit) maxProfit = h.profit;
+            if (h.profit < minProfit) minProfit = h.profit;
+            if (h.typeCount) {
+                for (let [key, val] of Object.entries(h.typeCount)) {
+                    if (taskTotals[key] !== undefined) taskTotals[key] += val;
+                }
+            }
+
+            if (h.prediction20 !== undefined && h.totalScore !== undefined) {
+                const diff = h.prediction20 - h.totalScore;
+                predictionDiffs.push({
+                    predicted: h.prediction20,
+                    actual: h.totalScore,
+                    diff: diff,
+                    date: h.date
+                });
+                predictionCount++;
             }
         }
 
-        // ===== 预测对比：20环预测 vs 最终积分 =====
-        // 如果有20环预测数据（存储在记录的 prediction20 字段中）
-        if (h.prediction20 !== undefined && h.totalScore !== undefined) {
-            const diff = h.prediction20 - h.totalScore;
-            predictionDiffs.push({
-                predicted: h.prediction20,
-                actual: h.totalScore,
-                diff: diff,
-                date: h.date
-            });
-            predictionCount++;
+        let predictionHtml = '';
+        if (predictionCount > 0) {
+            const totalDiff = predictionDiffs.reduce((sum, d) => sum + d.diff, 0);
+            const avgDiff = totalDiff / predictionCount;
+            const absDiffs = predictionDiffs.map(d => Math.abs(d.diff));
+            const avgAbsDiff = absDiffs.reduce((a, b) => a + b, 0) / predictionCount;
+            const maxDiff = Math.max(...absDiffs);
+            const accurateCount = predictionDiffs.filter(d => Math.abs(d.diff) <= 10).length;
+            const accuracy = (accurateCount / predictionCount * 100);
+            const overCount = predictionDiffs.filter(d => d.diff > 0).length;
+            const underCount = predictionDiffs.filter(d => d.diff < 0).length;
+
+            predictionHtml = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0;padding:10px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">数据量</div>
+                        <div style="font-weight:700;color:#1f3b53;">${predictionCount}轮</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">平均偏差</div>
+                        <div style="font-weight:700;color:${avgDiff > 0 ? '#c0392b' : avgDiff < 0 ? '#2d6b2d' : '#1f3b53'};">${avgDiff.toFixed(1)}分</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">平均绝对偏差</div>
+                        <div style="font-weight:700;color:#1f3b53;">${avgAbsDiff.toFixed(1)}分</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">最大偏差</div>
+                        <div style="font-weight:700;color:#1f3b53;">${maxDiff.toFixed(0)}分</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">准确率(±10分)</div>
+                        <div style="font-weight:700;color:${accuracy >= 70 ? '#2d6b2d' : accuracy >= 50 ? '#b48b3a' : '#c0392b'};">${accuracy.toFixed(0)}%</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.6rem;color:#5a7a94;">预测偏高/偏低</div>
+                        <div style="font-weight:700;color:#1f3b53;">${overCount} / ${underCount}</div>
+                    </div>
+                </div>
+                <div style="font-size:0.65rem;color:#5a7a94;text-align:center;padding:2px 0;">
+                    💡 偏差 = 20环预测终积分 − 实际终积分（正=预测偏高，负=预测偏低）
+                </div>
+            `;
+        } else {
+            predictionHtml = '<div style="color:#5a7a94;font-size:0.75rem;padding:8px 0;text-align:center;">暂无20环预测数据</div>';
         }
-    }
 
-    // ===== 生成预测对比HTML =====
-    let predictionHtml = '';
-    if (predictionCount > 0) {
-        const totalDiff = predictionDiffs.reduce((sum, d) => sum + d.diff, 0);
-        const avgDiff = totalDiff / predictionCount;
-        const absDiffs = predictionDiffs.map(d => Math.abs(d.diff));
-        const avgAbsDiff = absDiffs.reduce((a, b) => a + b, 0) / predictionCount;
-        const maxDiff = Math.max(...absDiffs);
-        // 准确率：偏差在 ±10 分以内的比例
-        const accurateCount = predictionDiffs.filter(d => Math.abs(d.diff) <= 10).length;
-        const accuracy = (accurateCount / predictionCount * 100);
+        document.getElementById('prAnaPredictionCompare').innerHTML = predictionHtml;
 
-        // 偏差方向统计
-        const overCount = predictionDiffs.filter(d => d.diff > 0).length;  // 预测高了
-        const underCount = predictionDiffs.filter(d => d.diff < 0).length; // 预测低了
+        const avgProfit = totalProfit / count;
+        const winRate = count > 0 ? (winCount / count * 100) : 0;
+        const avgRings = totalRings / count;
+        const totalRmb = totalProfit * this.exchangeRate;
 
-        predictionHtml = `
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0;padding:10px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">数据量</div>
-                    <div style="font-weight:700;color:#1f3b53;">${predictionCount}轮</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">平均偏差</div>
-                    <div style="font-weight:700;color:${avgDiff > 0 ? '#c0392b' : avgDiff < 0 ? '#2d6b2d' : '#1f3b53'};">${avgDiff.toFixed(1)}分</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">平均绝对偏差</div>
-                    <div style="font-weight:700;color:#1f3b53;">${avgAbsDiff.toFixed(1)}分</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">最大偏差</div>
-                    <div style="font-weight:700;color:#1f3b53;">${maxDiff.toFixed(0)}分</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">准确率(±10分)</div>
-                    <div style="font-weight:700;color:${accuracy >= 70 ? '#2d6b2d' : accuracy >= 50 ? '#b48b3a' : '#c0392b'};">${accuracy.toFixed(0)}%</div>
-                </div>
-                <div style="text-align:center;">
-                    <div style="font-size:0.6rem;color:#5a7a94;">预测偏高/偏低</div>
-                    <div style="font-weight:700;color:#1f3b53;">${overCount} / ${underCount}</div>
-                </div>
-            </div>
-            <div style="font-size:0.65rem;color:#5a7a94;text-align:center;padding:2px 0;">
-                💡 偏差 = 20环预测终积分 − 实际终积分（正=预测偏高，负=预测偏低）
-            </div>
-        `;
-    } else {
-        predictionHtml = '<div style="color:#5a7a94;font-size:0.75rem;padding:8px 0;text-align:center;">暂无20环预测数据</div>';
-    }
+        document.getElementById('prAnaTotalRuns').textContent = count;
+        document.getElementById('prAnaTotalCost').textContent = totalCost.toFixed(1);
+        document.getElementById('prAnaTotalIncome').textContent = totalIncome.toFixed(1);
+        document.getElementById('prAnaTotalProfit').textContent = totalProfit.toFixed(1) + ` (≈${totalRmb.toFixed(2)}元)`;
+        document.getElementById('prAnaTotalProfitWrap').className = 'a-item' + (totalProfit >= 0 ? ' a-profit' : ' a-loss');
+        document.getElementById('prAnaAvgProfit').textContent = avgProfit.toFixed(1);
+        document.getElementById('prAnaWinRate').textContent = winRate.toFixed(0) + '%';
+        document.getElementById('prAnaMaxProfit').textContent = maxProfit !== -Infinity ? maxProfit.toFixed(1) : '0';
+        document.getElementById('prAnaMinProfit').textContent = minProfit !== Infinity ? minProfit.toFixed(1) : '0';
+        document.getElementById('prAnaAvgRings').textContent = avgRings.toFixed(1);
+        document.getElementById('prAnaTotalRings').textContent = totalRings;
+        document.getElementById('prAnaWinCount').textContent = winCount;
+        document.getElementById('prAnaLoseCount').textContent = loseCount;
 
-    // 更新预测对比显示
-    document.getElementById('prAnaPredictionCompare').innerHTML = predictionHtml;
-
-    // ... 原有统计继续 ...
-    const avgProfit = totalProfit / count;
-    const winRate = count > 0 ? (winCount / count * 100) : 0;
-    const avgRings = totalRings / count;
-    const totalRmb = totalProfit * this.exchangeRate;
-
-    document.getElementById('prAnaTotalRuns').textContent = count;
-    document.getElementById('prAnaTotalCost').textContent = totalCost.toFixed(1);
-    document.getElementById('prAnaTotalIncome').textContent = totalIncome.toFixed(1);
-    document.getElementById('prAnaTotalProfit').textContent = totalProfit.toFixed(1) + ` (≈${totalRmb.toFixed(2)}元)`;
-    document.getElementById('prAnaTotalProfitWrap').className = 'a-item' + (totalProfit >= 0 ? ' a-profit' : ' a-loss');
-    document.getElementById('prAnaAvgProfit').textContent = avgProfit.toFixed(1);
-    document.getElementById('prAnaWinRate').textContent = winRate.toFixed(0) + '%';
-    document.getElementById('prAnaMaxProfit').textContent = maxProfit !== -Infinity ? maxProfit.toFixed(1) : '0';
-    document.getElementById('prAnaMinProfit').textContent = minProfit !== Infinity ? minProfit.toFixed(1) : '0';
-    document.getElementById('prAnaAvgRings').textContent = avgRings.toFixed(1);
-    document.getElementById('prAnaTotalRings').textContent = totalRings;
-    document.getElementById('prAnaWinCount').textContent = winCount;
-    document.getElementById('prAnaLoseCount').textContent = loseCount;
-
-    let tsHtml = '';
-    this.ITEM_TYPES.forEach(t => {
-        const avg = count > 0 ? (taskTotals[t.key] / count).toFixed(1) : '0';
-        tsHtml += `<div class="ts-item">
-            <div class="ts-num" style="color:${t.color};">${taskTotals[t.key]||0}</div>
-            <div class="ts-label">${t.label} (均${avg})</div>
-        </div>`;
-    });
-    document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
-},
+        let tsHtml = '';
+        this.ITEM_TYPES.forEach(t => {
+            const avg = count > 0 ? (taskTotals[t.key] / count).toFixed(1) : '0';
+            tsHtml += `<div class="ts-item">
+                <div class="ts-num" style="color:${t.color};">${taskTotals[t.key]||0}</div>
+                <div class="ts-label">${t.label} (均${avg})</div>
+            </div>`;
+        });
+        document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
+    },
 
     // ========== 导入 ==========
     importData() {
