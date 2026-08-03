@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版 v5
-//  修复：布局自适应 + 状态横向排布 + 字体加粗
+//  🏃 跑商助手模块 - 重构完整版 v6
+//  修复：输入框无法输入的问题（分离渲染 + 事件优化）
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -70,7 +70,6 @@ const ShopHelperModule = {
         ]
     },
 
-    // ===== 跑动时间默认值（秒） =====
     defaultTravelTimes: {
         'changan_aolai': 150, 'aolai_changan': 30,
         'changan_changshou': 270, 'changshou_changan': 120,
@@ -93,7 +92,7 @@ const ShopHelperModule = {
         if (this._timer) clearInterval(this._timer);
         this._timer = setInterval(() => {
             this.updateTimeDisplay();
-            this.renderMap();
+            this.updateStatusOnly(); // 只更新状态，不重绘整个地图
         }, 1000);
     },
 
@@ -103,6 +102,62 @@ const ShopHelperModule = {
         this.renderTravelTimes();
         this.saveData();
         this.applyUISettings();
+    },
+
+    // 只更新状态标签（不重绘整个地图，保持输入框焦点）
+    updateStatusOnly() {
+        const container = document.getElementById('shMapContainer');
+        if (!container) return;
+        const s = this.uiSettings;
+
+        // 只更新每个地点的状态标签和耗时
+        for (let loc of this.locations) {
+            const card = container.querySelector(`.sh-location-card[data-location="${loc.id}"]`);
+            if (!card) continue;
+
+            const isCurrent = this.currentLocation === loc.id;
+            const status = this.checkRefreshStatus(loc.id);
+
+            let firstStatus = status.first === 'can' ? '赶得上 ✅' : '赶不上 ❌';
+            let firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
+            let secondStatus = status.second === 'can' ? '赶得上 ✅' : '赶不上 ❌';
+            let secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
+
+            if (status.isCurrent) {
+                firstStatus = '📍当前';
+                firstColor = s.colorCurrent;
+                secondStatus = '📍当前';
+                secondColor = s.colorCurrent;
+            }
+
+            // 更新状态标签
+            const statusRow = card.querySelector('.sh-status-row');
+            if (statusRow) {
+                statusRow.innerHTML = `
+                    <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:0 8px;border-radius:10px;font-weight:800;font-size:0.7rem;white-space:nowrap;">🔄一刷 ${firstStatus}</span>
+                    <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};padding:0 8px;border-radius:10px;font-weight:800;font-size:0.7rem;white-space:nowrap;">🔄二刷 ${secondStatus}</span>
+                `;
+            }
+
+            // 更新耗时显示
+            const travelDisplay = isCurrent ? '📍当前' : (status.travelTime ? this.formatTime(status.travelTime) : '--');
+            const timeEl = card.querySelector('.sh-travel-display');
+            if (timeEl) {
+                timeEl.textContent = travelDisplay;
+                timeEl.style.color = isCurrent ? s.colorCurrent : '#4a6a8a';
+            }
+
+            // 更新边框
+            if (isCurrent) {
+                card.style.border = `3px solid ${s.colorCurrent}`;
+                card.style.background = s.locationHighlight;
+                card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+            } else {
+                card.style.border = '1px solid #dce5ef';
+                card.style.background = s.cardBgColor;
+                card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+            }
+        }
     },
 
     loadData() {
@@ -240,17 +295,21 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图（自适应 + 状态横向排布）
+    //  🗺️ 渲染地图（只渲染一次，后续只更新状态）
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
+        
+        // 如果已经有内容，只更新状态，不重新渲染
+        if (container.querySelector('.sh-location-card')) {
+            this.updateStatusOnly();
+            return;
+        }
+
         const s = this.uiSettings;
 
-        // 自适应列：大屏5列，中屏3列，小屏2列
-        let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;@media (max-width:1024px){grid-template-columns:repeat(3,1fr);}@media (max-width:600px){grid-template-columns:repeat(2,1fr);}">';
-        // 用内联样式 + 媒体查询
-        html = `
+        let html = `
             <style>
                 .sh-map-grid {
                     display: grid;
@@ -281,6 +340,10 @@ const ShopHelperModule = {
                     font-weight: 800;
                     font-size: 0.7rem;
                     white-space: nowrap;
+                }
+                .sh-price-input, .sh-goods-refprice-input {
+                    background: white !important;
+                    pointer-events: auto !important;
                 }
             </style>
             <div class="sh-map-grid">
@@ -321,7 +384,6 @@ const ShopHelperModule = {
                 `;
             }
 
-            // 商品列表
             const goods = this.goodsList[loc.id] || [];
             let goodsHtml = '';
             if (goods.length > 0) {
@@ -348,8 +410,8 @@ const ShopHelperModule = {
                     return `
                         <div class="sh-goods-item" style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:2px;border-bottom:1px solid #e8eef5;flex-wrap:nowrap;">
                             <span class="sh-goods-name" style="min-width:28px;font-weight:800;color:#0a1a2a;font-size:0.8rem;flex-shrink:0;">${g.name}</span>
-                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:1px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:44px;padding:1px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:2px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:44px;padding:2px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
                             ${currentPrice ? `<span style="font-size:0.65rem;color:${priceColor};font-weight:800;min-width:20px;flex-shrink:0;">${priceStatus}</span>` : '<span style="min-width:20px;font-size:0.5rem;color:#ccc;flex-shrink:0;">—</span>'}
                             <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:0.8rem;padding:0 2px;font-weight:700;flex-shrink:0;">✕</button>
                         </div>
@@ -359,8 +421,8 @@ const ShopHelperModule = {
 
             const addGoodsHtml = `
                 <div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">
-                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:40px;padding:1px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;background:white;color:#0a1a2a;font-weight:600;">
-                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:40px;padding:1px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
+                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:40px;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;background:white;color:#0a1a2a;font-weight:600;">
+                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:40px;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
                     <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:6px;padding:0 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">+</button>
                 </div>
             `;
@@ -372,7 +434,7 @@ const ShopHelperModule = {
                 border:${isCurrent ? '3px' : '1px'} solid ${isCurrent ? s.colorCurrent : '#dce5ef'};
                 box-shadow:${isCurrent ? '0 4px 16px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)'};
                 transition:all 0.2s;
-                cursor:pointer;
+                cursor:default;
                 min-width:0;
                 overflow:hidden;
             `;
@@ -382,9 +444,8 @@ const ShopHelperModule = {
                 <div class="sh-location-card" data-location="${loc.id}" style="${cardStyle}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
                         <span class="sh-location-name" style="font-size:1rem;font-weight:800;color:#0a1a2a;cursor:pointer;user-select:none;white-space:nowrap;">${loc.icon} ${loc.name}</span>
-                        <span style="font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;white-space:nowrap;">${travelDisplay}</span>
+                        <span class="sh-travel-display" style="font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;white-space:nowrap;">${travelDisplay}</span>
                     </div>
-                    <!-- 状态横向排布 -->
                     <div class="sh-status-row">
                         <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};">🔄一刷 ${firstStatus}</span>
                         <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};">🔄二刷 ${secondStatus}</span>
@@ -457,7 +518,7 @@ const ShopHelperModule = {
             html += `
                 <div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;padding:2px 5px;background:#f5f8fc;border-radius:6px;border:1px solid #e8eef5;">
                     <span style="color:#0a1a2a;min-width:50px;font-size:0.7rem;font-weight:700;">${label}</span>
-                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:44px;padding:1px 3px;border:1px solid #bccad9;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
+                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:44px;padding:2px 3px;border:1px solid #bccad9;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
                     <span style="color:#4a6a8a;font-size:0.55rem;font-weight:600;">秒</span>
                 </div>
             `;
@@ -574,26 +635,25 @@ const ShopHelperModule = {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // ===== 点击地点卡片 =====
+        // ===== 点击地点卡片（排除输入框和按钮） =====
         container.addEventListener('click', (e) => {
-            // ✅ 关键：如果点击的是输入框或按钮，阻止冒泡并直接返回
             const target = e.target;
             if (target.tagName === 'INPUT' || 
                 target.tagName === 'SELECT' || 
                 target.tagName === 'TEXTAREA' ||
                 target.closest('input') ||
                 target.closest('button')) {
-                e.stopPropagation();
-                return;
+                return; // 不阻止冒泡，但也不触发地点切换
             }
 
             const card = e.target.closest('.sh-location-card');
             if (card) {
                 const locId = card.dataset.location;
-                if (locId) {
+                if (locId && locId !== this.currentLocation) {
                     this.currentLocation = locId;
                     this.saveData();
-                    this.render();
+                    this.renderMap();
+                    this.renderTravelTimes();
                 }
             }
         });
@@ -621,8 +681,8 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 当前价格输入 =====
-        container.addEventListener('change', (e) => {
+        // ===== 当前价格输入（用 input 事件实时保存） =====
+        container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
                 const locId = input.dataset.location;
@@ -631,19 +691,17 @@ const ShopHelperModule = {
                 const key = locId + '_' + goodsKey;
                 if (!isNaN(val) && val > 0) {
                     this.goodsPrices[key] = val;
-                    if (!this.priceHistory[key]) this.priceHistory[key] = [];
-                    this.priceHistory[key].push({ price: val, time: new Date().toLocaleString() });
-                    if (this.priceHistory[key].length > 20) this.priceHistory[key].shift();
                 } else {
                     delete this.goodsPrices[key];
                 }
                 this.saveData();
-                this.renderMap();
+                // 更新价格状态图标（只更新当前商品的状态）
+                this.updatePriceStatus(input);
             }
         });
 
         // ===== 参考价输入 =====
-        container.addEventListener('change', (e) => {
+        container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
                 const locId = input.dataset.location;
@@ -656,7 +714,9 @@ const ShopHelperModule = {
                     delete this.goodsRefPrices[key];
                 }
                 this.saveData();
-                this.renderMap();
+                // 更新价格状态
+                const priceInput = input.parentElement.querySelector('.sh-price-input');
+                if (priceInput) this.updatePriceStatus(priceInput);
             }
         });
 
@@ -712,7 +772,7 @@ const ShopHelperModule = {
                     const key = from + '_' + to;
                     this.travelTimes[key] = val;
                     this.saveData();
-                    this.renderMap();
+                    this.updateStatusOnly();
                 }
             }
         });
@@ -722,13 +782,13 @@ const ShopHelperModule = {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
             this.saveData();
-            this.render();
+            this.updateStatusOnly();
         });
         document.getElementById('shFirstPlus').addEventListener('click', () => {
             this.firstOffset = Math.min(10, this.firstOffset + 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
             this.saveData();
-            this.render();
+            this.updateStatusOnly();
         });
 
         // ===== 二刷设置 =====
@@ -740,7 +800,7 @@ const ShopHelperModule = {
             this.secondMinute = m;
             this.secondSecond = s;
             this.saveData();
-            this.render();
+            this.updateStatusOnly();
             alert('✅ 二刷时间已设置！');
         });
 
@@ -770,7 +830,8 @@ const ShopHelperModule = {
             document.getElementById(elId).addEventListener('input', function() {
                 ShopHelperModule.uiSettings[key] = this.value;
                 ShopHelperModule.saveData();
-                ShopHelperModule.render();
+                ShopHelperModule.renderMap();
+                ShopHelperModule.updateStatusOnly();
             });
         }
 
@@ -780,7 +841,6 @@ const ShopHelperModule = {
             ShopHelperModule.uiSettings.fontSize = val;
             ShopHelperModule.saveData();
             ShopHelperModule.applyUISettings();
-            ShopHelperModule.renderMap();
         });
 
         // ===== 重置颜色 =====
@@ -805,9 +865,45 @@ const ShopHelperModule = {
                 const el = document.getElementById(elId);
                 if (el) el.value = defaults[key];
             }
-            ShopHelperModule.render();
+            ShopHelperModule.renderMap();
+            ShopHelperModule.updateStatusOnly();
             alert('✅ 颜色已重置！');
         });
+    },
+
+    // ============================================================
+    //  🔄 更新单个商品的价格状态
+    // ============================================================
+    updatePriceStatus(input) {
+        const goodsItem = input.closest('.sh-goods-item');
+        if (!goodsItem) return;
+
+        const locId = input.dataset.location;
+        const goodsKey = input.dataset.goods;
+        const currentPrice = parseFloat(input.value);
+        const refPriceKey = locId + '_' + goodsKey;
+        const refPrice = this.goodsRefPrices[refPriceKey] || 
+                         this.goodsList[locId]?.find(g => g.key === goodsKey)?.refPrice || 0;
+
+        const statusSpan = goodsItem.querySelector('.sh-price-status');
+        if (!statusSpan) return;
+
+        if (currentPrice && refPrice > 0) {
+            const s = this.uiSettings;
+            if (currentPrice < refPrice * 0.95) {
+                statusSpan.textContent = '📉';
+                statusSpan.style.color = s.colorLowPrice;
+            } else if (currentPrice > refPrice * 1.05) {
+                statusSpan.textContent = '📈';
+                statusSpan.style.color = s.colorHighPrice;
+            } else {
+                statusSpan.textContent = '—';
+                statusSpan.style.color = '#4a6a8a';
+            }
+        } else {
+            statusSpan.textContent = '—';
+            statusSpan.style.color = '#ccc';
+        }
     }
 };
 
