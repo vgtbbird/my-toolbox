@@ -299,6 +299,12 @@
             </div>
         </div>
 
+        <div style="margin-bottom:10px;">
+            <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;display:block;margin-bottom:4px;">👤 Gitee 用户名</label>
+            <input type="text" id="cloudUsernameInput" placeholder="你的 Gitee 用户名" style="width:100%;padding:8px 12px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;background:white;">
+            <div style="font-size:0.65rem;color:#5a7a94;margin-top:2px;">💡 用于指定数据存储的仓库所属用户</div>
+        </div>
+
         <!-- Token 输入 -->
         <div style="margin-bottom:14px;">
             <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;display:block;margin-bottom:4px;">🔑 私人令牌 (Token)</label>
@@ -922,11 +928,18 @@ document.getElementById('cloudSettingsModal').addEventListener('click', function
 
 // 保存 Token
 document.getElementById('saveTokenBtn').addEventListener('click', function() {
+    const username = document.getElementById('cloudUsernameInput').value.trim();
     const token = document.getElementById('cloudTokenInput').value.trim();
+
+    if (!username) {                                    
+        alert('请输入 Gitee 用户名！');                 
+        return;                                       
+    }                                               
     if (!token) {
         alert('请输入 Token！');
         return;
     }
+    GitHubSync.setUser(username); 
     GitHubSync.setToken(token);
     document.getElementById('tokenStatusDisplay').textContent = '✅ 已设置';
     document.getElementById('tokenStatusDisplay').style.color = '#2d6b2d';
