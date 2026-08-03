@@ -574,20 +574,19 @@ const ShopHelperModule = {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // 点击地点卡片
+        // ===== 点击地点卡片 =====
         container.addEventListener('click', (e) => {
-            if (e.target.closest('.sh-shop-btn') || 
-                e.target.closest('.sh-price-input') ||
-                e.target.closest('.sh-goods-refprice-input') ||
-                e.target.closest('.sh-new-goods-name') ||
-                e.target.closest('.sh-new-goods-price') ||
-                e.target.closest('.sh-add-goods-btn') ||
-                e.target.closest('.sh-del-goods-btn') ||
-                e.target.closest('.sh-travel-input') ||
-                e.target.closest('input') ||
-                e.target.closest('button')) {
+            // ✅ 关键：如果点击的是输入框或按钮，阻止冒泡并直接返回
+            const target = e.target;
+            if (target.tagName === 'INPUT' || 
+                target.tagName === 'SELECT' || 
+                target.tagName === 'TEXTAREA' ||
+                target.closest('input') ||
+                target.closest('button')) {
+                e.stopPropagation();
                 return;
             }
+
             const card = e.target.closest('.sh-location-card');
             if (card) {
                 const locId = card.dataset.location;
@@ -599,7 +598,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 点击商人
+        // ===== 点击商人按钮 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
@@ -622,7 +621,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 当前价格输入
+        // ===== 当前价格输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -643,7 +642,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 参考价输入
+        // ===== 参考价输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
@@ -661,7 +660,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 添加商品
+        // ===== 添加商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-add-goods-btn');
             if (btn) {
@@ -684,7 +683,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 删除商品
+        // ===== 删除商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-del-goods-btn');
             if (btn) {
@@ -702,7 +701,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 跑动时间输入
+        // ===== 跑动时间输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-travel-input');
             if (input) {
@@ -718,7 +717,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 一刷微调
+        // ===== 一刷微调 =====
         document.getElementById('shFirstMinus').addEventListener('click', () => {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
@@ -732,7 +731,7 @@ const ShopHelperModule = {
             this.render();
         });
 
-        // 二刷设置
+        // ===== 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -745,7 +744,7 @@ const ShopHelperModule = {
             alert('✅ 二刷时间已设置！');
         });
 
-        // 折叠
+        // ===== 折叠按钮 =====
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
             document.getElementById('shTimeBody').classList.toggle('hidden');
             this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
@@ -759,7 +758,7 @@ const ShopHelperModule = {
             this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // 颜色
+        // ===== 颜色设置 =====
         const colorMap = {
             'shColorCanReach': 'colorCanReach',
             'shColorCannotReach': 'colorCannotReach',
@@ -775,6 +774,7 @@ const ShopHelperModule = {
             });
         }
 
+        // ===== 字体大小 =====
         document.getElementById('shFontSize').addEventListener('change', function() {
             const val = parseInt(this.value) || 15;
             ShopHelperModule.uiSettings.fontSize = val;
@@ -783,6 +783,7 @@ const ShopHelperModule = {
             ShopHelperModule.renderMap();
         });
 
+        // ===== 重置颜色 =====
         document.getElementById('shResetUIColors').addEventListener('click', function() {
             if (!confirm('重置所有颜色为默认值？')) return;
             const defaults = {
