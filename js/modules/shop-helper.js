@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版 v4
-//  修复：字体加粗加深 + 参考价可编辑 + 价格对比 + 时间默认值
+//  🏃 跑商助手模块 - 重构完整版 v5
+//  修复：布局自适应 + 状态横向排布 + 字体加粗
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -13,7 +13,7 @@ const ShopHelperModule = {
         btnTextColor: '#ffffff',
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
-        fontSize: 16,
+        fontSize: 15,
         colorCanReach: '#2d6b2d',
         colorCannotReach: '#c0392b',
         colorCurrent: '#dbbd7c',
@@ -30,7 +30,7 @@ const ShopHelperModule = {
     shopPrices: {},
     goodsList: {},
     goodsPrices: {},
-    goodsRefPrices: {}, // 用户自定义参考价
+    goodsRefPrices: {},
     priceHistory: {},
     runRecords: [],
 
@@ -70,18 +70,7 @@ const ShopHelperModule = {
         ]
     },
 
-    // ===== 跑动时间默认值（按表格换算为秒） =====
-    // 表格: 行=出发地, 列=目的地
-    // 长安→地府 90s, 地府→长安 60s
-    // 长安→傲来 150s, 傲来→长安 30s
-    // 长安→长寿 270s, 长寿→长安 120s
-    // 长安→北俱 240s, 北俱→长安 30s
-    // 傲来→长寿 120s, 长寿→傲来 120s
-    // 傲来→地府 150s, 地府→傲来 150s
-    // 傲来→北俱 40s, 北俱→傲来 40s
-    // 长寿→地府 150s, 地府→长寿 150s
-    // 长寿→北俱 60s, 北俱→长寿 40s
-    // 地府→北俱 270s, 北俱→地府 120s
+    // ===== 跑动时间默认值（秒） =====
     defaultTravelTimes: {
         'changan_aolai': 150, 'aolai_changan': 30,
         'changan_changshou': 270, 'changshou_changan': 120,
@@ -251,14 +240,51 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图（全部加粗加深 + 参考价可编辑 + 价格对比）
+    //  🗺️ 渲染地图（自适应 + 状态横向排布）
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         const s = this.uiSettings;
 
-        let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">';
+        // 自适应列：大屏5列，中屏3列，小屏2列
+        let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;@media (max-width:1024px){grid-template-columns:repeat(3,1fr);}@media (max-width:600px){grid-template-columns:repeat(2,1fr);}">';
+        // 用内联样式 + 媒体查询
+        html = `
+            <style>
+                .sh-map-grid {
+                    display: grid;
+                    grid-template-columns: repeat(5, 1fr);
+                    gap: 8px;
+                }
+                @media (max-width: 1024px) {
+                    .sh-map-grid {
+                        grid-template-columns: repeat(3, 1fr);
+                    }
+                }
+                @media (max-width: 600px) {
+                    .sh-map-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+                .sh-status-row {
+                    display: flex;
+                    flex-direction: row;
+                    gap: 4px;
+                    flex-wrap: wrap;
+                    margin: 3px 0;
+                }
+                .sh-status-text {
+                    display: inline-block;
+                    padding: 0 8px;
+                    border-radius: 10px;
+                    font-weight: 800;
+                    font-size: 0.7rem;
+                    white-space: nowrap;
+                }
+            </style>
+            <div class="sh-map-grid">
+        `;
 
         for (let loc of this.locations) {
             const isCurrent = this.currentLocation === loc.id;
@@ -270,9 +296,9 @@ const ShopHelperModule = {
             let secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
 
             if (status.isCurrent) {
-                firstStatus = '📍 当前';
+                firstStatus = '📍当前';
                 firstColor = s.colorCurrent;
-                secondStatus = '📍 当前';
+                secondStatus = '📍当前';
                 secondColor = s.colorCurrent;
             }
 
@@ -282,26 +308,25 @@ const ShopHelperModule = {
             if (loc.shopLayout === 'horizontal') {
                 shopsHtml = `
                     <div style="display:flex;gap:4px;justify-content:center;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.85rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.85rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[1]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;min-width:0;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;min-width:0;">${loc.shops[1]}</button>
                     </div>
                 `;
             } else {
                 shopsHtml = `
-                    <div style="display:flex;flex-direction:column;gap:4px;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.85rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.85rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[1]}</button>
+                    <div style="display:flex;flex-direction:column;gap:3px;margin:4px 0;">
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[1]}</button>
                     </div>
                 `;
             }
 
-            // ===== 商品列表 - 全部加粗加深 =====
+            // 商品列表
             const goods = this.goodsList[loc.id] || [];
             let goodsHtml = '';
             if (goods.length > 0) {
                 goodsHtml = goods.map(g => {
                     const currentPrice = this.goodsPrices[loc.id + '_' + g.key] || '';
-                    // 获取参考价（优先用户自定义，否则用默认）
                     const refPriceKey = loc.id + '_' + g.key;
                     const refPrice = this.goodsRefPrices[refPriceKey] || g.refPrice || 0;
                     
@@ -309,57 +334,60 @@ const ShopHelperModule = {
                     let priceColor = '#5a7a94';
                     if (currentPrice && refPrice > 0) {
                         if (currentPrice < refPrice * 0.95) {
-                            priceStatus = '📉 低';
+                            priceStatus = '📉';
                             priceColor = s.colorLowPrice;
                         } else if (currentPrice > refPrice * 1.05) {
-                            priceStatus = '📈 高';
+                            priceStatus = '📈';
                             priceColor = s.colorHighPrice;
                         } else {
-                            priceStatus = '— 平';
+                            priceStatus = '—';
                             priceColor = '#4a6a8a';
                         }
                     }
 
                     return `
-                        <div class="sh-goods-item" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;gap:4px;border-bottom:1px solid #e8eef5;">
-                            <span class="sh-goods-name" style="min-width:34px;font-weight:800;color:#0a1a2a;font-size:0.9rem;">${g.name}</span>
-                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:52px;padding:2px 4px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;background:#f5f8fc;">
-                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="市价" style="width:52px;padding:2px 4px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
-                            ${currentPrice ? `<span style="font-size:0.7rem;color:${priceColor};font-weight:800;min-width:28px;">${priceStatus}</span>` : '<span style="min-width:28px;font-size:0.6rem;color:#aaa;">—</span>'}
-                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:0.9rem;padding:0 2px;font-weight:700;">✕</button>
+                        <div class="sh-goods-item" style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:2px;border-bottom:1px solid #e8eef5;flex-wrap:nowrap;">
+                            <span class="sh-goods-name" style="min-width:28px;font-weight:800;color:#0a1a2a;font-size:0.8rem;flex-shrink:0;">${g.name}</span>
+                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:1px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:44px;padding:1px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            ${currentPrice ? `<span style="font-size:0.65rem;color:${priceColor};font-weight:800;min-width:20px;flex-shrink:0;">${priceStatus}</span>` : '<span style="min-width:20px;font-size:0.5rem;color:#ccc;flex-shrink:0;">—</span>'}
+                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:0.8rem;padding:0 2px;font-weight:700;flex-shrink:0;">✕</button>
                         </div>
                     `;
                 }).join('');
             }
 
             const addGoodsHtml = `
-                <div style="display:flex;gap:4px;margin-top:4px;">
-                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品名" style="flex:1;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.7rem;background:white;color:#0a1a2a;font-weight:600;">
-                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:44px;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
-                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:6px;padding:0 12px;font-size:0.75rem;font-weight:700;cursor:pointer;">+</button>
+                <div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">
+                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:40px;padding:1px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;background:white;color:#0a1a2a;font-weight:600;">
+                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:40px;padding:1px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
+                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:6px;padding:0 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">+</button>
                 </div>
             `;
 
             let cardStyle = `
                 background:${s.cardBgColor};
                 border-radius:12px;
-                padding:10px 10px;
+                padding:8px 8px;
                 border:${isCurrent ? '3px' : '1px'} solid ${isCurrent ? s.colorCurrent : '#dce5ef'};
                 box-shadow:${isCurrent ? '0 4px 16px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)'};
                 transition:all 0.2s;
                 cursor:pointer;
+                min-width:0;
+                overflow:hidden;
             `;
             if (isCurrent) cardStyle += `background:${s.locationHighlight};`;
 
             html += `
                 <div class="sh-location-card" data-location="${loc.id}" style="${cardStyle}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span class="sh-location-name" style="font-size:1.1rem;font-weight:800;color:#0a1a2a;cursor:pointer;user-select:none;">${loc.icon} ${loc.name}</span>
-                        <span style="font-size:0.75rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;">${travelDisplay}</span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
+                        <span class="sh-location-name" style="font-size:1rem;font-weight:800;color:#0a1a2a;cursor:pointer;user-select:none;white-space:nowrap;">${loc.icon} ${loc.name}</span>
+                        <span style="font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;white-space:nowrap;">${travelDisplay}</span>
                     </div>
-                    <div style="display:flex;gap:4px;font-size:0.75rem;margin:3px 0;flex-wrap:wrap;">
-                        <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:0 10px;border-radius:10px;font-weight:800;font-size:0.75rem;">🔄一刷 ${firstStatus}</span>
-                        <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};padding:0 10px;border-radius:10px;font-weight:800;font-size:0.75rem;">🔄二刷 ${secondStatus}</span>
+                    <!-- 状态横向排布 -->
+                    <div class="sh-status-row">
+                        <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};">🔄一刷 ${firstStatus}</span>
+                        <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};">🔄二刷 ${secondStatus}</span>
                     </div>
                     ${shopsHtml}
                     <div style="border-top:1px solid #e0e8f0;margin-top:4px;padding-top:4px;">
@@ -393,7 +421,7 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🕐 渲染跑动时间配置（双向独立）
+    //  🕐 渲染跑动时间配置
     // ============================================================
     renderTravelTimes() {
         const container = document.getElementById('shTravelTimesContainer');
@@ -422,15 +450,15 @@ const ShopHelperModule = {
             ['beiju', 'difu', '北俱→地府']
         ];
 
-        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 8px;">';
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px 6px;">';
         for (let [from, to, label] of pairs) {
             const key = from + '_' + to;
             const val = this.travelTimes[key] || 180;
             html += `
-                <div style="display:flex;align-items:center;gap:4px;font-size:0.8rem;padding:3px 6px;background:#f5f8fc;border-radius:6px;border:1px solid #e8eef5;">
-                    <span style="color:#0a1a2a;min-width:56px;font-size:0.75rem;font-weight:700;">${label}</span>
-                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:48px;padding:2px 4px;border:1px solid #bccad9;border-radius:6px;font-size:0.8rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
-                    <span style="color:#4a6a8a;font-size:0.6rem;font-weight:600;">秒</span>
+                <div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;padding:2px 5px;background:#f5f8fc;border-radius:6px;border:1px solid #e8eef5;">
+                    <span style="color:#0a1a2a;min-width:50px;font-size:0.7rem;font-weight:700;">${label}</span>
+                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:44px;padding:1px 3px;border:1px solid #bccad9;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
+                    <span style="color:#4a6a8a;font-size:0.55rem;font-weight:600;">秒</span>
                 </div>
             `;
         }
@@ -505,7 +533,7 @@ const ShopHelperModule = {
                     <button class="toggle-btn" id="shToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;cursor:pointer;">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="shUISettingsBody">
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;padding:8px 0;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;padding:8px 0;">
                         <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
                             <label>🟢 赶得上</label>
                             <input type="color" id="shColorCanReach" value="${this.uiSettings.colorCanReach}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
@@ -527,7 +555,7 @@ const ShopHelperModule = {
                             <input type="color" id="shColorHigh" value="${this.uiSettings.colorHighPrice}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
                         </div>
                         <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
-                            <label>🔤 字体大小</label>
+                            <label>🔤 字体</label>
                             <input type="number" id="shFontSize" value="${this.uiSettings.fontSize}" min="12" max="24" style="width:50px;padding:2px;border-radius:8px;border:1px solid #ddd;text-align:center;display:block;margin:2px auto;font-weight:700;color:#0a1a2a;">
                         </div>
                         <div style="display:flex;align-items:center;justify-content:center;">
@@ -615,7 +643,7 @@ const ShopHelperModule = {
             }
         });
 
-        // 参考价输入（自定义）
+        // 参考价输入
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
@@ -748,7 +776,7 @@ const ShopHelperModule = {
         }
 
         document.getElementById('shFontSize').addEventListener('change', function() {
-            const val = parseInt(this.value) || 16;
+            const val = parseInt(this.value) || 15;
             ShopHelperModule.uiSettings.fontSize = val;
             ShopHelperModule.saveData();
             ShopHelperModule.applyUISettings();
