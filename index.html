@@ -172,6 +172,7 @@
                 <button class="sync-btn" id="syncFromCloudBtn">📥 从云端拉取</button>
                 <button class="sync-btn" id="clearLocalBtn" style="background:#b45f5f;">🗑️ 清空本地</button>
                 <button class="sync-btn" id="clearCloudBtn" style="background:#b45f5f;">🗑️ 清空云端</button>
+                <button class="sync-btn" id="openCloudSettingsBtn" style="background:#6b8baa;">☁️ 云同步设置</button>
                 <span class="sync-info" id="syncInfo">数据存于 Gitee</span>
             </div>
         </div>
@@ -275,6 +276,66 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== 云同步设置弹窗 ===== -->
+<div class="modal-overlay" id="cloudSettingsModal">
+    <div class="modal-box" style="max-width:480px;">
+        <h3>☁️ 云同步设置</h3>
+        <div class="modal-desc">配置云端同步，数据可跨设备使用</div>
+        
+        <!-- 当前模式 -->
+        <div style="background:#f0f5fb;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #dce5ef;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.85rem;color:#1f3b53;">当前模式</span>
+                <span id="cloudModeDisplay" style="font-weight:700;color:#2d6b2d;font-size:0.9rem;">📁 本地存储</span>
+            </div>
+        </div>
+
+        <!-- Token 状态 -->
+        <div style="background:#f8faff;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #e8eef5;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.85rem;color:#1f3b53;">🔑 Token 状态</span>
+                <span id="tokenStatusDisplay" style="font-size:0.8rem;color:#c0392b;">❌ 未设置</span>
+            </div>
+        </div>
+
+        <!-- Token 输入 -->
+        <div style="margin-bottom:14px;">
+            <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;display:block;margin-bottom:4px;">🔑 私人令牌 (Token)</label>
+            <input type="password" id="cloudTokenInput" placeholder="粘贴你的 Gitee Token" style="width:100%;padding:8px 12px;border:1px solid #bccad9;border-radius:12px;font-size:0.85rem;background:white;">
+            <div style="display:flex;gap:8px;margin-top:6px;">
+                <button class="btn-small" id="saveTokenBtn" style="background:#4c7a5c;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">💾 保存 Token</button>
+                <button class="btn-small" id="clearTokenBtn" style="background:#b45f5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">🗑️ 清除 Token</button>
+            </div>
+        </div>
+
+        <!-- 获取 Token 说明 -->
+        <div style="background:#f5f8fc;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #e8eef5;">
+            <div style="font-weight:600;font-size:0.8rem;color:#1f3b53;margin-bottom:4px;">💡 没有 Token？</div>
+            <div style="font-size:0.75rem;color:#5a7a94;line-height:1.6;">
+                1. 注册 <a href="https://gitee.com" target="_blank" style="color:#4c7a5c;">Gitee</a> 账号<br>
+                2. 进入设置 → 私人令牌 → 生成新令牌<br>
+                3. 勾选 <code>projects</code> 权限，生成后复制粘贴到这里
+            </div>
+        </div>
+
+        <!-- 同步按钮 -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+            <button class="btn-complete" id="cloudSyncBtn" style="background:#4c7a5c;color:#fff;border:none;padding:6px 20px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.8rem;">☁️ 同步到云端</button>
+            <button class="btn-complete" id="cloudPullBtn" style="background:#6b8baa;color:#fff;border:none;padding:6px 20px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.8rem;">📥 从云端拉取</button>
+            <button class="btn-small" id="cloudCheckBtn" style="background:#b48b5f;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">🔍 查询云端</button>
+        </div>
+
+        <!-- 状态信息 -->
+        <div id="cloudStatusMsg" style="font-size:0.75rem;color:#5a7a94;padding:6px 0;border-top:1px solid #eef2f7;min-height:24px;">
+            就绪
+        </div>
+
+        <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+            <button class="btn-cancel" id="cloudSettingsClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+        </div>
+    </div>
+</div>
 
     <!-- ===== 跑宠环导入弹窗 ===== -->
     <div class="modal-overlay" id="prImportModal">
@@ -822,6 +883,145 @@
         // ============================================================
         //  🚀 启动应用！（默认显示首页）
         // ============================================================
+        // ============================================================
+//  ☁️ 云同步设置弹窗
+// ============================================================
+
+// 打开弹窗
+document.getElementById('openCloudSettingsBtn').addEventListener('click', function() {
+    // 加载当前 Token 显示
+    const token = GitHubSync.getToken();
+    const tokenInput = document.getElementById('cloudTokenInput');
+    const statusDisplay = document.getElementById('tokenStatusDisplay');
+    const modeDisplay = document.getElementById('cloudModeDisplay');
+    
+    if (token) {
+        tokenInput.value = token;
+        statusDisplay.textContent = '✅ 已设置';
+        statusDisplay.style.color = '#2d6b2d';
+        modeDisplay.textContent = '☁️ 云端模式';
+        modeDisplay.style.color = '#2d6b2d';
+    } else {
+        tokenInput.value = '';
+        statusDisplay.textContent = '❌ 未设置';
+        statusDisplay.style.color = '#c0392b';
+        modeDisplay.textContent = '📁 本地存储';
+        modeDisplay.style.color = '#2d6b2d';
+    }
+    
+    document.getElementById('cloudSettingsModal').classList.add('show');
+});
+
+// 关闭弹窗
+document.getElementById('cloudSettingsClose').addEventListener('click', function() {
+    document.getElementById('cloudSettingsModal').classList.remove('show');
+});
+document.getElementById('cloudSettingsModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+});
+
+// 保存 Token
+document.getElementById('saveTokenBtn').addEventListener('click', function() {
+    const token = document.getElementById('cloudTokenInput').value.trim();
+    if (!token) {
+        alert('请输入 Token！');
+        return;
+    }
+    GitHubSync.setToken(token);
+    document.getElementById('tokenStatusDisplay').textContent = '✅ 已设置';
+    document.getElementById('tokenStatusDisplay').style.color = '#2d6b2d';
+    document.getElementById('cloudModeDisplay').textContent = '☁️ 云端模式';
+    document.getElementById('cloudModeDisplay').style.color = '#2d6b2d';
+    document.getElementById('cloudStatusMsg').textContent = '✅ Token 已保存到本地';
+    document.getElementById('cloudStatusMsg').style.color = '#2d6b2d';
+    alert('✅ Token 已保存！');
+});
+
+// 清除 Token
+document.getElementById('clearTokenBtn').addEventListener('click', function() {
+    if (!confirm('确定要清除 Token 吗？')) return;
+    localStorage.removeItem('gitee_token');
+    GitHubSync.token = '';
+    document.getElementById('cloudTokenInput').value = '';
+    document.getElementById('tokenStatusDisplay').textContent = '❌ 未设置';
+    document.getElementById('tokenStatusDisplay').style.color = '#c0392b';
+    document.getElementById('cloudModeDisplay').textContent = '📁 本地存储';
+    document.getElementById('cloudModeDisplay').style.color = '#2d6b2d';
+    document.getElementById('cloudStatusMsg').textContent = '✅ Token 已清除，回到本地模式';
+    document.getElementById('cloudStatusMsg').style.color = '#2d6b2d';
+    alert('✅ Token 已清除！');
+});
+
+// 同步到云端
+document.getElementById('cloudSyncBtn').addEventListener('click', async function() {
+    const token = GitHubSync.getToken();
+    if (!token) {
+        alert('❌ 请先设置 Token！');
+        return;
+    }
+    const msg = document.getElementById('cloudStatusMsg');
+    this.textContent = '⏳ 同步中...';
+    this.disabled = true;
+    msg.textContent = '⏳ 正在同步...';
+    msg.style.color = '#8ab0c8';
+    
+    const result = await GitHubSync.syncToCloud();
+    msg.textContent = result.message;
+    msg.style.color = result.success ? '#2d6b2d' : '#c0392b';
+    alert(result.message);
+    
+    this.textContent = '☁️ 同步到云端';
+    this.disabled = false;
+});
+
+// 从云端拉取
+document.getElementById('cloudPullBtn').addEventListener('click', async function() {
+    const token = GitHubSync.getToken();
+    if (!token) {
+        alert('❌ 请先设置 Token！');
+        return;
+    }
+    if (!confirm('拉取会覆盖本地数据，确定继续吗？')) return;
+    
+    const msg = document.getElementById('cloudStatusMsg');
+    this.textContent = '⏳ 拉取中...';
+    this.disabled = true;
+    msg.textContent = '⏳ 正在拉取...';
+    msg.style.color = '#8ab0c8';
+    
+    const result = await GitHubSync.syncFromCloud();
+    msg.textContent = result.message;
+    msg.style.color = result.success ? '#2d6b2d' : '#c0392b';
+    alert(result.message);
+    
+    this.textContent = '📥 从云端拉取';
+    this.disabled = false;
+    
+    if (result.success) {
+        setTimeout(() => location.reload(), 500);
+    }
+});
+
+// 查询云端
+document.getElementById('cloudCheckBtn').addEventListener('click', async function() {
+    const token = GitHubSync.getToken();
+    if (!token) {
+        alert('❌ 请先设置 Token！');
+        return;
+    }
+    const msg = document.getElementById('cloudStatusMsg');
+    this.textContent = '⏳ 查询中...';
+    this.disabled = true;
+    msg.textContent = '⏳ 查询云端...';
+    msg.style.color = '#8ab0c8';
+    
+    const result = await GitHubSync.checkCloudData();
+    msg.textContent = result.message;
+    msg.style.color = result.success ? '#2d6b2d' : '#c0392b';
+    
+    this.textContent = '🔍 查询云端';
+    this.disabled = false;
+});
 
         // 1. 确保首页可见
         document.getElementById('homePage').classList.remove('hidden');
