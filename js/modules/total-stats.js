@@ -1,5 +1,5 @@
 // ============================================================
-//  📊 总收益汇总模块 - 完整版
+//  📊 总收益汇总模块 - 完整版（含抓宠）
 // ============================================================
 const TotalStatsModule = {
     id: 'totalStats',
@@ -39,6 +39,7 @@ const TotalStatsModule = {
     getAllRecords() {
         const records = [];
         
+        // ===== 跑宠环 =====
         const petRing = Storage.get('petRing');
         if (petRing && petRing.history) {
             for (let h of petRing.history) {
@@ -59,6 +60,7 @@ const TotalStatsModule = {
             }
         }
 
+        // ===== 种树 =====
         const treePlant = Storage.get('treePlant');
         if (treePlant && treePlant.history) {
             for (let h of treePlant.history) {
@@ -77,6 +79,37 @@ const TotalStatsModule = {
                     exchangeRate: h.exchangeRate || 0.08,
                     raw: h,
                     lootStr: lootStr
+                });
+            }
+        }
+
+        // ===== 🐾 抓宠 =====
+        const petHunt = Storage.get('petHunt');
+        if (petHunt && petHunt.records) {
+            for (let r of petHunt.records) {
+                const profit = r.sold ? (r.price || 0) - (r.cost || 0) : -(r.cost || 0);
+                const rmb = profit * 0.08;
+                const variantText = r.isVariant ? '变异' : '普通';
+                const soldText = r.sold ? '已卖' : '未卖';
+                const priceText = r.sold ? `${r.price}万` : '';
+                records.push({
+                    date: r.date,
+                    module: '抓宠',
+                    icon: '🐾',
+                    type: '抓宠',
+                    detail: `${r.petName} ${variantText} ${r.skillCount || 0}技能 ${soldText} ${priceText}`.trim(),
+                    income: r.sold ? (r.price || 0) : 0,
+                    cost: r.cost || 0,
+                    profit: profit,
+                    rmb: rmb,
+                    exchangeRate: 0.08,
+                    raw: r,
+                    scene: r.scene || '未知',
+                    sold: r.sold || false,
+                    price: r.price || 0,
+                    costRaw: r.cost || 0,
+                    variant: r.isVariant || false,
+                    skillCount: r.skillCount || 0
                 });
             }
         }
@@ -303,12 +336,23 @@ const TotalStatsModule = {
         let listHtml = '';
         for (let item of dayRecords) {
             const pc2 = item.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            let detailExtra = '';
+            
+            // 抓宠记录显示更多信息
+            if (item.module === '抓宠') {
+                const variantText = item.variant ? '变异' : '普通';
+                const soldText = item.sold ? '已卖' : '未卖';
+                detailExtra = `${variantText} ${item.skillCount || 0}技能 ${soldText} | 成本${item.costRaw || 0}万`;
+            }
+            
             const lootDisplay = item.lootStr && item.lootStr !== '无产出' ? item.lootStr : '';
+            const fullDetail = item.detail + (detailExtra ? ` (${detailExtra})` : '');
+
             listHtml += `
                 <div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:0.8rem;border-bottom:1px solid #f5f8fc;flex-wrap:wrap;">
                     <span style="font-size:1.1rem;">${item.icon}</span>
                     <span style="font-weight:600;color:#1f3b53;min-width:60px;">${item.module}</span>
-                    <span style="color:#5a7a94;flex:1;font-size:0.75rem;">${item.detail}</span>
+                    <span style="color:#5a7a94;flex:1;font-size:0.75rem;">${fullDetail}</span>
                     ${lootDisplay ? `<span style="color:#5a7a94;font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${lootDisplay}</span>` : ''}
                     <span style="font-weight:600;white-space:nowrap;font-size:0.75rem;">
                         💰 ${(item.income || 0).toFixed(1)}万
@@ -378,7 +422,6 @@ const TotalStatsModule = {
         this.renderDateDetail(records, filterDate);
     },
 
-    // ✅ 各模块统计（显示梦幻币 + 人民币）
     renderModuleStats(moduleStats) {
         const container = document.getElementById('tsModuleStats');
         if (!container) return;
@@ -389,7 +432,7 @@ const TotalStatsModule = {
             return;
         }
 
-        const icons = { '跑宠环': '🏃', '种树': '🌳', '师门': '📋', '活动': '🎯' };
+        const icons = { '跑宠环': '🏃', '种树': '🌳', '抓宠': '🐾', '师门': '📋', '活动': '🎯' };
 
         let html = '';
         for (let [name, stats] of Object.entries(moduleStats)) {
