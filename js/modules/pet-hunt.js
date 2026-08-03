@@ -20,7 +20,8 @@ const PetHuntModule = {
         // 场景颜色
         sceneColorCurrent: '#4CAF50',
         sceneColorNext: '#f0d060',
-        sceneColorDone: '#6c87a0'
+        sceneColorDone: '#6c87a0',
+        exchangeRate: 0.08 
     },
 
     // ========== 数据 ==========
@@ -111,7 +112,9 @@ const PetHuntModule = {
             fontSize: 14,
             sceneColorCurrent: '#4CAF50',
             sceneColorNext: '#f0d060',
-            sceneColorDone: '#6c87a0'
+            sceneColorDone: '#6c87a0',
+            exchangeRate: 0.08
+            
         };
         this.filterState = data.filterState || { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' };
         this.sortState = data.sortState || { field: 'date', order: 'desc' };
@@ -234,7 +237,8 @@ const PetHuntModule = {
             sold: sold || false,
             scene: scene || '未知',
             cost: parseFloat(cost) || 0,
-            notes: notes || ''
+            notes: notes || ''，
+            exchangeRate: rate  
         };
         this.records.push(record);
         this.saveData();
@@ -396,6 +400,11 @@ const PetHuntModule = {
                                 <input type="range" id="phFontSize" min="12" max="20" value="${s.fontSize}" style="width:80px;">
                                 <span id="phFontSizeDisplay" style="font-weight:700;min-width:24px;text-align:center;">${s.fontSize}</span>
                             </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
+                            <label style="font-weight:600;">💱 汇率</label>
+                            <input type="number" id="phExchangeRate" step="0.001" min="0" value="${this.uiSettings.exchangeRate || 0.08}" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                            <span style="font-size:0.55rem;color:#5a7a94;">1万梦幻币=？元</span>
                         </div>
                         <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:0.75rem;color:#1f3b53;">
                             <label style="font-weight:600;">🟢 当前组</label>
@@ -637,6 +646,11 @@ const PetHuntModule = {
             PetHuntModule.uiSettings.bgColor = this.value;
             PetHuntModule.applyUISettings();
             PetHuntModule.saveUISettings();
+        });
+                // ===== 汇率变化 =====
+        document.getElementById('phExchangeRate').addEventListener('input', function() {
+            PetHuntModule.uiSettings.exchangeRate = parseFloat(this.value) || 0.08;
+            PetHuntModule.saveData();
         });
         document.getElementById('phCardColor').addEventListener('input', function() {
             PetHuntModule.uiSettings.cardBgColor = this.value;
