@@ -487,7 +487,8 @@ const PetRingModule = {
             typeCount: stats.typeCount,
             rewards: rewards || (income.bookIncome > 0 ? `书铁${income.bookIncome.toFixed(1)}万` : ''),
             exchangeRate: this.exchangeRate,
-            pointsValue: pointsValue
+            pointsValue: pointsValue,
+            prediction20: this._prediction20 || null  
         };
         this.history.push(entry);
         this.records = [];
@@ -918,6 +919,8 @@ const PetRingModule = {
                             <div class="a-item"><div class="a-num" id="prAnaWinCount">0</div><div class="a-label">盈利轮数</div></div>
                             <div class="a-item"><div class="a-num" id="prAnaLoseCount">0</div><div class="a-label">亏损轮数</div></div>
                         </div>
+                        <!-- 预测对比 -->
+                        <div id="prAnaPredictionCompare" style="padding:4px 0;margin:8px 0;"></div>
                         <div class="task-stats-row" id="prTaskStatsRow"></div>
                         <div class="filter-row">
                             <div class="filter-item"><label>📅 日期从</label><input type="date" id="prFilterDateFrom"></div>
@@ -1775,7 +1778,13 @@ const PetRingModule = {
         }
 
         predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
-
+        // 保存20环预测数据
+        const runRings = stats.ringCount;
+        if (runRings === 20) {
+            this._prediction20 = Math.round(expectedFinal);
+        } else if (runRings < 20) {
+            this._prediction20 = null;  // 还没到20环，清空
+        }
         strat.style.display = 'block';
         let strategyMsg = '';
         let tagText = '';
@@ -1805,6 +1814,147 @@ const PetRingModule = {
         stratText.innerHTML = strategyMsg;
         tag.textContent = tagText;
     },
+     // ========== 数据分析 ==========
+    updateAnalysis(data) {
+    const count = data.length;
+    if (count === 0) {
+        ['prAnaTotalRuns', 'prAnaTotalCost', 'prAnaTotalIncome', 'prAnaTotalProfit', 'prAnaAvgProfit',
+            'prAnaMaxProfit', 'prAnaMinProfit', 'prAnaAvgRings', 'prAnaTotalRings', 'prAnaWinCount',
+            'prAnaLoseCount'
+        ].forEach(id => document.getElementById(id).textContent = '0');
+        document.getElementById('prAnaWinRate').textContent = '0%';
+        document.getElementById('prAnaTotalProfitWrap').className = 'a-item';
+        document.getElementById('prTaskStatsRow').innerHTML =
+            '<div style="grid-column:1/-1;text-align:center;color:#6c87a0;font-size:0.7rem;padding:4px;">无数据</div>';
+        // 预测对比置空
+        document.getElementById('prAnaPredictionCompare').innerHTML = '无数据';
+        return;
+    }
+
+    let totalCost = 0, totalIncome = 0, totalProfit = 0, totalRings = 0, totalScore = 0;
+    let winCount = 0, loseCount = 0;
+    let maxProfit = -Infinity, minProfit = Infinity;
+    const taskTotals = {};
+    this.ITEM_TYPES.forEach(t => taskTotals[t.key] = 0);
+
+    // ===== 预测对比统计 =====
+    let predictionDiffs = [];
+    let predictionCount = 0;
+
+    for (let h of data) {
+        totalCost += h.totalCost || 0;
+        totalIncome += h.totalIncome || 0;
+        totalProfit += h.profit || 0;
+        totalRings += h.ringCount || 0;
+        totalScore += h.totalScore || 0;
+        if (h.profit > 0) winCount++;
+        else if (h.profit < 0) loseCount++;
+        if (h.profit > maxProfit) maxProfit = h.profit;
+        if (h.profit < minProfit) minProfit = h.profit;
+        if (h.typeCount) {
+            for (let [key, val] of Object.entries(h.typeCount)) {
+                if (taskTotals[key] !== undefined) taskTotals[key] += val;
+            }
+        }
+
+        // ===== 预测对比：20环预测 vs 最终积分 =====
+        // 如果有20环预测数据（存储在记录的 prediction20 字段中）
+        if (h.prediction20 !== undefined && h.totalScore !== undefined) {
+            const diff = h.prediction20 - h.totalScore;
+            predictionDiffs.push({
+                predicted: h.prediction20,
+                actual: h.totalScore,
+                diff: diff,
+                date: h.date
+            });
+            predictionCount++;
+        }
+    }
+
+    // ===== 生成预测对比HTML =====
+    let predictionHtml = '';
+    if (predictionCount > 0) {
+        const totalDiff = predictionDiffs.reduce((sum, d) => sum + d.diff, 0);
+        const avgDiff = totalDiff / predictionCount;
+        const absDiffs = predictionDiffs.map(d => Math.abs(d.diff));
+        const avgAbsDiff = absDiffs.reduce((a, b) => a + b, 0) / predictionCount;
+        const maxDiff = Math.max(...absDiffs);
+        // 准确率：偏差在 ±10 分以内的比例
+        const accurateCount = predictionDiffs.filter(d => Math.abs(d.diff) <= 10).length;
+        const accuracy = (accurateCount / predictionCount * 100);
+
+        // 偏差方向统计
+        const overCount = predictionDiffs.filter(d => d.diff > 0).length;  // 预测高了
+        const underCount = predictionDiffs.filter(d => d.diff < 0).length; // 预测低了
+
+        predictionHtml = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:8px 0;padding:10px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">数据量</div>
+                    <div style="font-weight:700;color:#1f3b53;">${predictionCount}轮</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">平均偏差</div>
+                    <div style="font-weight:700;color:${avgDiff > 0 ? '#c0392b' : avgDiff < 0 ? '#2d6b2d' : '#1f3b53'};">${avgDiff.toFixed(1)}分</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">平均绝对偏差</div>
+                    <div style="font-weight:700;color:#1f3b53;">${avgAbsDiff.toFixed(1)}分</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">最大偏差</div>
+                    <div style="font-weight:700;color:#1f3b53;">${maxDiff.toFixed(0)}分</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">准确率(±10分)</div>
+                    <div style="font-weight:700;color:${accuracy >= 70 ? '#2d6b2d' : accuracy >= 50 ? '#b48b3a' : '#c0392b'};">${accuracy.toFixed(0)}%</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">预测偏高/偏低</div>
+                    <div style="font-weight:700;color:#1f3b53;">${overCount} / ${underCount}</div>
+                </div>
+            </div>
+            <div style="font-size:0.65rem;color:#5a7a94;text-align:center;padding:2px 0;">
+                💡 偏差 = 20环预测终积分 − 实际终积分（正=预测偏高，负=预测偏低）
+            </div>
+        `;
+    } else {
+        predictionHtml = '<div style="color:#5a7a94;font-size:0.75rem;padding:8px 0;text-align:center;">暂无20环预测数据</div>';
+    }
+
+    // 更新预测对比显示
+    document.getElementById('prAnaPredictionCompare').innerHTML = predictionHtml;
+
+    // ... 原有统计继续 ...
+    const avgProfit = totalProfit / count;
+    const winRate = count > 0 ? (winCount / count * 100) : 0;
+    const avgRings = totalRings / count;
+    const totalRmb = totalProfit * this.exchangeRate;
+
+    document.getElementById('prAnaTotalRuns').textContent = count;
+    document.getElementById('prAnaTotalCost').textContent = totalCost.toFixed(1);
+    document.getElementById('prAnaTotalIncome').textContent = totalIncome.toFixed(1);
+    document.getElementById('prAnaTotalProfit').textContent = totalProfit.toFixed(1) + ` (≈${totalRmb.toFixed(2)}元)`;
+    document.getElementById('prAnaTotalProfitWrap').className = 'a-item' + (totalProfit >= 0 ? ' a-profit' : ' a-loss');
+    document.getElementById('prAnaAvgProfit').textContent = avgProfit.toFixed(1);
+    document.getElementById('prAnaWinRate').textContent = winRate.toFixed(0) + '%';
+    document.getElementById('prAnaMaxProfit').textContent = maxProfit !== -Infinity ? maxProfit.toFixed(1) : '0';
+    document.getElementById('prAnaMinProfit').textContent = minProfit !== Infinity ? minProfit.toFixed(1) : '0';
+    document.getElementById('prAnaAvgRings').textContent = avgRings.toFixed(1);
+    document.getElementById('prAnaTotalRings').textContent = totalRings;
+    document.getElementById('prAnaWinCount').textContent = winCount;
+    document.getElementById('prAnaLoseCount').textContent = loseCount;
+
+    let tsHtml = '';
+    this.ITEM_TYPES.forEach(t => {
+        const avg = count > 0 ? (taskTotals[t.key] / count).toFixed(1) : '0';
+        tsHtml += `<div class="ts-item">
+            <div class="ts-num" style="color:${t.color};">${taskTotals[t.key]||0}</div>
+            <div class="ts-label">${t.label} (均${avg})</div>
+        </div>`;
+    });
+    document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
+},
 
     // ========== 导入 ==========
     importData() {
