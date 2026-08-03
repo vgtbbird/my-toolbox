@@ -31,13 +31,13 @@ const PetRingModule = {
     // ========== 概率表（用于期望值计算） ==========
     taskProb: {
         find: 0.43,
-        ring60: 0.10,
-        ring70: 0.05,
-        ring80: 0.05,
+        ring60: 0.11,
+        ring70: 0.07,
+        ring80: 0.04,
         flower: 0.04,
         cook: 0.16,
-        furn1: 0.07,
-        furn2: 0.05,
+        furn1: 0.10,
+        furn2: 0.04,
         var_spec: 0.01
     },
     taskScore: {
