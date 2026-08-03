@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版 v6
-//  修复：输入框无法输入的问题（分离渲染 + 事件优化）
+//  🏃 跑商助手模块 - 重构完整版 v7
+//  设计：地点为背景容器 + 独立交互元素
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -19,7 +19,7 @@ const ShopHelperModule = {
         colorCurrent: '#dbbd7c',
         colorLowPrice: '#2d7a2d',
         colorHighPrice: '#c0392b',
-        locationHighlight: 'rgba(219,189,124,0.15)'
+        locationHighlight: 'rgba(219,189,124,0.20)'
     },
 
     currentLocation: null,
@@ -92,7 +92,7 @@ const ShopHelperModule = {
         if (this._timer) clearInterval(this._timer);
         this._timer = setInterval(() => {
             this.updateTimeDisplay();
-            this.updateStatusOnly(); // 只更新状态，不重绘整个地图
+            this.updateStatusOnly();
         }, 1000);
     },
 
@@ -104,16 +104,15 @@ const ShopHelperModule = {
         this.applyUISettings();
     },
 
-    // 只更新状态标签（不重绘整个地图，保持输入框焦点）
+    // 只更新状态标签
     updateStatusOnly() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         const s = this.uiSettings;
 
-        // 只更新每个地点的状态标签和耗时
         for (let loc of this.locations) {
-            const card = container.querySelector(`.sh-location-card[data-location="${loc.id}"]`);
-            if (!card) continue;
+            const wrap = container.querySelector(`.sh-location-wrap[data-location="${loc.id}"]`);
+            if (!wrap) continue;
 
             const isCurrent = this.currentLocation === loc.id;
             const status = this.checkRefreshStatus(loc.id);
@@ -130,8 +129,7 @@ const ShopHelperModule = {
                 secondColor = s.colorCurrent;
             }
 
-            // 更新状态标签
-            const statusRow = card.querySelector('.sh-status-row');
+            const statusRow = wrap.querySelector('.sh-status-row');
             if (statusRow) {
                 statusRow.innerHTML = `
                     <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:0 8px;border-radius:10px;font-weight:800;font-size:0.7rem;white-space:nowrap;">🔄一刷 ${firstStatus}</span>
@@ -139,23 +137,20 @@ const ShopHelperModule = {
                 `;
             }
 
-            // 更新耗时显示
             const travelDisplay = isCurrent ? '📍当前' : (status.travelTime ? this.formatTime(status.travelTime) : '--');
-            const timeEl = card.querySelector('.sh-travel-display');
+            const timeEl = wrap.querySelector('.sh-travel-display');
             if (timeEl) {
                 timeEl.textContent = travelDisplay;
                 timeEl.style.color = isCurrent ? s.colorCurrent : '#4a6a8a';
             }
 
-            // 更新边框
+            // 高亮背景（只改背景，不改边框）
             if (isCurrent) {
-                card.style.border = `3px solid ${s.colorCurrent}`;
-                card.style.background = s.locationHighlight;
-                card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+                wrap.style.background = s.locationHighlight;
+                wrap.style.border = `2px solid ${s.colorCurrent}`;
             } else {
-                card.style.border = '1px solid #dce5ef';
-                card.style.background = s.cardBgColor;
-                card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                wrap.style.background = s.cardBgColor;
+                wrap.style.border = '1px solid #e0e8f0';
             }
         }
     },
@@ -204,11 +199,11 @@ const ShopHelperModule = {
         if (!container) return;
         const tabContent = container.closest('.tab-content');
         if (tabContent) tabContent.style.setProperty('background', s.bgColor, 'important');
-        container.querySelectorAll('.module, .sh-location-card').forEach(el => {
+        container.querySelectorAll('.module, .sh-location-wrap').forEach(el => {
             el.style.setProperty('background', s.cardBgColor, 'important');
         });
         const fontSize = s.fontSize + 'px';
-        container.querySelectorAll('.sh-location-card, .sh-shop-btn, .sh-goods-item, .sh-price-input, .sh-travel-input, .sh-status-text, .sh-goods-name, .sh-goods-refprice').forEach(el => {
+        container.querySelectorAll('.sh-location-wrap, .sh-shop-btn, .sh-goods-item, .sh-price-input, .sh-travel-input, .sh-status-text, .sh-goods-name').forEach(el => {
             el.style.setProperty('font-size', fontSize, 'important');
         });
     },
@@ -295,14 +290,14 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图（只渲染一次，后续只更新状态）
+    //  🗺️ 渲染地图（地点为背景容器）
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         
-        // 如果已经有内容，只更新状态，不重新渲染
-        if (container.querySelector('.sh-location-card')) {
+        // 如果已有内容，只更新状态
+        if (container.querySelector('.sh-location-wrap')) {
             this.updateStatusOnly();
             return;
         }
@@ -341,9 +336,35 @@ const ShopHelperModule = {
                     font-size: 0.7rem;
                     white-space: nowrap;
                 }
+                .sh-location-wrap {
+                    border-radius: 12px;
+                    padding: 10px 10px;
+                    transition: all 0.2s;
+                    border: 1px solid #e0e8f0;
+                }
+                .sh-location-name {
+                    cursor: pointer;
+                    user-select: none;
+                }
+                .sh-location-name:hover {
+                    opacity: 0.7;
+                }
+                .sh-shop-btn {
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .sh-shop-btn:hover {
+                    opacity: 0.8;
+                    transform: scale(0.97);
+                }
                 .sh-price-input, .sh-goods-refprice-input {
                     background: white !important;
-                    pointer-events: auto !important;
+                }
+                .sh-del-goods-btn {
+                    cursor: pointer;
+                }
+                .sh-del-goods-btn:hover {
+                    color: #e06060 !important;
                 }
             </style>
             <div class="sh-map-grid">
@@ -367,19 +388,23 @@ const ShopHelperModule = {
 
             const travelDisplay = isCurrent ? '📍当前' : (status.travelTime ? this.formatTime(status.travelTime) : '--');
 
+            // 背景样式
+            let bgStyle = `background:${s.cardBgColor};border:1px solid ${isCurrent ? s.colorCurrent : '#e0e8f0'};`;
+            if (isCurrent) bgStyle += `background:${s.locationHighlight};`;
+
             let shopsHtml = '';
             if (loc.shopLayout === 'horizontal') {
                 shopsHtml = `
                     <div style="display:flex;gap:4px;justify-content:center;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;min-width:0;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;min-width:0;">${loc.shops[1]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
                     </div>
                 `;
             } else {
                 shopsHtml = `
                     <div style="display:flex;flex-direction:column;gap:3px;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="padding:4px 6px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;cursor:pointer;font-size:0.8rem;font-weight:700;color:#0a1a2a;transition:all 0.2s;">${loc.shops[1]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
                     </div>
                 `;
             }
@@ -412,8 +437,8 @@ const ShopHelperModule = {
                             <span class="sh-goods-name" style="min-width:28px;font-weight:800;color:#0a1a2a;font-size:0.8rem;flex-shrink:0;">${g.name}</span>
                             <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:2px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
                             <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:44px;padding:2px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            ${currentPrice ? `<span style="font-size:0.65rem;color:${priceColor};font-weight:800;min-width:20px;flex-shrink:0;">${priceStatus}</span>` : '<span style="min-width:20px;font-size:0.5rem;color:#ccc;flex-shrink:0;">—</span>'}
-                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;cursor:pointer;font-size:0.8rem;padding:0 2px;font-weight:700;flex-shrink:0;">✕</button>
+                            <span class="sh-price-status" style="font-size:0.65rem;color:${priceColor};font-weight:800;min-width:20px;flex-shrink:0;">${priceStatus || '—'}</span>
+                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;font-size:0.8rem;padding:0 2px;font-weight:700;">✕</button>
                         </div>
                     `;
                 }).join('');
@@ -427,23 +452,11 @@ const ShopHelperModule = {
                 </div>
             `;
 
-            let cardStyle = `
-                background:${s.cardBgColor};
-                border-radius:12px;
-                padding:8px 8px;
-                border:${isCurrent ? '3px' : '1px'} solid ${isCurrent ? s.colorCurrent : '#dce5ef'};
-                box-shadow:${isCurrent ? '0 4px 16px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)'};
-                transition:all 0.2s;
-                cursor:default;
-                min-width:0;
-                overflow:hidden;
-            `;
-            if (isCurrent) cardStyle += `background:${s.locationHighlight};`;
-
             html += `
-                <div class="sh-location-card" data-location="${loc.id}" style="${cardStyle}">
+                <div class="sh-location-wrap" data-location="${loc.id}" style="${bgStyle}">
+                    <!-- 点击地点名称触发高亮 -->
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
-                        <span class="sh-location-name" style="font-size:1rem;font-weight:800;color:#0a1a2a;cursor:pointer;user-select:none;white-space:nowrap;">${loc.icon} ${loc.name}</span>
+                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:1rem;font-weight:800;color:#0a1a2a;white-space:nowrap;">${loc.icon} ${loc.name}</span>
                         <span class="sh-travel-display" style="font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;white-space:nowrap;">${travelDisplay}</span>
                     </div>
                     <div class="sh-status-row">
@@ -463,12 +476,21 @@ const ShopHelperModule = {
         container.innerHTML = html;
 
         // 应用商人颜色
+        this.updateShopColors();
+    },
+
+    // 更新商人颜色
+    updateShopColors() {
+        const container = document.getElementById('shMapContainer');
+        if (!container) return;
+        const s = this.uiSettings;
+
         container.querySelectorAll('.sh-shop-btn').forEach(btn => {
             const locId = btn.dataset.location;
             const shopIdx = parseInt(btn.dataset.shop);
             const key = locId + '_' + shopIdx;
-            const color = this.shopPrices[key] === 'low' ? this.uiSettings.colorLowPrice : 
-                         (this.shopPrices[key] === 'high' ? this.uiSettings.colorHighPrice : null);
+            const color = this.shopPrices[key] === 'low' ? s.colorLowPrice : 
+                         (this.shopPrices[key] === 'high' ? s.colorHighPrice : null);
             if (color) {
                 btn.style.background = color;
                 btn.style.color = '#fff';
@@ -565,7 +587,7 @@ const ShopHelperModule = {
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:0.7rem;color:#4a6a8a;padding:4px 0;font-weight:600;">💡 点击地点卡片标记当前位置，自动计算各地可达性 | 点击商人标记低价/高价</div>
+                    <div style="font-size:0.7rem;color:#4a6a8a;padding:4px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
                 </div>
             </div>
 
@@ -604,7 +626,7 @@ const ShopHelperModule = {
                             <input type="color" id="shColorCannotReach" value="${this.uiSettings.colorCannotReach}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
                         </div>
                         <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
-                            <label>📍 当前位置</label>
+                            <label>📍 当前位置高亮</label>
                             <input type="color" id="shColorCurrent" value="${this.uiSettings.colorCurrent}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
                         </div>
                         <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
@@ -629,36 +651,28 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🔗 绑定事件
+    //  🔗 绑定事件（完全独立，不冒泡）
     // ============================================================
     bindEvents() {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // ===== 点击地点卡片（排除输入框和按钮） =====
+        // ===== 1. 点击地点名称 → 标记当前位置 =====
         container.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target.tagName === 'INPUT' || 
-                target.tagName === 'SELECT' || 
-                target.tagName === 'TEXTAREA' ||
-                target.closest('input') ||
-                target.closest('button')) {
-                return; // 不阻止冒泡，但也不触发地点切换
-            }
-
-            const card = e.target.closest('.sh-location-card');
-            if (card) {
-                const locId = card.dataset.location;
-                if (locId && locId !== this.currentLocation) {
+            const nameEl = e.target.closest('.sh-location-name');
+            if (nameEl) {
+                e.stopPropagation();
+                const locId = nameEl.dataset.location;
+                if (locId) {
                     this.currentLocation = locId;
                     this.saveData();
-                    this.renderMap();
+                    this.updateStatusOnly();
                     this.renderTravelTimes();
                 }
             }
         });
 
-        // ===== 点击商人按钮 =====
+        // ===== 2. 点击商人按钮 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
@@ -677,11 +691,11 @@ const ShopHelperModule = {
                     this.shopPrices[otherKey] = 'high';
                 }
                 this.saveData();
-                this.renderMap();
+                this.updateShopColors();
             }
         });
 
-        // ===== 当前价格输入（用 input 事件实时保存） =====
+        // ===== 3. 当前价格输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -695,12 +709,33 @@ const ShopHelperModule = {
                     delete this.goodsPrices[key];
                 }
                 this.saveData();
-                // 更新价格状态图标（只更新当前商品的状态）
-                this.updatePriceStatus(input);
+                // 更新状态图标
+                const statusSpan = input.parentElement.querySelector('.sh-price-status');
+                if (statusSpan) {
+                    const refPriceKey = locId + '_' + goodsKey;
+                    const refPrice = this.goodsRefPrices[refPriceKey] || 
+                                     this.goodsList[locId]?.find(g => g.key === goodsKey)?.refPrice || 0;
+                    const s = this.uiSettings;
+                    if (val && refPrice > 0) {
+                        if (val < refPrice * 0.95) {
+                            statusSpan.textContent = '📉';
+                            statusSpan.style.color = s.colorLowPrice;
+                        } else if (val > refPrice * 1.05) {
+                            statusSpan.textContent = '📈';
+                            statusSpan.style.color = s.colorHighPrice;
+                        } else {
+                            statusSpan.textContent = '—';
+                            statusSpan.style.color = '#4a6a8a';
+                        }
+                    } else {
+                        statusSpan.textContent = '—';
+                        statusSpan.style.color = '#ccc';
+                    }
+                }
             }
         });
 
-        // ===== 参考价输入 =====
+        // ===== 4. 参考价输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
@@ -714,20 +749,24 @@ const ShopHelperModule = {
                     delete this.goodsRefPrices[key];
                 }
                 this.saveData();
-                // 更新价格状态
+                // 触发价格状态更新
                 const priceInput = input.parentElement.querySelector('.sh-price-input');
-                if (priceInput) this.updatePriceStatus(priceInput);
+                if (priceInput) {
+                    priceInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             }
         });
 
-        // ===== 添加商品 =====
+        // ===== 5. 添加商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-add-goods-btn');
             if (btn) {
                 e.stopPropagation();
                 const locId = btn.dataset.location;
-                const nameInput = container.querySelector(`.sh-new-goods-name[data-location="${locId}"]`);
-                const priceInput = container.querySelector(`.sh-new-goods-price[data-location="${locId}"]`);
+                const wrap = container.querySelector(`.sh-location-wrap[data-location="${locId}"]`);
+                if (!wrap) return;
+                const nameInput = wrap.querySelector('.sh-new-goods-name');
+                const priceInput = wrap.querySelector('.sh-new-goods-price');
                 if (!nameInput || !priceInput) return;
                 const name = nameInput.value.trim();
                 const refPrice = parseFloat(priceInput.value);
@@ -743,7 +782,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 删除商品 =====
+        // ===== 6. 删除商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-del-goods-btn');
             if (btn) {
@@ -761,7 +800,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 跑动时间输入 =====
+        // ===== 7. 跑动时间输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-travel-input');
             if (input) {
@@ -777,7 +816,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 一刷微调 =====
+        // ===== 8. 一刷微调 =====
         document.getElementById('shFirstMinus').addEventListener('click', () => {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
@@ -791,7 +830,7 @@ const ShopHelperModule = {
             this.updateStatusOnly();
         });
 
-        // ===== 二刷设置 =====
+        // ===== 9. 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -804,7 +843,7 @@ const ShopHelperModule = {
             alert('✅ 二刷时间已设置！');
         });
 
-        // ===== 折叠按钮 =====
+        // ===== 10. 折叠 =====
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
             document.getElementById('shTimeBody').classList.toggle('hidden');
             this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
@@ -818,7 +857,7 @@ const ShopHelperModule = {
             this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 颜色设置 =====
+        // ===== 11. 颜色 =====
         const colorMap = {
             'shColorCanReach': 'colorCanReach',
             'shColorCannotReach': 'colorCannotReach',
@@ -830,12 +869,12 @@ const ShopHelperModule = {
             document.getElementById(elId).addEventListener('input', function() {
                 ShopHelperModule.uiSettings[key] = this.value;
                 ShopHelperModule.saveData();
-                ShopHelperModule.renderMap();
                 ShopHelperModule.updateStatusOnly();
+                ShopHelperModule.updateShopColors();
             });
         }
 
-        // ===== 字体大小 =====
+        // ===== 12. 字体 =====
         document.getElementById('shFontSize').addEventListener('change', function() {
             const val = parseInt(this.value) || 15;
             ShopHelperModule.uiSettings.fontSize = val;
@@ -843,7 +882,7 @@ const ShopHelperModule = {
             ShopHelperModule.applyUISettings();
         });
 
-        // ===== 重置颜色 =====
+        // ===== 13. 重置颜色 =====
         document.getElementById('shResetUIColors').addEventListener('click', function() {
             if (!confirm('重置所有颜色为默认值？')) return;
             const defaults = {
@@ -865,45 +904,10 @@ const ShopHelperModule = {
                 const el = document.getElementById(elId);
                 if (el) el.value = defaults[key];
             }
-            ShopHelperModule.renderMap();
             ShopHelperModule.updateStatusOnly();
+            ShopHelperModule.updateShopColors();
             alert('✅ 颜色已重置！');
         });
-    },
-
-    // ============================================================
-    //  🔄 更新单个商品的价格状态
-    // ============================================================
-    updatePriceStatus(input) {
-        const goodsItem = input.closest('.sh-goods-item');
-        if (!goodsItem) return;
-
-        const locId = input.dataset.location;
-        const goodsKey = input.dataset.goods;
-        const currentPrice = parseFloat(input.value);
-        const refPriceKey = locId + '_' + goodsKey;
-        const refPrice = this.goodsRefPrices[refPriceKey] || 
-                         this.goodsList[locId]?.find(g => g.key === goodsKey)?.refPrice || 0;
-
-        const statusSpan = goodsItem.querySelector('.sh-price-status');
-        if (!statusSpan) return;
-
-        if (currentPrice && refPrice > 0) {
-            const s = this.uiSettings;
-            if (currentPrice < refPrice * 0.95) {
-                statusSpan.textContent = '📉';
-                statusSpan.style.color = s.colorLowPrice;
-            } else if (currentPrice > refPrice * 1.05) {
-                statusSpan.textContent = '📈';
-                statusSpan.style.color = s.colorHighPrice;
-            } else {
-                statusSpan.textContent = '—';
-                statusSpan.style.color = '#4a6a8a';
-            }
-        } else {
-            statusSpan.textContent = '—';
-            statusSpan.style.color = '#ccc';
-        }
     }
 };
 
