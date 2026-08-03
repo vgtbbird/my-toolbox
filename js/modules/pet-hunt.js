@@ -1,7 +1,7 @@
 // ============================================================
 //  🐾 抓宠收益模块 - 完整版
 //  功能：记录怪物幼儿园抓宠数据，统计收益
-//  优化：场景颜色标记 + 输入框撑满 + 宠物图标
+//  优化：场景颜色标记 + 宠物库管理 + 备注列 + 独立汇率
 // ============================================================
 const PetHuntModule = {
     id: 'petHunt',
@@ -17,11 +17,10 @@ const PetHuntModule = {
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
         fontSize: 14,
-        // 场景颜色
         sceneColorCurrent: '#4CAF50',
         sceneColorNext: '#f0d060',
         sceneColorDone: '#6c87a0',
-        exchangeRate: 0.08 
+        exchangeRate: 0.08
     },
 
     // ========== 数据 ==========
@@ -45,7 +44,7 @@ const PetHuntModule = {
         '大唐境外': 'group3', '麒麟山': 'group3', '傲来国': 'group3'
     },
 
-    // ========== 常用宠物（带图标） ==========
+    // ========== 常用宠物 ==========
     quickPets: [
         { name: '吸血鬼', icon: '🧛' },
         { name: '幽灵', icon: '👻' },
@@ -114,7 +113,6 @@ const PetHuntModule = {
             sceneColorNext: '#f0d060',
             sceneColorDone: '#6c87a0',
             exchangeRate: 0.08
-            
         };
         this.filterState = data.filterState || { dateFrom: '', dateTo: '', petType: 'all', sold: 'all' };
         this.sortState = data.sortState || { field: 'date', order: 'desc' };
@@ -143,7 +141,8 @@ const PetHuntModule = {
             fontSize: 14,
             sceneColorCurrent: '#4CAF50',
             sceneColorNext: '#f0d060',
-            sceneColorDone: '#6c87a0'
+            sceneColorDone: '#6c87a0',
+            exchangeRate: 0.08
         };
     },
 
@@ -173,10 +172,75 @@ const PetHuntModule = {
         container.querySelectorAll('.stat-item .num').forEach(el => {
             el.style.setProperty('font-size', (s.fontSize + 6) + 'px', 'important');
         });
-        // 更新场景颜色
         this.updateSceneColors();
     },
 
+    // ========== 宠物库管理 ==========
+    renderPetLibrary() {
+        const container = document.getElementById('phPetLibraryList');
+        if (!container) return;
+
+        if (this.petLibrary.length === 0) {
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:#6c87a0;font-size:0.85rem;">暂无宠物，点击「添加新宠物」创建</div>';
+            return;
+        }
+
+        let html = '';
+        for (let i = 0; i < this.petLibrary.length; i++) {
+            const p = this.petLibrary[i];
+            const skillsText = p.mustSkills && p.mustSkills.length > 0 ? p.mustSkills.join('、') : '无';
+            const rareText = p.isRare ? '⭐' : '';
+            const levelText = p.level || '未知';
+            const priceText = p.refPrice ? p.refPrice + '万' : '-';
+            html += `
+                <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid #f0f4f8;font-size:0.8rem;">
+                    <span style="font-weight:600;min-width:70px;">${p.name}</span>
+                    <span style="color:#5a7a94;min-width:50px;">${rareText} ${levelText}</span>
+                    <span style="color:#5a7a94;flex:1;font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">必带:${skillsText}</span>
+                    <span style="color:#5a7a94;min-width:50px;">${priceText}</span>
+                    <button class="ph-edit-pet-btn" data-index="${i}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.6rem;cursor:pointer;color:#1f3b53;">✏️</button>
+                    <button class="ph-delete-pet-btn" data-index="${i}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.6rem;cursor:pointer;color:#8f3a3a;">✕</button>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+
+        container.querySelectorAll('.ph-edit-pet-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                PetHuntModule.openEditPetModal(index);
+            });
+        });
+
+        container.querySelectorAll('.ph-delete-pet-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                if (confirm(`确定要删除「${PetHuntModule.petLibrary[index].name}」吗？`)) {
+                    PetHuntModule.petLibrary.splice(index, 1);
+                    PetHuntModule.saveData();
+                    PetHuntModule.renderPetLibrary();
+                    alert('✅ 已删除！');
+                }
+            });
+        });
+    },
+
+    openEditPetModal(index) {
+        const pet = this.petLibrary[index];
+        if (!pet) return;
+
+        document.getElementById('phAddPetModalTitle').textContent = '✏️ 编辑宠物';
+        document.getElementById('phAddPetModalDesc').textContent = '修改宠物信息后点击保存。';
+        document.getElementById('phNewPetName').value = pet.name || '';
+        document.getElementById('phNewPetLevel').value = pet.level || '';
+        document.getElementById('phNewPetPrice').value = pet.refPrice || '';
+        document.getElementById('phNewPetSkills').value = (pet.mustSkills || []).join(',');
+        document.getElementById('phNewPetRare').checked = pet.isRare || false;
+        document.getElementById('phEditPetIndex').value = index;
+        document.getElementById('phAddPetModal').classList.add('show');
+    },
+
+    // ========== 计算 ==========
     calcStats() {
         const today = new Date().toISOString().split('T')[0];
         const now = new Date();
@@ -227,7 +291,7 @@ const PetHuntModule = {
     },
 
     addRecord(petName, isVariant, skillCount, price, sold, scene, cost, notes) {
-        const rate = this.uiSettings.exchangeRate || 0.08;   // ← 先定义 rate
+        const rate = this.uiSettings.exchangeRate || 0.08;
         const record = {
             id: Date.now(),
             date: new Date().toLocaleString(),
@@ -238,8 +302,8 @@ const PetHuntModule = {
             sold: sold || false,
             scene: scene || '未知',
             cost: parseFloat(cost) || 0,
-            notes: notes || '',    
-            exchangeRate: rate     // ← 使用定义的 rate
+            notes: notes || '',
+            exchangeRate: rate
         };
         this.records.push(record);
         this.saveData();
@@ -279,11 +343,9 @@ const PetHuntModule = {
         this.render();
     },
 
-    // ========== 场景颜色更新 ==========
     updateSceneColors() {
         const selectedScene = document.getElementById('phScene')?.value;
         if (!selectedScene) {
-            // 没有选择场景，恢复默认
             document.querySelectorAll('.ph-scene-btn').forEach(btn => {
                 btn.style.background = '#f0f4f8';
                 btn.style.borderColor = '#bccad9';
@@ -302,17 +364,14 @@ const PetHuntModule = {
             return;
         }
 
-        // 计算下一组
         const groupIndex = this.groupKeys.indexOf(currentGroup);
         const nextIndex = (groupIndex + 1) % this.groupKeys.length;
         const nextGroup = this.groupKeys[nextIndex];
 
-        // 获取颜色设置
         const colorCurrent = this.uiSettings.sceneColorCurrent || '#4CAF50';
         const colorNext = this.uiSettings.sceneColorNext || '#f0d060';
         const colorDone = this.uiSettings.sceneColorDone || '#6c87a0';
 
-        // 遍历所有场景按钮
         document.querySelectorAll('.ph-scene-btn').forEach(btn => {
             const scene = btn.dataset.scene;
             const group = this.sceneGroupMap[scene];
@@ -323,22 +382,50 @@ const PetHuntModule = {
                 return;
             }
             if (group === currentGroup) {
-                // 当前组：用当前色
                 btn.style.background = colorCurrent;
                 btn.style.borderColor = colorCurrent;
                 btn.style.color = '#fff';
             } else if (group === nextGroup) {
-                // 下一组：用高亮色
                 btn.style.background = colorNext;
                 btn.style.borderColor = colorNext;
                 btn.style.color = '#1f3b53';
             } else {
-                // 其他组：灰色（已刷过/未到）
                 btn.style.background = colorDone;
                 btn.style.borderColor = colorDone;
                 btn.style.color = '#fff';
             }
         });
+    },
+
+    updateScenePrediction() {
+        const selectedScene = document.getElementById('phScene')?.value;
+        const el = document.getElementById('phScenePrediction');
+        if (!el) return;
+        if (!selectedScene || selectedScene === '') {
+            el.innerHTML = '选择场景后显示下一组预测';
+            return;
+        }
+        if (this.customScenes.includes(selectedScene)) {
+            el.innerHTML = `📍 自定义场景：${selectedScene}`;
+            return;
+        }
+        const groupKey = this.sceneGroupMap[selectedScene];
+        if (!groupKey) {
+            el.innerHTML = '未知场景';
+            return;
+        }
+        const groupIndex = parseInt(groupKey.replace('group', ''));
+        const nextGroupIndex = groupIndex === 3 ? 1 : groupIndex + 1;
+        const nextGroupKey = 'group' + nextGroupIndex;
+        const nextScenes = this.sceneGroups[nextGroupKey];
+        const currentScenes = this.sceneGroups[groupKey];
+        el.innerHTML = `
+            <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:0.8rem;padding:4px 0;">
+                <span>📍 当前组：<strong style="color:#4CAF50;">${currentScenes.join('、')}</strong></span>
+                <span>➡️ 下一组：<strong style="color:#f0d060;">${nextScenes.join('、')}</strong></span>
+                <span style="color:#8ab0c8;font-size:0.7rem;">💡 提前飞过去蹲点！</span>
+            </div>
+        `;
     },
 
     // ========== 构建UI ==========
@@ -347,25 +434,22 @@ const PetHuntModule = {
         if (!container) return;
 
         const sceneOptions = this.allScenes.map(s => `<option value="${s}">${s}</option>`).join('');
-        // 场景快捷按钮
-        const sceneQuickBtns = this.allScenes.map(s => 
+        const sceneQuickBtns = this.allScenes.map(s =>
             `<button class="ph-scene-btn" data-scene="${s}" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;margin:1px;">${s}</button>`
         ).join('');
-        // 常用宠物（带图标）
-        const quickPetBtns = this.quickPets.map(p => 
+        const quickPetBtns = this.quickPets.map(p =>
             `<button class="ph-quick-pet" data-pet="${p.name}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#eef4fa;cursor:pointer;font-size:0.65rem;margin:1px;">${p.icon || '🐾'} ${p.name}</button>`
         ).join('');
-        const skillBtns = [0,1,2,3,4,5].map(n => 
+        const skillBtns = [0, 1, 2, 3, 4, 5].map(n =>
             `<button class="ph-skill-btn" data-skill="${n}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;min-width:28px;text-align:center;">${n}</button>`
         ).join('');
-        const priceBtns = [30, 50, 100].map(p => 
+        const priceBtns = [30, 50, 100].map(p =>
             `<button class="ph-price-btn" data-price="${p}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;">${p}万</button>`
         ).join('');
-        const costBtns = [8, 16, 24, 32, 40].map(c => 
+        const costBtns = [8, 16, 24, 32, 40].map(c =>
             `<button class="ph-cost-btn" data-cost="${c}" style="padding:2px 10px;border-radius:14px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.65rem;margin:1px;">${c}万</button>`
         ).join('');
 
-        // UI颜色设置
         const s = this.uiSettings;
 
         container.innerHTML = `
@@ -465,13 +549,13 @@ const PetHuntModule = {
                 <div class="module-header">
                     <div class="title">📝 添加抓宠记录 <span class="hint">— 点击按钮快速录入</span></div>
                     <div>
-                        <button class="btn-small" id="phAddPetBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">➕ 添加宠物</button>
+                        <button class="btn-small" id="phOpenPetLibraryBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">📚 宠物库</button>
                         <button class="btn-small" id="phAddSceneBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">📍 添加场景</button>
                         <button class="toggle-btn" id="phToggleAddBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
                     </div>
                 </div>
                 <div class="module-body" id="phAddBody">
-                     <!-- 第1行：变异 + 宠物名 + 技能 -->
+                    <!-- 第1行 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:6px;">
                         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
                             <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">✨ 变异</span>
@@ -490,13 +574,13 @@ const PetHuntModule = {
                         </div>
                     </div>
 
-                    <!-- 第2行：常用宠物 -->
+                    <!-- 第2行 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:6px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">🐾 常用</span>
                         ${quickPetBtns}
                     </div>
 
-                    <!-- 第3行：售价 + 成本 -->
+                    <!-- 第3行 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:6px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">💰 估值</span>
                         ${priceBtns}
@@ -511,13 +595,13 @@ const PetHuntModule = {
                         </label>
                     </div>
 
-                    <!-- 第4行：场景 -->
+                    <!-- 第4行 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 4px;margin-bottom:4px;">
                         <span style="font-weight:600;font-size:0.7rem;color:#5a7a94;white-space:nowrap;">📍 场景</span>
                         ${sceneQuickBtns}
                     </div>
 
-                    <!-- 第5行：场景下拉 + 预测 + 保存 -->
+                    <!-- 第5行 -->
                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;">
                         <select id="phScene" style="flex:1;min-width:120px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;background:white;">
                             <option value="">选择场景</option>
@@ -561,7 +645,7 @@ const PetHuntModule = {
                         </div>
                     </div>
                     <div class="ph-table-wrap" style="width:100%;overflow-x:auto;max-height:320px;overflow-y:auto;border-radius:16px;border:1px solid #d0dce8;background:white;">
-                        <table style="width:100%;min-width:880px;border-collapse:collapse;font-size:0.85rem;">
+                        <table style="width:100%;min-width:950px;border-collapse:collapse;font-size:0.85rem;">
                             <thead>
                                 <tr>
                                     <th style="width:36px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">#</th>
@@ -574,22 +658,38 @@ const PetHuntModule = {
                                     <th style="min-width:65px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📈 利润</th>
                                     <th style="min-width:80px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📌 状态</th>
                                     <th style="min-width:60px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📍 场景</th>
-                                    <th style="min-width:80px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">⚙️ 操作</th>
+                                    <th style="min-width:80px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📝 备注</th>
+                                    <th style="min-width:70px;padding:8px 6px;background:#1f344b;color:#f0ebdd;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">⚙️ 操作</th>
                                 </tr>
                             </thead>
                             <tbody id="phRecordsTableBody">
-                                <tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>
+                                <tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- 添加宠物弹窗 -->
+            <!-- 宠物库管理弹窗 -->
+            <div class="modal-overlay" id="phPetLibraryModal">
+                <div class="modal-box" style="max-width:560px;max-height:80vh;">
+                    <h3>📚 宠物库管理</h3>
+                    <div class="modal-desc">管理已保存的宠物信息，编辑或删除。</div>
+                    <div style="margin-bottom:10px;">
+                        <button class="btn-small" id="phAddPetBtn" style="background:#4c7a5c;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">➕ 添加新宠物</button>
+                    </div>
+                    <div id="phPetLibraryList" style="max-height:300px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;padding:4px 0;"></div>
+                    <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                        <button class="btn-cancel" id="phPetLibraryClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加/编辑宠物弹窗 -->
             <div class="modal-overlay" id="phAddPetModal">
                 <div class="modal-box" style="max-width:480px;">
-                    <h3>➕ 添加宠物</h3>
-                    <div class="modal-desc">添加新宠物到宠物库，后续录入时自动匹配。</div>
+                    <h3 id="phAddPetModalTitle">➕ 添加宠物</h3>
+                    <div class="modal-desc" id="phAddPetModalDesc">添加新宠物到宠物库，后续录入时自动匹配。</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
                         <div style="display:flex;flex-direction:column;gap:3px;grid-column:1/-1;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">🐾 宠物名 *</label>
@@ -611,10 +711,11 @@ const PetHuntModule = {
                             <input type="checkbox" id="phNewPetRare">
                             <label style="font-size:0.8rem;color:#1f3b53;">⭐ 标记为稀有宠物</label>
                         </div>
+                        <input type="hidden" id="phEditPetIndex" value="-1">
                     </div>
                     <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
                         <button class="btn-cancel" id="phAddPetCancel" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">取消</button>
-                        <button class="btn-confirm" id="phAddPetConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 添加</button>
+                        <button class="btn-confirm" id="phAddPetConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 保存</button>
                     </div>
                 </div>
             </div>
@@ -642,13 +743,12 @@ const PetHuntModule = {
         const container = document.getElementById('petHuntContainer');
         if (!container) return;
 
-        // UI设置
+        // ===== UI设置 =====
         document.getElementById('phBgColor').addEventListener('input', function() {
             PetHuntModule.uiSettings.bgColor = this.value;
             PetHuntModule.applyUISettings();
             PetHuntModule.saveUISettings();
         });
-                // ===== 汇率变化 =====
         document.getElementById('phExchangeRate').addEventListener('input', function() {
             PetHuntModule.uiSettings.exchangeRate = parseFloat(this.value) || 0.08;
             PetHuntModule.saveData();
@@ -675,7 +775,6 @@ const PetHuntModule = {
             PetHuntModule.applyUISettings();
             PetHuntModule.saveUISettings();
         });
-        // 场景颜色
         document.getElementById('phSceneColorCurrent').addEventListener('input', function() {
             PetHuntModule.uiSettings.sceneColorCurrent = this.value;
             PetHuntModule.applyUISettings();
@@ -705,7 +804,8 @@ const PetHuntModule = {
                     fontSize: 14,
                     sceneColorCurrent: '#4CAF50',
                     sceneColorNext: '#f0d060',
-                    sceneColorDone: '#6c87a0'
+                    sceneColorDone: '#6c87a0',
+                    exchangeRate: 0.08
                 };
                 document.getElementById('phBgColor').value = PetHuntModule.uiSettings.bgColor;
                 document.getElementById('phCardColor').value = PetHuntModule.uiSettings.cardBgColor;
@@ -716,6 +816,7 @@ const PetHuntModule = {
                 document.getElementById('phSceneColorCurrent').value = PetHuntModule.uiSettings.sceneColorCurrent;
                 document.getElementById('phSceneColorNext').value = PetHuntModule.uiSettings.sceneColorNext;
                 document.getElementById('phSceneColorDone').value = PetHuntModule.uiSettings.sceneColorDone;
+                document.getElementById('phExchangeRate').value = PetHuntModule.uiSettings.exchangeRate;
                 PetHuntModule.applyUISettings();
                 PetHuntModule.saveUISettings();
                 alert('✅ UI设置已重置！');
@@ -742,7 +843,95 @@ const PetHuntModule = {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // 变异
+        // ===== 宠物库管理 =====
+        document.getElementById('phOpenPetLibraryBtn').addEventListener('click', function() {
+            PetHuntModule.renderPetLibrary();
+            document.getElementById('phPetLibraryModal').classList.add('show');
+        });
+        document.getElementById('phPetLibraryClose').addEventListener('click', function() {
+            document.getElementById('phPetLibraryModal').classList.remove('show');
+        });
+        document.getElementById('phPetLibraryModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+
+        // ===== 添加宠物 =====
+        document.getElementById('phAddPetBtn').addEventListener('click', function() {
+            document.getElementById('phAddPetModalTitle').textContent = '➕ 添加宠物';
+            document.getElementById('phAddPetModalDesc').textContent = '添加新宠物到宠物库，后续录入时自动匹配。';
+            document.getElementById('phNewPetName').value = '';
+            document.getElementById('phNewPetLevel').value = '';
+            document.getElementById('phNewPetPrice').value = '';
+            document.getElementById('phNewPetSkills').value = '';
+            document.getElementById('phNewPetRare').checked = false;
+            document.getElementById('phEditPetIndex').value = '-1';
+            document.getElementById('phAddPetModal').classList.add('show');
+        });
+        document.getElementById('phAddPetCancel').addEventListener('click', function() {
+            document.getElementById('phAddPetModal').classList.remove('show');
+        });
+        document.getElementById('phAddPetModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+        document.getElementById('phAddPetConfirm').addEventListener('click', function() {
+            const name = document.getElementById('phNewPetName').value.trim();
+            if (!name) { alert('请输入宠物名！'); return; }
+            const level = document.getElementById('phNewPetLevel').value.trim() || '未知';
+            const refPrice = parseFloat(document.getElementById('phNewPetPrice').value) || 0;
+            const skillsStr = document.getElementById('phNewPetSkills').value.trim();
+            const mustSkills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(s => s) : [];
+            const isRare = document.getElementById('phNewPetRare').checked;
+            const editIndex = parseInt(document.getElementById('phEditPetIndex').value);
+
+            if (editIndex >= 0) {
+                PetHuntModule.petLibrary[editIndex] = { name, level, mustSkills, refPrice, isRare };
+                PetHuntModule.saveData();
+                PetHuntModule.renderPetLibrary();
+                alert('✅ 宠物已更新！');
+            } else {
+                if (PetHuntModule.petLibrary.some(p => p.name === name)) {
+                    alert('⚠️ 该宠物已存在！');
+                    return;
+                }
+                PetHuntModule.petLibrary.push({ name, level, mustSkills, refPrice, isRare });
+                PetHuntModule.saveData();
+                PetHuntModule.renderPetLibrary();
+                alert('✅ 宠物已添加到库！');
+            }
+
+            document.getElementById('phNewPetName').value = '';
+            document.getElementById('phNewPetLevel').value = '';
+            document.getElementById('phNewPetPrice').value = '';
+            document.getElementById('phNewPetSkills').value = '';
+            document.getElementById('phNewPetRare').checked = false;
+            document.getElementById('phEditPetIndex').value = '-1';
+            document.getElementById('phAddPetModal').classList.remove('show');
+        });
+
+        // ===== 添加场景 =====
+        document.getElementById('phAddSceneBtn').addEventListener('click', function() {
+            document.getElementById('phAddSceneModal').classList.add('show');
+        });
+        document.getElementById('phAddSceneCancel').addEventListener('click', function() {
+            document.getElementById('phAddSceneModal').classList.remove('show');
+        });
+        document.getElementById('phAddSceneModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+        document.getElementById('phAddSceneConfirm').addEventListener('click', function() {
+            const scene = document.getElementById('phNewSceneName').value.trim();
+            if (!scene) { alert('请输入场景名称！'); return; }
+            const success = PetHuntModule.addScene(scene);
+            if (!success) { alert('⚠️ 该场景已存在！'); return; }
+            document.getElementById('phAddSceneModal').classList.remove('show');
+            document.getElementById('phNewSceneName').value = '';
+            alert('✅ 场景已添加到库！');
+            PetHuntModule.buildUI();
+            PetHuntModule.bindEvents();
+            PetHuntModule.render();
+        });
+
+        // ===== 变异 =====
         document.querySelectorAll('.ph-variant-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.ph-variant-btn').forEach(b => {
@@ -758,7 +947,7 @@ const PetHuntModule = {
             });
         });
 
-        // 常用宠物
+        // ===== 常用宠物 =====
         document.querySelectorAll('.ph-quick-pet').forEach(btn => {
             btn.addEventListener('click', function() {
                 const pet = this.dataset.pet;
@@ -774,7 +963,7 @@ const PetHuntModule = {
             });
         });
 
-        // 技能
+        // ===== 技能 =====
         document.querySelectorAll('.ph-skill-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const skill = this.dataset.skill;
@@ -790,7 +979,7 @@ const PetHuntModule = {
             });
         });
 
-        // 估值
+        // ===== 估值 =====
         document.querySelectorAll('.ph-price-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const price = this.dataset.price;
@@ -806,7 +995,7 @@ const PetHuntModule = {
             });
         });
 
-        // 成本
+        // ===== 成本 =====
         document.querySelectorAll('.ph-cost-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const cost = this.dataset.cost;
@@ -822,24 +1011,21 @@ const PetHuntModule = {
             });
         });
 
-        // 场景快捷 - 点击时同时更新颜色
+        // ===== 场景 =====
         document.querySelectorAll('.ph-scene-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const scene = this.dataset.scene;
                 document.getElementById('phScene').value = scene;
                 PetHuntModule.updateSceneColors();
-                // 更新预测
                 PetHuntModule.updateScenePrediction();
             });
         });
-
-        // 场景下拉 - 变化时更新颜色
         document.getElementById('phScene').addEventListener('change', function() {
             PetHuntModule.updateSceneColors();
             PetHuntModule.updateScenePrediction();
         });
 
-        // 宠物名匹配
+        // ===== 宠物名匹配 =====
         const petInput = document.getElementById('phPetNameInput');
         const matchList = document.getElementById('phPetMatchList');
         petInput.addEventListener('input', function() {
@@ -869,7 +1055,7 @@ const PetHuntModule = {
             }
         });
 
-        // 保存
+        // ===== 保存 =====
         document.getElementById('phSaveBtn').addEventListener('click', function() {
             const petName = document.getElementById('phPetNameInput').value.trim();
             if (!petName) { alert('请输入宠物名！'); return; }
@@ -881,7 +1067,6 @@ const PetHuntModule = {
             const sold = document.getElementById('phSold').checked;
             if (!scene) { alert('请选择场景！'); return; }
             PetHuntModule.addRecord(petName, isVariant, skillCount, price, sold, scene, cost, '');
-            // 清空
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
             document.getElementById('phCost').value = '';
@@ -908,7 +1093,7 @@ const PetHuntModule = {
             alert('✅ 记录已保存！');
         });
 
-        // 清空
+        // ===== 清空 =====
         document.getElementById('phClearBtn').addEventListener('click', function() {
             document.getElementById('phPetNameInput').value = '';
             document.getElementById('phPrice').value = '';
@@ -935,62 +1120,7 @@ const PetHuntModule = {
             document.getElementById('phScenePrediction').innerHTML = '选择场景后显示预测';
         });
 
-        // 添加宠物
-        document.getElementById('phAddPetBtn').addEventListener('click', function() {
-            document.getElementById('phAddPetModal').classList.add('show');
-        });
-        document.getElementById('phAddPetCancel').addEventListener('click', function() {
-            document.getElementById('phAddPetModal').classList.remove('show');
-        });
-        document.getElementById('phAddPetModal').addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('show');
-        });
-        document.getElementById('phAddPetConfirm').addEventListener('click', function() {
-            const name = document.getElementById('phNewPetName').value.trim();
-            if (!name) { alert('请输入宠物名！'); return; }
-            const level = document.getElementById('phNewPetLevel').value.trim() || '未知';
-            const refPrice = parseFloat(document.getElementById('phNewPetPrice').value) || 0;
-            const skillsStr = document.getElementById('phNewPetSkills').value.trim();
-            const mustSkills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(s => s) : [];
-            const isRare = document.getElementById('phNewPetRare').checked;
-            const success = PetHuntModule.addPetToLibrary(name, level, mustSkills, refPrice, isRare);
-            if (!success) { alert('⚠️ 该宠物已存在！'); return; }
-            document.getElementById('phAddPetModal').classList.remove('show');
-            document.getElementById('phNewPetName').value = '';
-            document.getElementById('phNewPetLevel').value = '';
-            document.getElementById('phNewPetPrice').value = '';
-            document.getElementById('phNewPetSkills').value = '';
-            document.getElementById('phNewPetRare').checked = false;
-            alert('✅ 宠物已添加到库！');
-            PetHuntModule.buildUI();
-            PetHuntModule.bindEvents();
-            PetHuntModule.render();
-        });
-
-        // 添加场景
-        document.getElementById('phAddSceneBtn').addEventListener('click', function() {
-            document.getElementById('phAddSceneModal').classList.add('show');
-        });
-        document.getElementById('phAddSceneCancel').addEventListener('click', function() {
-            document.getElementById('phAddSceneModal').classList.remove('show');
-        });
-        document.getElementById('phAddSceneModal').addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('show');
-        });
-        document.getElementById('phAddSceneConfirm').addEventListener('click', function() {
-            const scene = document.getElementById('phNewSceneName').value.trim();
-            if (!scene) { alert('请输入场景名称！'); return; }
-            const success = PetHuntModule.addScene(scene);
-            if (!success) { alert('⚠️ 该场景已存在！'); return; }
-            document.getElementById('phAddSceneModal').classList.remove('show');
-            document.getElementById('phNewSceneName').value = '';
-            alert('✅ 场景已添加到库！');
-            PetHuntModule.buildUI();
-            PetHuntModule.bindEvents();
-            PetHuntModule.render();
-        });
-
-        // 数据分析
+        // ===== 数据分析 =====
         let analysisVisible = false;
         document.getElementById('phAnalysisToggleBtn').addEventListener('click', function() {
             analysisVisible = !analysisVisible;
@@ -1000,7 +1130,7 @@ const PetHuntModule = {
             if (analysisVisible) PetHuntModule.updateAnalysis();
         });
 
-        // 筛选
+        // ===== 筛选 =====
         document.getElementById('phApplyFilterBtn').addEventListener('click', function() {
             PetHuntModule.filterState.dateFrom = document.getElementById('phFilterDateFrom').value || '';
             PetHuntModule.filterState.dateTo = document.getElementById('phFilterDateTo').value || '';
@@ -1019,13 +1149,26 @@ const PetHuntModule = {
             if (analysisVisible) PetHuntModule.updateAnalysis();
         });
 
-        // 排序
+        // ===== 排序 =====
         document.getElementById('phSortHeader').addEventListener('click', function() {
             PetHuntModule.sortState.order = PetHuntModule.sortState.order === 'desc' ? 'asc' : 'desc';
             PetHuntModule.render();
         });
 
-        // 删除/卖出切换
+        // ===== 备注 =====
+        container.addEventListener('change', function(e) {
+            if (e.target.classList.contains('ph-note-input')) {
+                const id = parseInt(e.target.dataset.id);
+                const notes = e.target.value.trim();
+                const record = PetHuntModule.records.find(r => r.id === id);
+                if (record) {
+                    record.notes = notes;
+                    PetHuntModule.saveData();
+                }
+            }
+        });
+
+        // ===== 删除/卖出 =====
         container.addEventListener('click', function(e) {
             const delBtn = e.target.closest('.ph-del-btn');
             if (delBtn) {
@@ -1087,7 +1230,7 @@ const PetHuntModule = {
         const count = this.records.length;
         countEl.textContent = `共 ${count} 条`;
         if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无抓宠记录</td></tr>';
             return;
         }
         let data = [...this.records];
@@ -1115,6 +1258,7 @@ const PetHuntModule = {
                 profitText = profit.toFixed(1) + '万';
             }
             const profitColor = r.sold && r.price && r.cost !== undefined && (r.price - r.cost) >= 0 ? '#2d6b2d' : '#c0392b';
+            const noteValue = r.notes || '';
             html += `<tr>
                 <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;text-align:center;padding:6px 4px;">${row}</td>
                 <td style="padding:6px 4px;text-align:center;">${r.date || '未知'}</td>
@@ -1129,6 +1273,9 @@ const PetHuntModule = {
                     <button class="ph-sold-btn" data-id="${r.id}" style="background:${r.sold ? '#f5d0d0' : '#d4edda'};border:none;border-radius:30px;padding:2px 10px;font-size:0.55rem;cursor:pointer;margin-left:4px;color:${r.sold ? '#8f3a3a' : '#2d6b2d'};font-weight:600;">${r.sold ? '↩️ 改未卖' : '💰 卖出'}</button>
                 </td>
                 <td style="padding:6px 4px;text-align:center;font-size:0.75rem;color:#5a7a94;">${r.scene || '-'}</td>
+                <td style="padding:6px 4px;text-align:center;">
+                    <input type="text" class="ph-note-input" data-id="${r.id}" value="${noteValue}" placeholder="备注" style="width:80px;padding:2px 6px;border:1px solid #dce5ef;border-radius:8px;font-size:0.7rem;background:transparent;text-align:center;">
+                </td>
                 <td style="padding:6px 4px;text-align:center;">
                     <button class="ph-del-btn" data-id="${r.id}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
                 </td>
