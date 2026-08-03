@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版
-//  修复：事件冒泡 + 地点高亮 + 跑动时间自定义 + 商品增删 + 清晰状态
+//  🏃 跑商助手模块 - 重构完整版 v2
+//  修复：双向跑动时间独立 + 事件冒泡 + 地点高亮 + 商品增删
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -16,12 +16,11 @@ const ShopHelperModule = {
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
         fontSize: 16,
-        // 状态颜色
-        colorCanReach: '#2d6b2d',        // 赶得上 - 绿色
-        colorCannotReach: '#c0392b',     // 赶不上 - 红色
-        colorCurrent: '#dbbd7c',         // 当前位置边框
-        colorLowPrice: '#4CAF50',        // 低价商人
-        colorHighPrice: '#e06060',       // 高价商人
+        colorCanReach: '#2d6b2d',
+        colorCannotReach: '#c0392b',
+        colorCurrent: '#dbbd7c',
+        colorLowPrice: '#4CAF50',
+        colorHighPrice: '#e06060',
         locationHighlight: 'rgba(219,189,124,0.15)'
     },
 
@@ -75,27 +74,18 @@ const ShopHelperModule = {
         ]
     },
 
-    // ========== 默认跑动时间 ==========
+    // ========== 默认跑动时间（双向独立） ==========
     defaultTravelTimes: {
-        'changan_aolai': 150,
-        'changan_changshou': 270,
-        'changan_difu': 90,
-        'changan_beiju': 240,
-        'aolai_changshou': 120,
-        'aolai_difu': 150,
-        'aolai_beiju': 40,
-        'changshou_difu': 150,
-        'changshou_beiju': 60,
-        'difu_beiju': 270
-    },
-
-    // ========== 地点名称映射 ==========
-    locationNames: {
-        'changan': '长安',
-        'aolai': '傲来',
-        'changshou': '长寿',
-        'difu': '地府',
-        'beiju': '北俱'
+        'changan_aolai': 150, 'aolai_changan': 150,
+        'changan_changshou': 270, 'changshou_changan': 270,
+        'changan_difu': 90, 'difu_changan': 90,
+        'changan_beiju': 240, 'beiju_changan': 240,
+        'aolai_changshou': 120, 'changshou_aolai': 120,
+        'aolai_difu': 150, 'difu_aolai': 150,
+        'aolai_beiju': 40, 'beiju_aolai': 40,
+        'changshou_difu': 150, 'difu_changshou': 150,
+        'changshou_beiju': 60, 'beiju_changshou': 60,
+        'difu_beiju': 270, 'beiju_difu': 270
     },
 
     // ========== 生命周期 ==========
@@ -134,7 +124,6 @@ const ShopHelperModule = {
         this.priceHistory = data.priceHistory || {};
         this.runRecords = data.runRecords || [];
         this.uiSettings = data.uiSettings || this.uiSettings;
-        // 确保所有地点都有商品列表
         for (let loc of this.locations) {
             if (!this.goodsList[loc.id]) {
                 this.goodsList[loc.id] = JSON.parse(JSON.stringify(this.defaultGoods[loc.id] || []));
@@ -163,18 +152,14 @@ const ShopHelperModule = {
         const s = this.uiSettings;
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
-
         const tabContent = container.closest('.tab-content');
         if (tabContent) tabContent.style.setProperty('background', s.bgColor, 'important');
-
         container.querySelectorAll('.module, .sh-location-card').forEach(el => {
             el.style.setProperty('background', s.cardBgColor, 'important');
         });
-
         container.querySelectorAll('.sh-location-name, .sh-goods-name, .sh-travel-label, .sh-status-label').forEach(el => {
             el.style.setProperty('color', s.textColor, 'important');
         });
-
         const fontSize = s.fontSize + 'px';
         container.querySelectorAll('.sh-location-card, .sh-shop-btn, .sh-goods-item, .sh-price-input, .sh-travel-input, .sh-status-text').forEach(el => {
             el.style.setProperty('font-size', fontSize, 'important');
@@ -217,12 +202,11 @@ const ShopHelperModule = {
         return m + ':' + String(s).padStart(2, '0');
     },
 
-    // ========== 跑动时间 ==========
+    // ========== 跑动时间（双向独立） ==========
     getTravelTime(from, to) {
         if (from === to) return 0;
-        const key1 = from + '_' + to;
-        const key2 = to + '_' + from;
-        return this.travelTimes[key1] || this.travelTimes[key2] || 180;
+        const key = from + '_' + to;
+        return this.travelTimes[key] || 180;
     },
 
     // ========== 刷新状态判断 ==========
@@ -273,7 +257,6 @@ const ShopHelperModule = {
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
-
         const s = this.uiSettings;
 
         let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">';
@@ -282,13 +265,11 @@ const ShopHelperModule = {
             const isCurrent = this.currentLocation === loc.id;
             const status = this.checkRefreshStatus(loc.id);
 
-            // 状态判断
             let firstStatus = status.first === 'can' ? '赶得上 ✅' : '赶不上 ❌';
             let firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
             let secondStatus = status.second === 'can' ? '赶得上 ✅' : '赶不上 ❌';
             let secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
 
-            // 当前位置特殊显示
             if (status.isCurrent) {
                 firstStatus = '📍 当前';
                 firstColor = s.colorCurrent;
@@ -300,7 +281,6 @@ const ShopHelperModule = {
 
             // 商户布局
             let shopsHtml = '';
-            const shopKeys = ['left', 'right'];
             if (loc.shopLayout === 'horizontal') {
                 shopsHtml = `
                     <div style="display:flex;gap:4px;justify-content:center;margin:4px 0;">
@@ -316,12 +296,6 @@ const ShopHelperModule = {
                     </div>
                 `;
             }
-
-            // 应用商人颜色标记
-            const shop0Key = loc.id + '_0';
-            const shop1Key = loc.id + '_1';
-            const shop0Color = this.shopPrices[shop0Key] === 'low' ? s.colorLowPrice : (this.shopPrices[shop0Key] === 'high' ? s.colorHighPrice : null);
-            const shop1Color = this.shopPrices[shop1Key] === 'low' ? s.colorLowPrice : (this.shopPrices[shop1Key] === 'high' ? s.colorHighPrice : null);
 
             // 商品列表
             const goods = this.goodsList[loc.id] || [];
@@ -347,7 +321,7 @@ const ShopHelperModule = {
                 }).join('');
             }
 
-            // 添加商品按钮
+            // 添加商品
             const addGoodsHtml = `
                 <div style="display:flex;gap:4px;margin-top:2px;">
                     <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品名" style="flex:1;padding:1px 4px;border:1px solid #dce5ef;border-radius:6px;font-size:0.6rem;background:transparent;min-width:40px;">
@@ -356,7 +330,6 @@ const ShopHelperModule = {
                 </div>
             `;
 
-            // 地点卡片样式
             let cardStyle = `
                 background:${s.cardBgColor};
                 border-radius:12px;
@@ -366,10 +339,7 @@ const ShopHelperModule = {
                 transition:all 0.2s;
                 cursor:pointer;
             `;
-
-            if (isCurrent) {
-                cardStyle += `background:${s.locationHighlight};`;
-            }
+            if (isCurrent) cardStyle += `background:${s.locationHighlight};`;
 
             html += `
                 <div class="sh-location-card" data-location="${loc.id}" style="${cardStyle}">
@@ -393,7 +363,7 @@ const ShopHelperModule = {
         html += '</div>';
         container.innerHTML = html;
 
-        // ===== 应用商人颜色 =====
+        // 应用商人颜色
         container.querySelectorAll('.sh-shop-btn').forEach(btn => {
             const locId = btn.dataset.location;
             const shopIdx = parseInt(btn.dataset.shop);
@@ -413,7 +383,7 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🕐 渲染跑动时间配置
+    //  🕐 渲染跑动时间配置（双向独立）
     // ============================================================
     renderTravelTimes() {
         const container = document.getElementById('shTravelTimesContainer');
@@ -421,26 +391,36 @@ const ShopHelperModule = {
 
         const pairs = [
             ['changan', 'aolai', '长安→傲来'],
+            ['aolai', 'changan', '傲来→长安'],
             ['changan', 'changshou', '长安→长寿'],
+            ['changshou', 'changan', '长寿→长安'],
             ['changan', 'difu', '长安→地府'],
+            ['difu', 'changan', '地府→长安'],
             ['changan', 'beiju', '长安→北俱'],
+            ['beiju', 'changan', '北俱→长安'],
             ['aolai', 'changshou', '傲来→长寿'],
+            ['changshou', 'aolai', '长寿→傲来'],
             ['aolai', 'difu', '傲来→地府'],
+            ['difu', 'aolai', '地府→傲来'],
             ['aolai', 'beiju', '傲来→北俱'],
+            ['beiju', 'aolai', '北俱→傲来'],
             ['changshou', 'difu', '长寿→地府'],
+            ['difu', 'changshou', '地府→长寿'],
             ['changshou', 'beiju', '长寿→北俱'],
-            ['difu', 'beiju', '地府→北俱']
+            ['beiju', 'changshou', '北俱→长寿'],
+            ['difu', 'beiju', '地府→北俱'],
+            ['beiju', 'difu', '北俱→地府']
         ];
 
-        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">';
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px 8px;">';
         for (let [from, to, label] of pairs) {
             const key = from + '_' + to;
             const val = this.travelTimes[key] || 180;
             html += `
-                <div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;">
-                    <span style="color:#5a7a94;min-width:60px;">${label}</span>
-                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:50px;padding:2px 4px;border:1px solid #bccad9;border-radius:8px;font-size:0.7rem;text-align:center;">
-                    <span style="color:#8ab0c8;font-size:0.6rem;">秒</span>
+                <div style="display:flex;align-items:center;gap:4px;font-size:0.7rem;padding:2px 4px;background:#f8faff;border-radius:6px;border:1px solid #eef2f7;">
+                    <span style="color:#5a7a94;min-width:56px;font-size:0.65rem;">${label}</span>
+                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:48px;padding:2px 4px;border:1px solid #bccad9;border-radius:6px;font-size:0.7rem;text-align:center;background:white;">
+                    <span style="color:#8ab0c8;font-size:0.55rem;">秒</span>
                 </div>
             `;
         }
@@ -456,7 +436,6 @@ const ShopHelperModule = {
         if (!container) return;
 
         container.innerHTML = `
-            <!-- 刷新时间 -->
             <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:10px;">
                 <div class="module-header">
                     <div class="title">⏰ 刷新时间 <span class="hint">— 自动计算下次刷新</span></div>
@@ -491,30 +470,25 @@ const ShopHelperModule = {
                 </div>
             </div>
 
-            <!-- 地图 -->
             <div id="shMapContainer" style="margin-bottom:10px;"></div>
 
-            <!-- 图例 -->
             <div style="display:flex;gap:12px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #eef2f7;font-size:0.65rem;color:#5a7a94;">
-                <span>🟢 赶得上</span>
-                <span>🔴 赶不上</span>
+                <span>🟢 赶得上</span><span>🔴 赶不上</span>
                 <span>| 点击地点名称标记当前位置</span>
                 <span>| 点击商人标记低价/高价</span>
             </div>
 
-            <!-- 跑动时间配置 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
-                    <div class="title">🕐 跑动时间配置 <span class="hint">— 自定义各地间跑动耗时</span></div>
+                    <div class="title">🕐 跑动时间配置 <span class="hint">— 双向独立设置</span></div>
                     <button class="toggle-btn" id="shToggleTravelBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;cursor:pointer;">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="shTravelBody">
                     <div id="shTravelTimesContainer"></div>
-                    <div style="font-size:0.6rem;color:#5a7a94;margin-top:4px;">💡 修改后自动保存，用于计算刷新是否赶得上</div>
+                    <div style="font-size:0.6rem;color:#5a7a94;margin-top:4px;">💡 修改后自动保存，用于计算刷新是否赶得上（方向独立）</div>
                 </div>
             </div>
 
-            <!-- 设置 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🎨 界面设置</div>
@@ -562,10 +536,8 @@ const ShopHelperModule = {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // ===== 点击地点卡片（标记当前位置）=====
-        // 使用事件委托，但只对 .sh-location-card 生效，排除子按钮
+        // 点击地点卡片（排除子元素按钮/输入框）
         container.addEventListener('click', (e) => {
-            // 如果点击的是按钮或输入框，不处理
             if (e.target.closest('.sh-shop-btn') || 
                 e.target.closest('.sh-price-input') ||
                 e.target.closest('.sh-new-goods-name') ||
@@ -577,7 +549,6 @@ const ShopHelperModule = {
                 e.target.closest('button')) {
                 return;
             }
-
             const card = e.target.closest('.sh-location-card');
             if (card) {
                 const locId = card.dataset.location;
@@ -589,25 +560,21 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 点击商人按钮（修复事件冒泡）=====
+        // 点击商人按钮（阻止冒泡）
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
-                e.stopPropagation(); // 阻止冒泡到地点卡片
+                e.stopPropagation();
                 const locId = btn.dataset.location;
                 const shopIdx = parseInt(btn.dataset.shop);
                 const key = locId + '_' + shopIdx;
 
-                // 如果当前已经是低价，取消标记
                 if (this.shopPrices[key] === 'low') {
                     delete this.shopPrices[key];
-                    // 清除另一个商人的高价标记
                     const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
                     delete this.shopPrices[otherKey];
                 } else {
-                    // 标记当前为低价
                     this.shopPrices[key] = 'low';
-                    // 另一个商人标记为高价
                     const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
                     this.shopPrices[otherKey] = 'high';
                 }
@@ -616,7 +583,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 商品价格输入 =====
+        // 商品价格输入
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -626,7 +593,6 @@ const ShopHelperModule = {
                 const key = locId + '_' + goodsKey;
                 if (!isNaN(val) && val > 0) {
                     this.goodsPrices[key] = val;
-                    // 记录历史
                     if (!this.priceHistory[key]) this.priceHistory[key] = [];
                     this.priceHistory[key].push({ price: val, time: new Date().toLocaleString() });
                     if (this.priceHistory[key].length > 20) this.priceHistory[key].shift();
@@ -638,7 +604,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 添加商品 =====
+        // 添加商品
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-add-goods-btn');
             if (btn) {
@@ -661,7 +627,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 删除商品 =====
+        // 删除商品
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-del-goods-btn');
             if (btn) {
@@ -670,7 +636,6 @@ const ShopHelperModule = {
                 const goodsKey = btn.dataset.goods;
                 if (!this.goodsList[locId]) return;
                 this.goodsList[locId] = this.goodsList[locId].filter(g => g.key !== goodsKey);
-                // 清理价格数据
                 const priceKey = locId + '_' + goodsKey;
                 delete this.goodsPrices[priceKey];
                 delete this.priceHistory[priceKey];
@@ -679,7 +644,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 跑动时间输入 =====
+        // 跑动时间输入
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-travel-input');
             if (input) {
@@ -689,18 +654,13 @@ const ShopHelperModule = {
                 if (!isNaN(val) && val >= 0) {
                     const key = from + '_' + to;
                     this.travelTimes[key] = val;
-                    // 也保存反向
-                    const reverseKey = to + '_' + from;
-                    if (!this.travelTimes[reverseKey]) {
-                        // 不自动设置反向，让用户分别设置
-                    }
                     this.saveData();
                     this.renderMap();
                 }
             }
         });
 
-        // ===== 一刷微调 =====
+        // 一刷微调
         document.getElementById('shFirstMinus').addEventListener('click', () => {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
@@ -714,7 +674,7 @@ const ShopHelperModule = {
             this.render();
         });
 
-        // ===== 二刷设置 =====
+        // 二刷设置
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -727,24 +687,21 @@ const ShopHelperModule = {
             alert('✅ 二刷时间已设置！');
         });
 
-        // ===== 折叠按钮 =====
+        // 折叠
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
-            const body = document.getElementById('shTimeBody');
-            body.classList.toggle('hidden');
-            this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            document.getElementById('shTimeBody').classList.toggle('hidden');
+            this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
         document.getElementById('shToggleTravelBtn').addEventListener('click', function() {
-            const body = document.getElementById('shTravelBody');
-            body.classList.toggle('hidden');
-            this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            document.getElementById('shTravelBody').classList.toggle('hidden');
+            this.textContent = document.getElementById('shTravelBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
         document.getElementById('shToggleUISettings').addEventListener('click', function() {
-            const body = document.getElementById('shUISettingsBody');
-            body.classList.toggle('hidden');
-            this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            document.getElementById('shUISettingsBody').classList.toggle('hidden');
+            this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 颜色设置 =====
+        // 颜色
         const colorMap = {
             'shColorCanReach': 'colorCanReach',
             'shColorCannotReach': 'colorCannotReach',
@@ -760,7 +717,6 @@ const ShopHelperModule = {
             });
         }
 
-        // ===== 字体大小 =====
         document.getElementById('shFontSize').addEventListener('change', function() {
             const val = parseInt(this.value) || 16;
             ShopHelperModule.uiSettings.fontSize = val;
@@ -769,7 +725,6 @@ const ShopHelperModule = {
             ShopHelperModule.renderMap();
         });
 
-        // ===== 重置颜色 =====
         document.getElementById('shResetUIColors').addEventListener('click', function() {
             if (!confirm('重置所有颜色为默认值？')) return;
             const defaults = {
@@ -797,7 +752,6 @@ const ShopHelperModule = {
     }
 };
 
-// ===== 自动初始化 =====
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => ShopHelperModule.init());
 } else {
