@@ -431,64 +431,45 @@
         // ============================================================
         //  构建首页卡片
         // ============================================================
-        function buildHomeCards() {
-            const grid = document.getElementById('homeGrid');
-            const cards = [
-                { icon: '🏃', name: '跑宠环统计', desc: '记录跑环数据，分析收益', tab: 'petRing', badge: '已上线' },
-                { icon: '🌳', name: '种树统计', desc: '记录种树产出，计算利润', tab: 'treePlant', badge: '已上线' },
-                { icon: '🐾', name: '抓宠收益', desc: '记录抓宠数据，统计收益', tab: 'petHunt', badge: petHuntCount + '只' },
-                { icon: '⚔️', name: '打造查询', desc: '装备打造 & 熔炼属性查询', tab: 'equipmentQuery', badge: '已上线' },
-                { icon: '📋', name: '师门统计', desc: '每日师门收益记录', tab: 'shiMen', badge: '开发中', coming: true },
-                { icon: '🎯', name: '活动收益', desc: '周末/节日活动统计', tab: 'activity', badge: '开发中', coming: true },
-                { icon: '📊', name: '总收益统计', desc: '所有模块汇总看板', tab: 'totalStats', badge: '已上线' },
-            ];
-
-        function buildHomeCards() {
-            const grid = document.getElementById('homeGrid');
-            
-            // 获取各模块数据条数
-            const petRing = Storage.get('petRing');
-            const treePlant = Storage.get('treePlant');
-            const petHunt = Storage.get('petHunt');
-            const petRingCount = petRing?.history?.length || 0;
-            const treeCount = treePlant?.history?.length || 0;
-            const petHuntCount = petHunt?.records?.length || 0;
-        
-            const cards = [
-                { icon: '🏃', name: '跑宠环统计', desc: '记录跑环数据，分析收益', tab: 'petRing', badge: petRingCount + '轮' },
-                { icon: '🌳', name: '种树统计', desc: '记录种树产出，计算利润', tab: 'treePlant', badge: treeCount + '棵' },
-                { icon: '🐾', name: '抓宠收益', desc: '记录抓宠数据，统计收益', tab: 'petHunt', badge: petHuntCount + '只' },
-                { icon: '⚔️', name: '打造查询', desc: '装备打造 & 熔炼属性查询', tab: 'equipmentQuery', badge: '已上线' },
-                { icon: '📋', name: '师门统计', desc: '每日师门收益记录', tab: 'shiMen', badge: '开发中', coming: true },
-                { icon: '🎯', name: '活动收益', desc: '周末/节日活动统计', tab: 'activity', badge: '开发中', coming: true },
-                { icon: '📊', name: '总收益统计', desc: '所有模块汇总看板', tab: 'totalStats', badge: '已上线' },
-            ];
-        
-            let html = '';
-            for (let card of cards) {
-                let badgeText = card.badge;
-                let badgeClass = 'badge';
-                if (card.coming) {
-                    badgeClass += ' soon';
-                } else if (card.badge.includes('轮') || card.badge.includes('棵') || card.badge.includes('只')) {
-                    badgeClass += ' count';
-                }
-        
-                const clickAttr = card.coming ? '' : `onclick="App.goToTab('${card.tab}')"`;
-                const comingClass = card.coming ? ' coming' : '';
-        
-                html += `
-                    <div class="home-card${comingClass}" ${clickAttr}>
-                        <span class="badge ${badgeClass}">${badgeText}</span>
-                        <span class="icon">${card.icon}</span>
-                        <div class="name">${card.name}</div>
-                        <div class="desc">${card.desc}</div>
-                    </div>
-                `;
-            }
-            grid.innerHTML = html;
+          function buildHomeCards() {
+        const grid = document.getElementById('homeGrid');
+        if (!grid) return;
+    
+        const petRing = Storage.get('petRing');
+        const treePlant = Storage.get('treePlant');
+        const petHunt = Storage.get('petHunt');
+    
+        const petRingCount = petRing?.history?.length || 0;
+        const treeCount = treePlant?.history?.length || 0;
+        const petHuntCount = petHunt?.records?.length || 0;
+    
+        const cards = [
+            { icon: '🏃', name: '跑宠环统计', desc: '记录跑环数据，分析收益', tab: 'petRing', badge: petRingCount + '轮' },
+            { icon: '🌳', name: '种树统计', desc: '记录种树产出，计算利润', tab: 'treePlant', badge: treeCount + '棵' },
+            { icon: '🐾', name: '抓宠收益', desc: '记录抓宠数据，统计收益', tab: 'petHunt', badge: petHuntCount + '只' },
+            { icon: '⚔️', name: '打造查询', desc: '装备打造 & 熔炼属性查询', tab: 'equipmentQuery', badge: '已上线' },
+            { icon: '📋', name: '师门统计', desc: '每日师门收益记录', tab: 'shiMen', badge: '开发中', coming: true },
+            { icon: '🎯', name: '活动收益', desc: '周末/节日活动统计', tab: 'activity', badge: '开发中', coming: true },
+            { icon: '📊', name: '总收益统计', desc: '所有模块汇总看板', tab: 'totalStats', badge: '已上线' }
+        ];
+    
+        let html = '';
+        for (let card of cards) {
+            const clickAttr = card.coming ? '' : `onclick="App.goToTab('${card.tab}')"`;
+            const comingClass = card.coming ? ' coming' : '';
+            const badgeClass = card.coming ? 'badge soon' : (card.badge.includes('轮') || card.badge.includes('棵') || card.badge.includes('只') ? 'badge count' : 'badge');
+    
+            html += `
+                <div class="home-card${comingClass}" ${clickAttr}>
+                    <span class="${badgeClass}">${card.badge}</span>
+                    <span class="icon">${card.icon}</span>
+                    <div class="name">${card.name}</div>
+                    <div class="desc">${card.desc}</div>
+                </div>
+            `;
         }
-
+        grid.innerHTML = html;
+    }
         // ============================================================
         //  Tab 切换扩展
         // ============================================================
