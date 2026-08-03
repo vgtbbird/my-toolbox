@@ -317,11 +317,37 @@
 
         <!-- 获取 Token 说明 -->
         <div style="background:#f5f8fc;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #e8eef5;">
-            <div style="font-weight:600;font-size:0.8rem;color:#1f3b53;margin-bottom:4px;">💡 没有 Token？</div>
-            <div style="font-size:0.75rem;color:#5a7a94;line-height:1.6;">
-                1. 注册 <a href="https://gitee.com" target="_blank" style="color:#4c7a5c;">Gitee</a> 账号<br>
-                2. 进入设置 → 私人令牌 → 生成新令牌<br>
-                3. 勾选 <code>projects</code> 权限，生成后复制粘贴到这里
+            <div style="font-weight:600;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">📖 首次使用云同步，请按以下步骤操作：</div>
+            <div style="font-size:0.75rem;color:#5a7a94;line-height:1.8;">
+                <div style="display:flex;gap:8px;padding:2px 0;">
+                    <span style="background:#4c7a5c;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-weight:700;font-size:0.65rem;line-height:20px;flex-shrink:0;">1</span>
+                    <span>注册 <a href="https://gitee.com" target="_blank" style="color:#4c7a5c;">Gitee</a> 账号（已有账号请跳过）</span>
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;">
+                    <span style="background:#4c7a5c;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-weight:700;font-size:0.65rem;line-height:20px;flex-shrink:0;">2</span>
+                    <span>创建仓库 <strong style="color:#1f3b53;">my-data</strong>（仓库名必须叫这个）</span>
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;padding-left:28px;font-size:0.7rem;color:#8ab0c8;">
+                    → 进入 Gitee → 右上角「+」→ 新建仓库 → 填写 my-data → 点击创建
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;">
+                    <span style="background:#4c7a5c;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-weight:700;font-size:0.65rem;line-height:20px;flex-shrink:0;">3</span>
+                    <span>生成私人令牌（Token）</span>
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;padding-left:28px;font-size:0.7rem;color:#8ab0c8;">
+                    → 点击右上角头像 → 设置 → 私人令牌 → 生成新令牌
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;padding-left:28px;font-size:0.7rem;color:#8ab0c8;">
+                    → 勾选 <strong style="color:#1f3b53;">projects</strong> 权限 → 提交 → 复制生成的 Token
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;">
+                    <span style="background:#4c7a5c;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-weight:700;font-size:0.65rem;line-height:20px;flex-shrink:0;">4</span>
+                    <span>把上面的 <strong style="color:#1f3b53;">用户名</strong> 和 <strong style="color:#1f3b53;">Token</strong> 填入输入框，点击「保存 Token」</span>
+                </div>
+                <div style="display:flex;gap:8px;padding:2px 0;">
+                    <span style="background:#4c7a5c;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;font-weight:700;font-size:0.65rem;line-height:20px;flex-shrink:0;">5</span>
+                    <span>点击「同步到云端」，数据备份成功！</span>
+                </div>
             </div>
         </div>
 
