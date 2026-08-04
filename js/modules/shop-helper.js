@@ -1,7 +1,7 @@
 // ============================================================
-//  🏃 跑商助手模块 - 完整版 v13
-//  修复：一刷触发逻辑（每10分钟第10秒才触发）
-//  修复：商人标记只在 一刷 和 手动 时清除
+//  🏃 跑商助手模块 - 完整版 v14
+//  一刷固定在第10秒触发（每10分钟一次）
+//  商人标记只在 一刷 和 手动 时清除
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -24,7 +24,7 @@ const ShopHelperModule = {
     },
 
     currentLocation: null,
-    firstOffset: 0,
+    firstOffset: 0,  // 固定为0，不再允许修改
     secondMinute: 3,
     secondSecond: 20,
     travelTimes: {},
@@ -113,14 +113,14 @@ const ShopHelperModule = {
         this.applyUISettings();
     },
 
-       checkFirstRefresh() {
+    // ===== 一刷检测：每10分钟的第10秒触发 =====
+    checkFirstRefresh() {
         const now = new Date();
         const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
-        const firstSecond = 10 + this.firstOffset;
         
-        // ✅ 只有在 10 的倍数分钟（0,10,20,30,40,50）且秒数匹配时才触发
-        if (currentMinute % 10 === 0 && currentSecond === firstSecond) {
+        // 只有分钟是 10 的倍数（0,10,20,30,40,50）且秒数等于 10 时才触发
+        if (currentMinute % 10 === 0 && currentSecond === 10) {
             if (this.lastFirstRefreshMinute !== currentMinute) {
                 this.lastFirstRefreshMinute = currentMinute;
                 this.resetPricesAndShops();
@@ -212,7 +212,7 @@ const ShopHelperModule = {
     loadData() {
         const data = Storage.get(this.storageKey, {});
         this.currentLocation = data.currentLocation || null;
-        this.firstOffset = data.firstOffset || 0;
+        this.firstOffset = 0;  // 固定为0
         this.secondMinute = data.secondMinute !== undefined ? data.secondMinute : 3;
         this.secondSecond = data.secondSecond !== undefined ? data.secondSecond : 20;
         this.travelTimes = data.travelTimes || { ...this.defaultTravelTimes };
@@ -270,9 +270,9 @@ const ShopHelperModule = {
         const nextMinute = Math.ceil((minute + 1) / 10) * 10;
         const target = new Date(now);
         target.setMinutes(nextMinute, 0, 0);
-        target.setSeconds(10 + this.firstOffset);
+        target.setSeconds(10);
         if (target < now) target.setMinutes(nextMinute + 10, 0, 0);
-        target.setSeconds(10 + this.firstOffset);
+        target.setSeconds(10);
         return target;
     },
 
@@ -696,12 +696,7 @@ const ShopHelperModule = {
                         <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
                             <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
                             <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
-                                <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
-                                <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
-                            </div>
-                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格</div>
+                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 每10分钟的第10秒自动重置价格</div>
                         </div>
                         <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                             <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
@@ -927,19 +922,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 一刷微调 =====
-        document.getElementById('shFirstMinus').addEventListener('click', () => {
-            this.firstOffset = Math.max(-10, this.firstOffset - 10);
-            document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
-            this.saveData();
-            this.updateStatusOnly();
-        });
-        document.getElementById('shFirstPlus').addEventListener('click', () => {
-            this.firstOffset = Math.min(60, this.firstOffset + 10);
-            document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
-            this.saveData();
-            this.updateStatusOnly();
-        });
+        // ===== 一刷微调已移除，固定10秒 =====
 
         // ===== 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
