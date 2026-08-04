@@ -560,6 +560,8 @@ const TreePlantModule = {
             this.updateTreeStatusUI();
             return;
         }
+        // 每次检查都更新UI显示时间
+            this.updateTreeStatusUI();
     },
 
     // ===== 更新状态UI =====
