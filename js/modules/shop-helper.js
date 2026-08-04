@@ -209,6 +209,7 @@ const ShopHelperModule = {
                 wrap.style.border = '1px solid #e0e8f0';
             }
         }
+         this.updateShopColors();
     },
 
     loadData() {
