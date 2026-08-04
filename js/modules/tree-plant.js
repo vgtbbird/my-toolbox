@@ -515,6 +515,9 @@ const TreePlantModule = {
 
     // ===== 检查种树提醒 =====
     checkTreeReminders() {
+        // ✅ 先更新UI（秒表效果）
+        this.updateTreeStatusUI();
+    
         // 如果提醒被关闭，不检查
         if (!this.uiSettings.remindEnabled) return;
         // 如果已早熟或已枯萎或未开始，跳过
@@ -560,8 +563,7 @@ const TreePlantModule = {
             this.updateTreeStatusUI();
             return;
         }
-        // 每次检查都更新UI显示时间
-            this.updateTreeStatusUI();
+
     },
 
     // ===== 更新状态UI =====
