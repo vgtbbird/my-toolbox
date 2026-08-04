@@ -113,14 +113,14 @@ const ShopHelperModule = {
         this.applyUISettings();
     },
 
-    checkFirstRefresh() {
+       checkFirstRefresh() {
         const now = new Date();
+        const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
         const firstSecond = 10 + this.firstOffset;
         
-        // ✅ 只有秒数完全匹配才触发一刷（每10分钟一次）
-        if (currentSecond === firstSecond) {
-            const currentMinute = now.getMinutes();
+        // ✅ 只有在 10 的倍数分钟（0,10,20,30,40,50）且秒数匹配时才触发
+        if (currentMinute % 10 === 0 && currentSecond === firstSecond) {
             if (this.lastFirstRefreshMinute !== currentMinute) {
                 this.lastFirstRefreshMinute = currentMinute;
                 this.resetPricesAndShops();
