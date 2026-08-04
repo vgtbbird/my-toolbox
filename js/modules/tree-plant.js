@@ -1033,12 +1033,12 @@ const TreePlantModule = {
         this.render();
     },
 
-    addEvent(evt) {
-        if (this.current.isSettled) {
-            alert('这棵树已结算，请开始新的记录！');
-            return;
-        }
-    
+addEvent(evt) {
+    if (this.current.isSettled) {
+        alert('这棵树已结算，请开始新的记录！');
+        return;
+    }
+
         if (evt === 'none') {
             this.current.events = [];
             this.current.shakes = this.current.baseShakes;
@@ -1056,6 +1056,11 @@ const TreePlantModule = {
             }
             if (hasZaoshu) {
                 this.current.shakes = 6;
+                // ✅ 触发早熟事件 → 停止提醒
+                this.hasEarlyRipen = true;
+                this.saveData();
+                this.updateTreeStatusUI();
+                alert('🌿 已触发早熟事件，所有浇水提醒已停止！');
             }
         }
         this.saveData();
