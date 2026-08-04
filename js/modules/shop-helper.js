@@ -1,6 +1,7 @@
 // ============================================================
-//  🏃 跑商助手模块 - 完整版 v12
-//  修复：商人标记自动重置问题
+//  🏃 跑商助手模块 - 完整版 v13
+//  修复：一刷触发逻辑（每10分钟第10秒才触发）
+//  修复：商人标记只在 一刷 和 手动 时清除
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -114,11 +115,12 @@ const ShopHelperModule = {
 
     checkFirstRefresh() {
         const now = new Date();
-        const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
-        const firstMinute = Math.floor(currentMinute / 10) * 10;
         const firstSecond = 10 + this.firstOffset;
-        if (Math.abs(currentSecond - firstSecond) <= 1) {
+        
+        // ✅ 只有秒数完全匹配才触发一刷（每10分钟一次）
+        if (currentSecond === firstSecond) {
+            const currentMinute = now.getMinutes();
             if (this.lastFirstRefreshMinute !== currentMinute) {
                 this.lastFirstRefreshMinute = currentMinute;
                 this.resetPricesAndShops();
@@ -202,7 +204,9 @@ const ShopHelperModule = {
             }
         }
         // 更新完状态后恢复商人颜色
-        this.updateShopColors();
+        setTimeout(() => {
+            this.updateShopColors();
+        }, 50);
     },
 
     loadData() {
@@ -352,13 +356,12 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图（只渲染一次，后续只更新状态）
+    //  🗺️ 渲染地图
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         
-        // ✅ 如果已经有内容，只更新状态，不重新生成 HTML（保留商人标记）
         if (container.querySelector('.sh-location-wrap')) {
             this.updateStatusOnly();
             return;
@@ -799,34 +802,34 @@ const ShopHelperModule = {
             }
         });
 
-container.addEventListener('click', (e) => {
-    const btn = e.target.closest('.sh-shop-btn');
-    if (btn) {
-        e.stopPropagation();
-        const locId = btn.dataset.location;
-        const shopIdx = parseInt(btn.dataset.shop);
-        const key = locId + '_' + shopIdx;
+        // ===== 点击商人 =====
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sh-shop-btn');
+            if (btn) {
+                e.stopPropagation();
+                const locId = btn.dataset.location;
+                const shopIdx = parseInt(btn.dataset.shop);
+                const key = locId + '_' + shopIdx;
 
-        // ✅ 点击商人时，自动标记当前地点
-        if (this.currentLocation !== locId) {
-            this.currentLocation = locId;
-        }
+                // ✅ 点击商人时，自动标记当前地点
+                if (this.currentLocation !== locId) {
+                    this.currentLocation = locId;
+                }
 
-        if (this.shopPrices[key] === 'low') {
-            delete this.shopPrices[key];
-            const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
-            delete this.shopPrices[otherKey];
-        } else {
-            this.shopPrices[key] = 'low';
-            const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
-            this.shopPrices[otherKey] = 'high';
-        }
-        this.saveData();
-        // ✅ 更新状态（地点高亮 + 状态标签）+ 商人颜色
-        this.updateStatusOnly();
-        this.renderTravelTimes();
-    }
-});
+                if (this.shopPrices[key] === 'low') {
+                    delete this.shopPrices[key];
+                    const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
+                    delete this.shopPrices[otherKey];
+                } else {
+                    this.shopPrices[key] = 'low';
+                    const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
+                    this.shopPrices[otherKey] = 'high';
+                }
+                this.saveData();
+                this.updateStatusOnly();
+                this.renderTravelTimes();
+            }
+        });
 
         // ===== 当前价格输入 =====
         container.addEventListener('input', (e) => {
@@ -886,8 +889,6 @@ container.addEventListener('click', (e) => {
                 nameInput.value = '';
                 priceInput.value = '';
                 this.saveData();
-                // ✅ 不重新渲染整个地图，只更新商品列表部分
-                // 直接重新渲染地图，但保留 shopPrices
                 this.renderMap();
             }
         });
