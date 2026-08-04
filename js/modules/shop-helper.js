@@ -98,6 +98,7 @@ const ShopHelperModule = {
         if (this._timer) clearInterval(this._timer);
         this._timer = setInterval(() => {
             this.updateTimeDisplay();
+            this.updateCurrentTime(); 
             this.updateStatusOnly();
             this.checkFirstRefresh();
         }, 1000);
@@ -344,6 +345,16 @@ const ShopHelperModule = {
         const el2 = document.getElementById('shSecondTimeDisplay');
         if (el1) el1.textContent = firstTarget.toLocaleTimeString() + '（剩余 ' + this.formatTime(this.getTimeRemaining(firstTarget)) + '）';
         if (el2) el2.textContent = secondTarget.toLocaleTimeString() + '（剩余 ' + this.formatTime(this.getTimeRemaining(secondTarget)) + '）';
+    },
+    
+    updateCurrentTime() {
+        const el = document.getElementById('shCurrentTimeDisplay');
+        if (!el) return;
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        el.textContent = `${h}:${m}:${s}`;
     },
 
     // ============================================================
@@ -691,32 +702,41 @@ renderTravelTimes() {
                         <button class="toggle-btn" id="shToggleTimeBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                     </div>
                 </div>
-                <div class="module-body" id="shTimeBody">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0;">
-                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
-                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
-                                <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
-                                <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
+                    <div class="module-body" id="shTimeBody">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:2px 0;">
+                            <!-- 一刷 -->
+                            <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                                <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
+                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
+                                <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                    <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
+                                    <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
+                                    <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
+                                </div>
+                                <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格</div>
                             </div>
-                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格和商人标记</div>
-                        </div>
-                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
-                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
-                                <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
-                                <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
+                    
+                            <!-- 🆕 当前时间 -->
+                            <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                                <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
+                                <div style="font-weight:800;color:#0a1a2a;font-size:1.1rem;font-family:monospace;" id="shCurrentTimeDisplay">--:--:--</div>
+                            </div>
+                    
+                            <!-- 二刷 -->
+                            <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                                <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
+                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
+                                <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                    <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                    <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
+                                    <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                    <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
+                                    <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
+                                </div>
                             </div>
                         </div>
+                        <div style="font-size:0.6rem;color:#4a6a8a;padding:2px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
                     </div>
-                    <div style="font-size:0.6rem;color:#4a6a8a;padding:2px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
-                </div>
             </div>
 
             <div id="shMapContainer" style="margin-bottom:6px;"></div>
