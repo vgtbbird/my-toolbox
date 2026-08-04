@@ -1,5 +1,5 @@
 // ============================================================
-//  🌳 种树模块 - 完整版（含汇率设置）
+//  🌳 种树模块 - 完整版（含汇率设置 + 种树提醒）
 // ============================================================
 const TreePlantModule = {
     id: 'treePlant',
@@ -9,14 +9,31 @@ const TreePlantModule = {
     prices: {},
     current: { seedCost: 45, baseShakes: 6, shakes: 6, events: [], loot: {} },
     exchangeRate: 0.08,
+
+    // ===== UI设置 =====
     uiSettings: {
         bgColor: '#eef2f7',
         btnColor: '#4CAF50',
         btnTextColor: '#ffffff',
         cardBgColor: '#ffffff',
         textColor: '#1a1a2e',
-        fontSize: 14
+        fontSize: 14,
+        // 🆕 种树提醒
+        notificationPermission: false,   // 通知权限是否已授权
+        remindEnabled: true              // 提醒总开关
     },
+
+    // 🆕 种树提醒状态（和 uiSettings 平级）
+    treeStartTime: null,        // 开始种树的时间戳
+    treeStage: 'idle',          // idle | growing | withered
+    treeAlerts: {               // 各阶段是否已提醒
+        '5min': false,
+        '15min': false,
+        '20min': false
+    },
+    careCount: 0,               // 已照顾次数（0-3）
+    shakeReady: false,          // 是否可以摇树
+    hasEarlyRipen: false,       // 是否已早熟
 
     LOOT_TYPES: [
         { key: 'eryao', label: '二药', defaultPrice: 1.5 },
@@ -54,6 +71,11 @@ const TreePlantModule = {
         this.bindEvents();
         App.register(this);
         this.render();
+        // 🆕 启动定时器，每秒检查种树提醒
+        if (this._timer) clearInterval(this._timer);
+        this._timer = setInterval(() => {
+            this.checkTreeReminders();
+        }, 1000);
         setTimeout(() => this.applyUISettings(), 150);
     },
 
@@ -72,6 +94,7 @@ const TreePlantModule = {
         this.updateCurrent();
         this.updateHistory();
         this.updateAnalysis();
+        this.updateTreeStatusUI();
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
         console.log('✅ 种树模块渲染完成');
@@ -88,9 +111,19 @@ const TreePlantModule = {
             btnTextColor: '#ffffff',
             cardBgColor: '#ffffff',
             textColor: '#1a1a2e',
-            fontSize: 14
+            fontSize: 14,
+            notificationPermission: false,
+            remindEnabled: true
         };
         this.exchangeRate = data.exchangeRate || 0.08;
+
+        // 🆕 加载种树提醒状态
+        this.treeStartTime = data.treeStartTime || null;
+        this.treeStage = data.treeStage || 'idle';
+        this.treeAlerts = data.treeAlerts || { '5min': false, '15min': false, '20min': false };
+        this.careCount = data.careCount || 0;
+        this.shakeReady = data.shakeReady || false;
+        this.hasEarlyRipen = data.hasEarlyRipen || false;
 
         this.LOOT_TYPES.forEach(t => {
             if (this.current.loot[t.key] === undefined) this.current.loot[t.key] = 0;
@@ -106,7 +139,14 @@ const TreePlantModule = {
             prices: this.prices,
             current: this.current,
             uiSettings: this.uiSettings,
-            exchangeRate: this.exchangeRate
+            exchangeRate: this.exchangeRate,
+            // 🆕 保存种树提醒状态
+            treeStartTime: this.treeStartTime,
+            treeStage: this.treeStage,
+            treeAlerts: this.treeAlerts,
+            careCount: this.careCount,
+            shakeReady: this.shakeReady,
+            hasEarlyRipen: this.hasEarlyRipen
         });
     },
 
@@ -199,6 +239,374 @@ const TreePlantModule = {
         return { total, details };
     },
 
+    // ============================================================
+    //  🌳 种树提醒功能
+    // ============================================================
+
+    // ===== 请求通知权限 =====
+    requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            console.log('浏览器不支持桌面通知');
+            return false;
+        }
+        if (Notification.permission === 'granted') {
+            this.uiSettings.notificationPermission = true;
+            this.saveData();
+            return true;
+        }
+        if (Notification.permission === 'denied') {
+            alert('⚠️ 通知被拒绝，请在浏览器设置中允许通知权限！');
+            return false;
+        }
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                this.uiSettings.notificationPermission = true;
+                this.saveData();
+                alert('✅ 通知权限已开启！种树时会提醒你浇水。');
+            }
+        });
+        return false;
+    },
+
+    // ===== 发送提醒 =====
+    sendTreeAlert(title, message, isUrgent = false, showCareBtn = true) {
+        // 如果提醒被关闭，只显示弹窗
+        if (!this.uiSettings.remindEnabled) {
+            this.showTreeAlertModal(title, message, isUrgent, showCareBtn);
+            return;
+        }
+
+        // 1. 桌面通知
+        if (this.uiSettings.notificationPermission && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+                new Notification('🌳 ' + title, {
+                    body: message,
+                    icon: '🌳',
+                    requireInteraction: true,
+                    silent: false
+                });
+            } catch (e) {}
+        }
+
+        // 2. 页面内弹窗
+        this.showTreeAlertModal(title, message, isUrgent, showCareBtn);
+
+        // 3. 标题闪烁
+        this.flashTitle('🌳 ' + title);
+
+        // 4. 声音提醒
+        this.playAlertSound(isUrgent);
+    },
+
+    // ===== 页面内弹窗 =====
+    showTreeAlertModal(title, message, isUrgent = false, showCareBtn = true) {
+        // 移除旧弹窗
+        const oldOverlay = document.getElementById('treeAlertOverlay');
+        if (oldOverlay) oldOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'treeAlertOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+            animation: treeAlertFadeIn 0.4s ease;
+        `;
+
+        const isShakeReady = title.includes('摇树');
+        const isWithered = title.includes('枯萎');
+
+        let btnHtml = '';
+        if (showCareBtn && !isShakeReady && !isWithered) {
+            btnHtml = `
+                <button id="treeAlertCareBtn" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 10px 28px;
+                    border-radius: 40px;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                    margin-right: 10px;
+                    box-shadow: 0 4px 16px rgba(76,175,80,0.3);
+                ">✅ 已照顾</button>
+            `;
+        }
+        if (isShakeReady) {
+            btnHtml = `
+                <button id="treeAlertShakeBtn" style="
+                    background: #f0d060;
+                    color: #1f344b;
+                    border: none;
+                    padding: 10px 28px;
+                    border-radius: 40px;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                    box-shadow: 0 4px 16px rgba(240,208,96,0.3);
+                ">🔄 去摇树</button>
+            `;
+        }
+
+        overlay.innerHTML = `
+            <div style="
+                background: ${isWithered ? '#2a0a0a' : isShakeReady ? '#1a2a1a' : '#1a2a1a'};
+                border-radius: 28px;
+                padding: 30px 35px 35px;
+                max-width: 420px;
+                width: 90%;
+                text-align: center;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+                border: 3px solid ${isWithered ? '#ff4444' : isShakeReady ? '#f0d060' : '#4CAF50'};
+                animation: treeAlertBounce 0.5s ease;
+            ">
+                <div style="font-size: 3.5rem; margin-bottom: 8px;">${isWithered ? '💀' : isShakeReady ? '🌳' : '🌱'}</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: ${isWithered ? '#ff6666' : isShakeReady ? '#f0d060' : '#4CAF50'}; margin-bottom: 6px;">
+                    ${title}
+                </div>
+                <div style="font-size: 1rem; color: #e0ddd4; margin-bottom: 18px; line-height: 1.6;">
+                    ${message}
+                </div>
+                <div style="display:flex; justify-content:center; flex-wrap:wrap; gap:8px;">
+                    ${btnHtml}
+                    <button id="treeAlertCloseBtn" style="
+                        background: ${isWithered ? '#cc4444' : '#555'};
+                        color: white;
+                        border: none;
+                        padding: 10px 24px;
+                        border-radius: 40px;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">${isWithered ? '知道了' : '稍后提醒'}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // 添加动画样式
+        let style = document.getElementById('treeAlertStyle');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'treeAlertStyle';
+            style.textContent = `
+                @keyframes treeAlertFadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes treeAlertBounce {
+                    0% { transform: scale(0.5); opacity: 0; }
+                    60% { transform: scale(1.05); }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // 已照顾按钮
+        const careBtn = document.getElementById('treeAlertCareBtn');
+        if (careBtn) {
+            careBtn.addEventListener('click', () => {
+                this.careCount++;
+                this.saveData();
+                overlay.remove();
+                // 检查是否3次照顾完成
+                if (this.careCount >= 3) {
+                    this.shakeReady = true;
+                    this.saveData();
+                    // 5分钟后弹窗提醒摇树
+                    setTimeout(() => {
+                        if (this.shakeReady && this.treeStage !== 'withered') {
+                            this.sendTreeAlert(
+                                '🌳 可以摇树了！',
+                                '已照顾3次，树苗成熟了！点击「去摇树」开始收获 🎉',
+                                false,
+                                false
+                            );
+                        }
+                    }, 5 * 60 * 1000);
+                    alert('✅ 已照顾3次！5分钟后会提醒你摇树 🎉');
+                } else {
+                    alert(`✅ 已照顾 ${this.careCount}/3 次，继续加油！`);
+                }
+                this.updateTreeStatusUI();
+            });
+        }
+
+        // 去摇树按钮
+        const shakeBtn = document.getElementById('treeAlertShakeBtn');
+        if (shakeBtn) {
+            shakeBtn.addEventListener('click', () => {
+                overlay.remove();
+                this.shakeReady = false;
+                this.saveData();
+                alert('🌳 快去摇树吧！点击「结算此树」记录产出！');
+                this.updateTreeStatusUI();
+            });
+        }
+
+        // 关闭按钮
+        document.getElementById('treeAlertCloseBtn').addEventListener('click', () => {
+            overlay.remove();
+            if (isWithered) {
+                this.treeStage = 'withered';
+                this.saveData();
+                this.updateTreeStatusUI();
+            }
+        });
+
+        // 点击背景关闭
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+    },
+
+    // ===== 标题闪烁 =====
+    flashTitle(message) {
+        const originalTitle = document.title;
+        let count = 0;
+        const interval = setInterval(() => {
+            document.title = count % 2 === 0 ? `🔔 ${message}` : originalTitle;
+            count++;
+            if (count > 10) {
+                clearInterval(interval);
+                document.title = originalTitle;
+            }
+        }, 500);
+    },
+
+    // ===== 声音提醒 =====
+    playAlertSound(isUrgent) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
+            
+            if (isUrgent) {
+                oscillator.frequency.value = 800;
+                oscillator.type = 'square';
+                gain.gain.value = 0.15;
+                oscillator.start();
+                setTimeout(() => { oscillator.frequency.value = 600; }, 200);
+                setTimeout(() => { oscillator.stop(); }, 600);
+            } else {
+                oscillator.frequency.value = 523;
+                oscillator.type = 'sine';
+                gain.gain.value = 0.1;
+                oscillator.start();
+                setTimeout(() => { oscillator.frequency.value = 659; }, 200);
+                setTimeout(() => { oscillator.stop(); }, 400);
+            }
+        } catch (e) {}
+    },
+
+    // ===== 检查种树提醒 =====
+    checkTreeReminders() {
+        // 如果提醒被关闭，不检查
+        if (!this.uiSettings.remindEnabled) return;
+        // 如果已早熟或已枯萎或未开始，跳过
+        if (this.hasEarlyRipen || this.treeStage === 'withered' || !this.treeStartTime) {
+            return;
+        }
+
+        const now = Date.now();
+        const elapsed = (now - this.treeStartTime) / 1000 / 60;
+
+        // 40分钟 → 枯萎
+        if (elapsed >= 40 && this.treeStage !== 'withered') {
+            this.treeStage = 'withered';
+            this.saveData();
+            this.sendTreeAlert('💀 树苗枯萎了！', '超过40分钟未照顾，树苗已枯死...下次记得及时浇水！', true, false);
+            this.updateTreeStatusUI();
+            return;
+        }
+
+        // 5分钟提醒
+        if (elapsed >= 5 && !this.treeAlerts['5min']) {
+            this.treeAlerts['5min'] = true;
+            this.saveData();
+            this.sendTreeAlert('⏰ 该浇水了！', '🌱 种树5分钟了，第一次浇水施肥！点击「已照顾」继续', false, true);
+            this.updateTreeStatusUI();
+            return;
+        }
+
+        // 15分钟提醒
+        if (elapsed >= 15 && !this.treeAlerts['15min']) {
+            this.treeAlerts['15min'] = true;
+            this.saveData();
+            this.sendTreeAlert('⏰ 第二次浇水！', '🌱 种树15分钟了，第二次浇水施肥！点击「已照顾」继续', false, true);
+            this.updateTreeStatusUI();
+            return;
+        }
+
+        // 20分钟提醒
+        if (elapsed >= 20 && !this.treeAlerts['20min']) {
+            this.treeAlerts['20min'] = true;
+            this.saveData();
+            this.sendTreeAlert('⏰ 最后一次浇水！', '🌱 种树20分钟了，最后一次浇水施肥！点击「已照顾」完成', false, true);
+            this.updateTreeStatusUI();
+            return;
+        }
+    },
+
+    // ===== 更新状态UI =====
+    updateTreeStatusUI() {
+        const el = document.getElementById('trTreeStatus');
+        if (!el) return;
+
+        if (this.treeStage === 'withered') {
+            el.textContent = '💀 已枯萎';
+            el.style.background = '#8B0000';
+            el.style.color = '#fff';
+            return;
+        }
+
+        if (this.hasEarlyRipen) {
+            el.textContent = '🌿 已早熟';
+            el.style.background = '#f0d060';
+            el.style.color = '#1f344b';
+            return;
+        }
+
+        if (this.shakeReady) {
+            el.textContent = '🌳 可摇树！';
+            el.style.background = '#f0d060';
+            el.style.color = '#1f344b';
+            return;
+        }
+
+        if (!this.treeStartTime) {
+            el.textContent = '⏸️ 未开始';
+            el.style.background = '#e8e8e8';
+            el.style.color = '#666';
+            return;
+        }
+
+        const elapsed = (Date.now() - this.treeStartTime) / 1000 / 60;
+        const minutes = Math.floor(elapsed);
+        const seconds = Math.floor((elapsed - minutes) * 60);
+        const careText = this.careCount > 0 ? ` 已照顾${this.careCount}/3次` : '';
+        el.textContent = `🌱 ${minutes}分${String(seconds).padStart(2,'0')}秒${careText}`;
+        el.style.background = '#4CAF50';
+        el.style.color = '#fff';
+    },
+
+    // ============================================================
+    //  🏗️ 构建UI
+    // ============================================================
     buildUI() {
         const container = document.getElementById('treePlantContainer');
         if (!container) return;
@@ -250,6 +658,54 @@ const TreePlantModule = {
                 <div class="stat-item"><div class="num" id="trTotalCount">0</div><div class="label">🌳 种植棵数</div></div>
                 <div class="stat-item"><div class="num" id="trAvgProfit">0</div><div class="label">📊 平均利润/棵</div></div>
                 <div class="stat-item" id="trRateStat"><div class="num" id="trWinRate">0%</div><div class="label">🏆 盈利率</div></div>
+            </div>
+
+            <!-- 🆕 种树提醒控制 -->
+            <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; align-items:center; padding:8px 12px; background:#f0f5fb; border-radius:12px; border:1px solid #d0dce8;">
+                <button id="trStartTreeBtn" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 6px 20px;
+                    border-radius: 30px;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                ">🌱 开始种树</button>
+                <button id="trEarlyRipenBtn" style="
+                    background: #f0d060;
+                    color: #1f344b;
+                    border: none;
+                    padding: 6px 20px;
+                    border-radius: 30px;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                ">🌿 早熟</button>
+                <button id="trResetTreeBtn" style="
+                    background: #b45f5f;
+                    color: white;
+                    border: none;
+                    padding: 6px 20px;
+                    border-radius: 30px;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                ">🔄 重置状态</button>
+                <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; color:#1f3b53; cursor:pointer; margin-left:auto;">
+                    <span>🔔 提醒</span>
+                    <input type="checkbox" id="trRemindToggle" ${this.uiSettings.remindEnabled ? 'checked' : ''} style="width:18px;height:18px;cursor:pointer;">
+                </label>
+                <span id="trTreeStatus" style="
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 3px 14px;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    background: #e8e8e8;
+                    color: #666;
+                ">⏸️ 未开始</span>
             </div>
 
             <div class="module">
@@ -423,7 +879,9 @@ const TreePlantModule = {
                     btnTextColor: '#ffffff',
                     cardBgColor: '#ffffff',
                     textColor: '#1a1a2e',
-                    fontSize: 14
+                    fontSize: 14,
+                    notificationPermission: false,
+                    remindEnabled: true
                 };
                 document.getElementById('trBgColor').value = TreePlantModule.uiSettings.bgColor;
                 document.getElementById('trCardColor').value = TreePlantModule.uiSettings.cardBgColor;
@@ -448,6 +906,71 @@ const TreePlantModule = {
             TreePlantModule.exchangeRate = val;
             TreePlantModule.saveData();
             TreePlantModule.render();
+        });
+
+        // ===== 🆕 开始种树 =====
+        document.getElementById('trStartTreeBtn').addEventListener('click', () => {
+            // 请求通知权限
+            if ('Notification' in window && Notification.permission === 'default') {
+                TreePlantModule.requestNotificationPermission();
+            }
+
+            // 重置所有状态
+            TreePlantModule.treeStartTime = Date.now();
+            TreePlantModule.treeStage = 'growing';
+            TreePlantModule.treeAlerts = { '5min': false, '15min': false, '20min': false };
+            TreePlantModule.careCount = 0;
+            TreePlantModule.shakeReady = false;
+            TreePlantModule.hasEarlyRipen = false;
+            TreePlantModule.saveData();
+            TreePlantModule.updateTreeStatusUI();
+            
+            if (TreePlantModule.uiSettings.remindEnabled) {
+                alert('🌱 种树已开始！\n\n⏰ 5分钟 → 第一次浇水\n⏰ 15分钟 → 第二次浇水\n⏰ 20分钟 → 第三次浇水\n⏰ 40分钟 → 枯萎\n\n💡 每次浇水点击「已照顾」，3次后5分钟提醒摇树');
+            } else {
+                alert('🌱 种树已开始！\n\n⚠️ 提醒功能已关闭，不会弹出提醒');
+            }
+        });
+
+        // ===== 🆕 早熟 =====
+        document.getElementById('trEarlyRipenBtn').addEventListener('click', () => {
+            if (!TreePlantModule.treeStartTime) {
+                alert('⚠️ 请先开始种树！');
+                return;
+            }
+            if (TreePlantModule.treeStage === 'withered') {
+                alert('💀 树苗已枯萎，无法早熟！');
+                return;
+            }
+            if (TreePlantModule.hasEarlyRipen) {
+                alert('✅ 已经早熟过了！');
+                return;
+            }
+            TreePlantModule.hasEarlyRipen = true;
+            TreePlantModule.saveData();
+            TreePlantModule.updateTreeStatusUI();
+            alert('🌿 已标记为早熟，所有提醒已停止！');
+        });
+
+        // ===== 🆕 重置种树状态 =====
+        document.getElementById('trResetTreeBtn').addEventListener('click', () => {
+            if (!confirm('重置种树状态？')) return;
+            TreePlantModule.treeStartTime = null;
+            TreePlantModule.treeStage = 'idle';
+            TreePlantModule.treeAlerts = { '5min': false, '15min': false, '20min': false };
+            TreePlantModule.careCount = 0;
+            TreePlantModule.shakeReady = false;
+            TreePlantModule.hasEarlyRipen = false;
+            TreePlantModule.saveData();
+            TreePlantModule.updateTreeStatusUI();
+            alert('✅ 已重置');
+        });
+
+        // ===== 🆕 提醒开关 =====
+        document.getElementById('trRemindToggle').addEventListener('change', function() {
+            TreePlantModule.uiSettings.remindEnabled = this.checked;
+            TreePlantModule.saveData();
+            alert(this.checked ? '🔔 提醒已开启' : '🔕 提醒已关闭');
         });
 
         container.addEventListener('click', (e) => {
@@ -506,37 +1029,37 @@ const TreePlantModule = {
         this.render();
     },
 
-        addEvent(evt) {
-            if (this.current.isSettled) {
-                alert('这棵树已结算，请开始新的记录！');
-                return;
+    addEvent(evt) {
+        if (this.current.isSettled) {
+            alert('这棵树已结算，请开始新的记录！');
+            return;
+        }
+    
+        if (evt === 'none') {
+            this.current.events = [];
+            this.current.shakes = this.current.baseShakes;
+        } else if (evt === 'forget') {
+            this.current.events.push(evt);
+            this.current.shakes = 1;
+        } else {
+            this.current.events.push(evt);
+            this.current.shakes = this.current.baseShakes;
+            let hasZaoshu = false;
+            for (let e of this.current.events) {
+                if (e === 'xiaozai') this.current.shakes += 1;
+                else if (e === 'chongzai') this.current.shakes += 2;
+                else if (e === 'zaoshu') hasZaoshu = true;
             }
-        
-            if (evt === 'none') {
-                this.current.events = [];
-                this.current.shakes = this.current.baseShakes;
-            } else if (evt === 'forget') {
-                this.current.events.push(evt);
-                this.current.shakes = 1;
-            } else {
-                this.current.events.push(evt);
-                this.current.shakes = this.current.baseShakes;
-                let hasZaoshu = false;
-                for (let e of this.current.events) {
-                    if (e === 'xiaozai') this.current.shakes += 1;
-                    else if (e === 'chongzai') this.current.shakes += 2;
-                    else if (e === 'zaoshu') hasZaoshu = true;
-                }
-                if (hasZaoshu) {
-                    this.current.shakes = 6;
-                }
+            if (hasZaoshu) {
+                this.current.shakes = 6;
             }
-            this.saveData();
-            this.render();
-        },
+        }
+        this.saveData();
+        this.render();
+    },
+
     undo() {
         let hasLoot = false;
-        // 从后往前遍历，撤销最新添加的产出
         const keys = this.LOOT_TYPES.map(t => t.key);
         for (let i = keys.length - 1; i >= 0; i--) {
             const key = keys[i];
@@ -603,7 +1126,7 @@ const TreePlantModule = {
             events: [...this.current.events],
             loot: { ...this.current.loot },
             lootDetails: lootDetails,
-            exchangeRate: this.exchangeRate  // ✅ 保存当时汇率
+            exchangeRate: this.exchangeRate
         };
 
         this.history.push(entry);
@@ -667,7 +1190,6 @@ const TreePlantModule = {
     },
 
     updateCurrent() {
-            // 同步树苗成本输入框
         const costInput = document.getElementById('trSeedCostInput');
         if (costInput) {
             const val = parseFloat(costInput.value);
