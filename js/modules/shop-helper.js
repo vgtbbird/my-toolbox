@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版 v7
-//  设计：地点为背景容器 + 独立交互元素
+//  🏃 跑商助手模块 - 重构完整版 v8
+//  优化：到达时刻显示 + 状态标签完整 + 价格小圆点
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -104,7 +104,16 @@ const ShopHelperModule = {
         this.applyUISettings();
     },
 
-    // 只更新状态标签
+    // 计算到达时刻
+    getArrivalTime(travelSeconds) {
+        const now = new Date();
+        const arrival = new Date(now.getTime() + travelSeconds * 1000);
+        const h = String(arrival.getHours()).padStart(2, '0');
+        const m = String(arrival.getMinutes()).padStart(2, '0');
+        const s = String(arrival.getSeconds()).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    },
+
     updateStatusOnly() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
@@ -132,19 +141,28 @@ const ShopHelperModule = {
             const statusRow = wrap.querySelector('.sh-status-row');
             if (statusRow) {
                 statusRow.innerHTML = `
-                    <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:0 8px;border-radius:10px;font-weight:800;font-size:0.7rem;white-space:nowrap;">🔄一刷 ${firstStatus}</span>
-                    <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};padding:0 8px;border-radius:10px;font-weight:800;font-size:0.7rem;white-space:nowrap;">🔄二刷 ${secondStatus}</span>
+                    <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:2px 10px;border-radius:12px;font-weight:800;font-size:0.75rem;white-space:nowrap;display:inline-block;">🔄一刷 ${firstStatus}</span>
+                    <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};padding:2px 10px;border-radius:12px;font-weight:800;font-size:0.75rem;white-space:nowrap;display:inline-block;">🔄二刷 ${secondStatus}</span>
                 `;
             }
 
-            const travelDisplay = isCurrent ? '📍当前' : (status.travelTime ? this.formatTime(status.travelTime) : '--');
+            // ===== 到达时刻（当前时间 + 跑动时间） =====
+            let arrivalDisplay = '';
+            if (isCurrent) {
+                arrivalDisplay = '📍当前';
+            } else if (status.travelTime) {
+                arrivalDisplay = this.getArrivalTime(status.travelTime);
+            } else {
+                arrivalDisplay = '--:--:--';
+            }
             const timeEl = wrap.querySelector('.sh-travel-display');
             if (timeEl) {
-                timeEl.textContent = travelDisplay;
-                timeEl.style.color = isCurrent ? s.colorCurrent : '#4a6a8a';
+                timeEl.textContent = arrivalDisplay;
+                timeEl.style.color = isCurrent ? s.colorCurrent : '#1a3a5a';
+                timeEl.style.fontWeight = '700';
             }
 
-            // 高亮背景（只改背景，不改边框）
+            // 高亮背景
             if (isCurrent) {
                 wrap.style.background = s.locationHighlight;
                 wrap.style.border = `2px solid ${s.colorCurrent}`;
@@ -290,13 +308,12 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图（地点为背景容器）
+    //  🗺️ 渲染地图
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         
-        // 如果已有内容，只更新状态
         if (container.querySelector('.sh-location-wrap')) {
             this.updateStatusOnly();
             return;
@@ -330,10 +347,10 @@ const ShopHelperModule = {
                 }
                 .sh-status-text {
                     display: inline-block;
-                    padding: 0 8px;
-                    border-radius: 10px;
+                    padding: 2px 10px;
+                    border-radius: 12px;
                     font-weight: 800;
-                    font-size: 0.7rem;
+                    font-size: 0.75rem;
                     white-space: nowrap;
                 }
                 .sh-location-wrap {
@@ -345,9 +362,23 @@ const ShopHelperModule = {
                 .sh-location-name {
                     cursor: pointer;
                     user-select: none;
+                    flex: 1;
+                    text-align: left;
                 }
                 .sh-location-name:hover {
                     opacity: 0.7;
+                }
+                .sh-travel-display {
+                    flex: 1;
+                    text-align: right;
+                    font-weight: 700;
+                    font-size: 0.8rem;
+                }
+                .sh-location-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 8px;
                 }
                 .sh-shop-btn {
                     cursor: pointer;
@@ -365,6 +396,26 @@ const ShopHelperModule = {
                 }
                 .sh-del-goods-btn:hover {
                     color: #e06060 !important;
+                }
+                /* 价格小圆点 */
+                .sh-price-dot {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                    display: inline-block;
+                    flex-shrink: 0;
+                }
+                .sh-price-dot.low {
+                    background: #2d7a2d;
+                }
+                .sh-price-dot.high {
+                    background: #c0392b;
+                }
+                .sh-price-dot.neutral {
+                    background: #b0b8c0;
+                }
+                .sh-price-dot.empty {
+                    background: #e8e8e8;
                 }
             </style>
             <div class="sh-map-grid">
@@ -386,9 +437,16 @@ const ShopHelperModule = {
                 secondColor = s.colorCurrent;
             }
 
-            const travelDisplay = isCurrent ? '📍当前' : (status.travelTime ? this.formatTime(status.travelTime) : '--');
+            // ===== 到达时刻 =====
+            let arrivalDisplay = '';
+            if (isCurrent) {
+                arrivalDisplay = '📍当前';
+            } else if (status.travelTime) {
+                arrivalDisplay = this.getArrivalTime(status.travelTime);
+            } else {
+                arrivalDisplay = '--:--:--';
+            }
 
-            // 背景样式
             let bgStyle = `background:${s.cardBgColor};border:1px solid ${isCurrent ? s.colorCurrent : '#e0e8f0'};`;
             if (isCurrent) bgStyle += `background:${s.locationHighlight};`;
 
@@ -417,28 +475,25 @@ const ShopHelperModule = {
                     const refPriceKey = loc.id + '_' + g.key;
                     const refPrice = this.goodsRefPrices[refPriceKey] || g.refPrice || 0;
                     
-                    let priceStatus = '';
-                    let priceColor = '#5a7a94';
+                    // 价格小圆点
+                    let dotClass = 'empty';
                     if (currentPrice && refPrice > 0) {
                         if (currentPrice < refPrice * 0.95) {
-                            priceStatus = '📉';
-                            priceColor = s.colorLowPrice;
+                            dotClass = 'low';
                         } else if (currentPrice > refPrice * 1.05) {
-                            priceStatus = '📈';
-                            priceColor = s.colorHighPrice;
+                            dotClass = 'high';
                         } else {
-                            priceStatus = '—';
-                            priceColor = '#4a6a8a';
+                            dotClass = 'neutral';
                         }
                     }
 
                     return `
-                        <div class="sh-goods-item" style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:2px;border-bottom:1px solid #e8eef5;flex-wrap:nowrap;">
+                        <div class="sh-goods-item" style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:3px;border-bottom:1px solid #e8eef5;flex-wrap:nowrap;">
                             <span class="sh-goods-name" style="min-width:28px;font-weight:800;color:#0a1a2a;font-size:0.8rem;flex-shrink:0;">${g.name}</span>
                             <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:2px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
                             <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:44px;padding:2px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            <span class="sh-price-status" style="font-size:0.65rem;color:${priceColor};font-weight:800;min-width:20px;flex-shrink:0;">${priceStatus || '—'}</span>
-                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;font-size:0.8rem;padding:0 2px;font-weight:700;">✕</button>
+                            <span class="sh-price-dot ${dotClass}" style="width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0;background:${dotClass === 'low' ? s.colorLowPrice : dotClass === 'high' ? s.colorHighPrice : dotClass === 'neutral' ? '#b0b8c0' : '#e8e8e8'};"></span>
+                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;font-size:0.8rem;padding:0 2px;font-weight:700;flex-shrink:0;">✕</button>
                         </div>
                     `;
                 }).join('');
@@ -454,10 +509,10 @@ const ShopHelperModule = {
 
             html += `
                 <div class="sh-location-wrap" data-location="${loc.id}" style="${bgStyle}">
-                    <!-- 点击地点名称触发高亮 -->
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
-                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:1rem;font-weight:800;color:#0a1a2a;white-space:nowrap;">${loc.icon} ${loc.name}</span>
-                        <span class="sh-travel-display" style="font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#4a6a8a'};font-weight:700;white-space:nowrap;">${travelDisplay}</span>
+                    <!-- 地点名称 + 到达时刻 各占50% -->
+                    <div class="sh-location-header">
+                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:1rem;font-weight:800;color:#0a1a2a;white-space:nowrap;flex:1;text-align:left;cursor:pointer;">${loc.icon} ${loc.name}</span>
+                        <span class="sh-travel-display" style="flex:1;text-align:right;font-weight:700;font-size:0.8rem;color:${isCurrent ? s.colorCurrent : '#1a3a5a'};">${arrivalDisplay}</span>
                     </div>
                     <div class="sh-status-row">
                         <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};">🔄一刷 ${firstStatus}</span>
@@ -475,11 +530,9 @@ const ShopHelperModule = {
         html += '</div>';
         container.innerHTML = html;
 
-        // 应用商人颜色
         this.updateShopColors();
     },
 
-    // 更新商人颜色
     updateShopColors() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
@@ -597,6 +650,7 @@ const ShopHelperModule = {
                 <span>🟢 赶得上</span><span>🔴 赶不上</span>
                 <span>| 点击地点名称标记当前位置</span>
                 <span>| 点击商人标记低价/高价</span>
+                <span>| ● 价格小圆点：绿=低于参考价，红=高于参考价，灰=持平</span>
             </div>
 
             <div class="module" style="margin-top:10px;">
@@ -606,7 +660,7 @@ const ShopHelperModule = {
                 </div>
                 <div class="module-body" id="shTravelBody">
                     <div id="shTravelTimesContainer"></div>
-                    <div style="font-size:0.65rem;color:#4a6a8a;margin-top:4px;font-weight:600;">💡 修改后自动保存，用于计算刷新是否赶得上（方向独立）</div>
+                    <div style="font-size:0.65rem;color:#4a6a8a;margin-top:4px;font-weight:600;">💡 修改后自动保存，用于计算到达时刻</div>
                 </div>
             </div>
 
@@ -651,13 +705,13 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🔗 绑定事件（完全独立，不冒泡）
+    //  🔗 绑定事件
     // ============================================================
     bindEvents() {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // ===== 1. 点击地点名称 → 标记当前位置 =====
+        // ===== 1. 点击地点名称 =====
         container.addEventListener('click', (e) => {
             const nameEl = e.target.closest('.sh-location-name');
             if (nameEl) {
@@ -672,7 +726,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 2. 点击商人按钮 =====
+        // ===== 2. 点击商人 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
@@ -695,7 +749,7 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 3. 当前价格输入 =====
+        // ===== 3. 价格输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -709,29 +763,7 @@ const ShopHelperModule = {
                     delete this.goodsPrices[key];
                 }
                 this.saveData();
-                // 更新状态图标
-                const statusSpan = input.parentElement.querySelector('.sh-price-status');
-                if (statusSpan) {
-                    const refPriceKey = locId + '_' + goodsKey;
-                    const refPrice = this.goodsRefPrices[refPriceKey] || 
-                                     this.goodsList[locId]?.find(g => g.key === goodsKey)?.refPrice || 0;
-                    const s = this.uiSettings;
-                    if (val && refPrice > 0) {
-                        if (val < refPrice * 0.95) {
-                            statusSpan.textContent = '📉';
-                            statusSpan.style.color = s.colorLowPrice;
-                        } else if (val > refPrice * 1.05) {
-                            statusSpan.textContent = '📈';
-                            statusSpan.style.color = s.colorHighPrice;
-                        } else {
-                            statusSpan.textContent = '—';
-                            statusSpan.style.color = '#4a6a8a';
-                        }
-                    } else {
-                        statusSpan.textContent = '—';
-                        statusSpan.style.color = '#ccc';
-                    }
-                }
+                this.updatePriceDot(input);
             }
         });
 
@@ -749,11 +781,8 @@ const ShopHelperModule = {
                     delete this.goodsRefPrices[key];
                 }
                 this.saveData();
-                // 触发价格状态更新
                 const priceInput = input.parentElement.querySelector('.sh-price-input');
-                if (priceInput) {
-                    priceInput.dispatchEvent(new Event('input', { bubbles: true }));
-                }
+                if (priceInput) this.updatePriceDot(priceInput);
             }
         });
 
@@ -871,6 +900,8 @@ const ShopHelperModule = {
                 ShopHelperModule.saveData();
                 ShopHelperModule.updateStatusOnly();
                 ShopHelperModule.updateShopColors();
+                // 更新所有价格小圆点颜色
+                ShopHelperModule.updateAllDots();
             });
         }
 
@@ -906,7 +937,49 @@ const ShopHelperModule = {
             }
             ShopHelperModule.updateStatusOnly();
             ShopHelperModule.updateShopColors();
+            ShopHelperModule.updateAllDots();
             alert('✅ 颜色已重置！');
+        });
+    },
+
+    // ===== 更新单个价格小圆点 =====
+    updatePriceDot(input) {
+        const goodsItem = input.closest('.sh-goods-item');
+        if (!goodsItem) return;
+        const dot = goodsItem.querySelector('.sh-price-dot');
+        if (!dot) return;
+
+        const locId = input.dataset.location;
+        const goodsKey = input.dataset.goods;
+        const val = parseFloat(input.value);
+        const refPriceKey = locId + '_' + goodsKey;
+        const refPrice = this.goodsRefPrices[refPriceKey] || 
+                         this.goodsList[locId]?.find(g => g.key === goodsKey)?.refPrice || 0;
+
+        const s = this.uiSettings;
+        if (val && refPrice > 0) {
+            if (val < refPrice * 0.95) {
+                dot.className = 'sh-price-dot low';
+                dot.style.background = s.colorLowPrice;
+            } else if (val > refPrice * 1.05) {
+                dot.className = 'sh-price-dot high';
+                dot.style.background = s.colorHighPrice;
+            } else {
+                dot.className = 'sh-price-dot neutral';
+                dot.style.background = '#b0b8c0';
+            }
+        } else {
+            dot.className = 'sh-price-dot empty';
+            dot.style.background = '#e8e8e8';
+        }
+    },
+
+    // ===== 更新所有价格小圆点 =====
+    updateAllDots() {
+        const container = document.getElementById('shMapContainer');
+        if (!container) return;
+        container.querySelectorAll('.sh-price-input').forEach(input => {
+            this.updatePriceDot(input);
         });
     }
 };
