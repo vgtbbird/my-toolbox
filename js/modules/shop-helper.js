@@ -719,9 +719,9 @@ renderTravelTimes() {
                             <!-- 🆕 当前时间 -->
                             <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                                 <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
-                                <div style="font-weight:800;color:#0a1a2a;font-size:1.1rem;font-family:monospace;" id="shCurrentTimeDisplay">--:--:--</div>
+                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shCurrentTimeDisplay">--:--:--</div>
                             </div>
-                    
+                                                
                             <!-- 二刷 -->
                             <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
                                 <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
