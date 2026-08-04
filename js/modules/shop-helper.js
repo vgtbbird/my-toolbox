@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 完整版 v11
-//  优化：状态用圆点表示 + 4位数完整显示 + 一刷自动重置
+//  🏃 跑商助手模块 - 完整版 v12
+//  修复：商人标记自动重置问题
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -43,7 +43,7 @@ const ShopHelperModule = {
         { id: 'beiju', name: '北俱', icon: '⛰️', shopLayout: 'vertical', shops: ['上商', '下商'] }
     ],
 
-        defaultGoods: {
+    defaultGoods: {
         'changan': [
             { key: 'fozhu', name: '📿 佛珠', refPrice: 7200 },
             { key: 'wuqi', name: '⚔️ 武器', refPrice: 4500 },
@@ -161,18 +161,10 @@ const ShopHelperModule = {
             const isCurrent = this.currentLocation === loc.id;
             const status = this.checkRefreshStatus(loc.id);
 
-            // 用圆点表示状态
             const firstDot = status.first === 'can' ? '🟢' : '🔴';
             const secondDot = status.second === 'can' ? '🟢' : '🔴';
             const firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
             const secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
-
-            let firstLabel = status.first === 'can' ? '赶得上' : '赶不上';
-            let secondLabel = status.second === 'can' ? '赶得上' : '赶不上';
-            if (status.isCurrent) {
-                firstLabel = '📍当前';
-                secondLabel = '📍当前';
-            }
 
             const statusRow = wrap.querySelector('.sh-status-row');
             if (statusRow) {
@@ -209,7 +201,8 @@ const ShopHelperModule = {
                 wrap.style.border = '1px solid #e0e8f0';
             }
         }
-         this.updateShopColors();
+        // 更新完状态后恢复商人颜色
+        this.updateShopColors();
     },
 
     loadData() {
@@ -359,12 +352,13 @@ const ShopHelperModule = {
     },
 
     // ============================================================
-    //  🗺️ 渲染地图
+    //  🗺️ 渲染地图（只渲染一次，后续只更新状态）
     // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
         
+        // ✅ 如果已经有内容，只更新状态，不重新生成 HTML（保留商人标记）
         if (container.querySelector('.sh-location-wrap')) {
             this.updateStatusOnly();
             return;
@@ -507,13 +501,6 @@ const ShopHelperModule = {
             const firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
             const secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
 
-            let firstLabel = status.first === 'can' ? '赶得上' : '赶不上';
-            let secondLabel = status.second === 'can' ? '赶得上' : '赶不上';
-            if (status.isCurrent) {
-                firstLabel = '📍当前';
-                secondLabel = '📍当前';
-            }
-
             let arrivalDisplay = '';
             if (isCurrent) {
                 arrivalDisplay = '📍当前';
@@ -638,11 +625,10 @@ const ShopHelperModule = {
         });
     },
 
-renderTravelTimes() {
-    const container = document.getElementById('shTravelTimesContainer');
-    if (!container) return;
+    renderTravelTimes() {
+        const container = document.getElementById('shTravelTimesContainer');
+        if (!container) return;
 
-        // 获取当前选中的出发地
         const selectedFrom = this.currentLocation || null;
     
         const pairs = [
@@ -668,28 +654,27 @@ renderTravelTimes() {
             ['beiju', 'difu', '北俱→地府']
         ];
 
-    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
-    for (let [from, to, label] of pairs) {
-        const key = from + '_' + to;
-        const val = this.travelTimes[key] || 180;
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
+        for (let [from, to, label] of pairs) {
+            const key = from + '_' + to;
+            const val = this.travelTimes[key] || 180;
 
-        // ✅ 判断是否高亮：出发地匹配当前选中地点
-        const isHighlight = (selectedFrom === from);
-        const highlightStyle = isHighlight 
-            ? 'background:#dbbd7c44;border:2px solid #dbbd7c;' 
-            : 'background:#f5f8fc;border:1px solid #e8eef5;';
+            const isHighlight = (selectedFrom === from);
+            const highlightStyle = isHighlight 
+                ? 'background:#dbbd7c44;border:2px solid #dbbd7c;' 
+                : 'background:#f5f8fc;border:1px solid #e8eef5;';
 
-        html += `
-            <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;padding:2px 4px;border-radius:4px;${highlightStyle}">
-                <span style="color:#0a1a2a;min-width:44px;font-size:0.65rem;font-weight:700;${isHighlight ? 'color:#8a6a2e;' : ''}">${label}</span>
-                <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:40px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
-                <span style="color:#4a6a8a;font-size:0.5rem;font-weight:600;">秒</span>
-            </div>
-        `;
-    }
-    html += '</div>';
-    container.innerHTML = html;
-},
+            html += `
+                <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;padding:2px 4px;border-radius:4px;${highlightStyle}">
+                    <span style="color:#0a1a2a;min-width:44px;font-size:0.65rem;font-weight:700;${isHighlight ? 'color:#8a6a2e;' : ''}">${label}</span>
+                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:40px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
+                    <span style="color:#4a6a8a;font-size:0.5rem;font-weight:600;">秒</span>
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    },
 
     buildUI() {
         const container = document.getElementById('shopHelperContainer');
@@ -703,41 +688,36 @@ renderTravelTimes() {
                         <button class="toggle-btn" id="shToggleTimeBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                     </div>
                 </div>
-                    <div class="module-body" id="shTimeBody">
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:2px 0;">
-                            <!-- 一刷 -->
-                            <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                                <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
-                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
-                                <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                    <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
-                                    <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
-                                    <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
-                                </div>
-                                <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格</div>
+                <div class="module-body" id="shTimeBody">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:2px 0;">
+                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
+                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
+                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
+                                <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
+                                <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
                             </div>
-                    
-                            <!-- 🆕 当前时间 -->
-                            <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                                <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
-                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shCurrentTimeDisplay">--:--:--</div>
-                            </div>
-                                                
-                            <!-- 二刷 -->
-                            <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                                <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
-                                <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
-                                <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                    <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                    <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
-                                    <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                    <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
-                                    <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
-                                </div>
+                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格</div>
+                        </div>
+                        <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                            <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
+                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shCurrentTimeDisplay">--:--:--</div>
+                        </div>
+                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
+                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
+                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
+                                <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
+                                <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
                             </div>
                         </div>
-                        <div style="font-size:0.6rem;color:#4a6a8a;padding:2px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
                     </div>
+                    <div style="font-size:0.6rem;color:#4a6a8a;padding:2px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
+                </div>
             </div>
 
             <div id="shMapContainer" style="margin-bottom:6px;"></div>
@@ -804,6 +784,7 @@ renderTravelTimes() {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
+        // ===== 点击地点名称 =====
         container.addEventListener('click', (e) => {
             const nameEl = e.target.closest('.sh-location-name');
             if (nameEl) {
@@ -818,6 +799,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 点击商人 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
@@ -840,6 +822,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 当前价格输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -857,6 +840,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 参考价输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
@@ -875,6 +859,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 添加商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-add-goods-btn');
             if (btn) {
@@ -895,10 +880,13 @@ renderTravelTimes() {
                 nameInput.value = '';
                 priceInput.value = '';
                 this.saveData();
+                // ✅ 不重新渲染整个地图，只更新商品列表部分
+                // 直接重新渲染地图，但保留 shopPrices
                 this.renderMap();
             }
         });
 
+        // ===== 删除商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-del-goods-btn');
             if (btn) {
@@ -916,6 +904,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 跑动时间输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-travel-input');
             if (input) {
@@ -931,6 +920,7 @@ renderTravelTimes() {
             }
         });
 
+        // ===== 一刷微调 =====
         document.getElementById('shFirstMinus').addEventListener('click', () => {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
@@ -944,6 +934,7 @@ renderTravelTimes() {
             this.updateStatusOnly();
         });
 
+        // ===== 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -956,6 +947,7 @@ renderTravelTimes() {
             alert('✅ 二刷时间已设置！');
         });
 
+        // ===== 折叠按钮 =====
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
             document.getElementById('shTimeBody').classList.toggle('hidden');
             this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️' : '👁️';
@@ -969,6 +961,7 @@ renderTravelTimes() {
             this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️' : '👁️';
         });
 
+        // ===== 颜色设置 =====
         const colorMap = {
             'shColorCanReach': 'colorCanReach',
             'shColorCannotReach': 'colorCannotReach',
@@ -986,6 +979,7 @@ renderTravelTimes() {
             });
         }
 
+        // ===== 字体大小 =====
         document.getElementById('shFontSize').addEventListener('change', function() {
             const val = parseInt(this.value) || 15;
             ShopHelperModule.uiSettings.fontSize = val;
@@ -993,6 +987,7 @@ renderTravelTimes() {
             ShopHelperModule.applyUISettings();
         });
 
+        // ===== 重置颜色 =====
         document.getElementById('shResetUIColors').addEventListener('click', function() {
             if (!confirm('重置所有颜色为默认值？')) return;
             const defaults = {
