@@ -626,48 +626,58 @@ const ShopHelperModule = {
         });
     },
 
-    renderTravelTimes() {
-        const container = document.getElementById('shTravelTimesContainer');
-        if (!container) return;
+renderTravelTimes() {
+    const container = document.getElementById('shTravelTimesContainer');
+    if (!container) return;
 
-        const pairs = [
-            ['changan', 'aolai', '长安→傲来'],
-            ['aolai', 'changan', '傲来→长安'],
-            ['changan', 'changshou', '长安→长寿'],
-            ['changshou', 'changan', '长寿→长安'],
-            ['changan', 'difu', '长安→地府'],
-            ['difu', 'changan', '地府→长安'],
-            ['changan', 'beiju', '长安→北俱'],
-            ['beiju', 'changan', '北俱→长安'],
-            ['aolai', 'changshou', '傲来→长寿'],
-            ['changshou', 'aolai', '长寿→傲来'],
-            ['aolai', 'difu', '傲来→地府'],
-            ['difu', 'aolai', '地府→傲来'],
-            ['aolai', 'beiju', '傲来→北俱'],
-            ['beiju', 'aolai', '北俱→傲来'],
-            ['changshou', 'difu', '长寿→地府'],
-            ['difu', 'changshou', '地府→长寿'],
-            ['changshou', 'beiju', '长寿→北俱'],
-            ['beiju', 'changshou', '北俱→长寿'],
-            ['difu', 'beiju', '地府→北俱'],
-            ['beiju', 'difu', '北俱→地府']
-        ];
+    // 获取当前选中的出发地
+    const selectedFrom = this.currentLocation || null;
 
-        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
-        for (let [from, to, label] of pairs) {
-            const key = from + '_' + to;
-            const val = this.travelTimes[key] || 180;
-            html += `
-                <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;padding:2px 4px;background:#f5f8fc;border-radius:4px;border:1px solid #e8eef5;">
-                    <span style="color:#0a1a2a;min-width:44px;font-size:0.65rem;font-weight:700;">${label}</span>
-                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:40px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
-                    <span style="color:#4a6a8a;font-size:0.5rem;font-weight:600;">秒</span>
-                </div>
-            `;
-        }
-        html += '</div>';
-        container.innerHTML = html;
-    },
+    const pairs = [
+        ['changan', 'aolai', '长安→傲来'],
+        ['aolai', 'changan', '傲来→长安'],
+        ['changan', 'changshou', '长安→长寿'],
+        ['changshou', 'changan', '长寿→长安'],
+        ['changan', 'difu', '长安→地府'],
+        ['difu', 'changan', '地府→长安'],
+        ['changan', 'beiju', '长安→北俱'],
+        ['beiju', 'changan', '北俱→长安'],
+        ['aolai', 'changshou', '傲来→长寿'],
+        ['changshou', 'aolai', '长寿→傲来'],
+        ['aolai', 'difu', '傲来→地府'],
+        ['difu', 'aolai', '地府→傲来'],
+        ['aolai', 'beiju', '傲来→北俱'],
+        ['beiju', 'aolai', '北俱→傲来'],
+        ['changshou', 'difu', '长寿→地府'],
+        ['difu', 'changshou', '地府→长寿'],
+        ['changshou', 'beiju', '长寿→北俱'],
+        ['beiju', 'changshou', '北俱→长寿'],
+        ['difu', 'beiju', '地府→北俱'],
+        ['beiju', 'difu', '北俱→地府']
+    ];
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
+    for (let [from, to, label] of pairs) {
+        const key = from + '_' + to;
+        const val = this.travelTimes[key] || 180;
+
+        // ✅ 判断是否高亮：出发地匹配当前选中地点
+        const isHighlight = (selectedFrom === from);
+        const highlightStyle = isHighlight 
+            ? 'background:#dbbd7c44;border:2px solid #dbbd7c;' 
+            : 'background:#f5f8fc;border:1px solid #e8eef5;';
+
+        html += `
+            <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;padding:2px 4px;border-radius:4px;${highlightStyle}">
+                <span style="color:#0a1a2a;min-width:44px;font-size:0.65rem;font-weight:700;${isHighlight ? 'color:#8a6a2e;' : ''}">${label}</span>
+                <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:40px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
+                <span style="color:#4a6a8a;font-size:0.5rem;font-weight:600;">秒</span>
+            </div>
+        `;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+},
 
     buildUI() {
         const container = document.getElementById('shopHelperContainer');
