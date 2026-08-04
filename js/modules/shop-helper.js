@@ -634,12 +634,27 @@ renderTravelTimes() {
     const selectedFrom = this.currentLocation || null;
 
     const pairs = [
-                ['changan', 'aolai', '长安→傲来'],  ['changan', 'changshou', '长安→长寿'], ['changan', 'difu', '长安→地府'], ['changan', 'beiju', '长安→北俱'],
-                ['aolai', 'changan', '傲来→长安'],['aolai', 'changshou', '傲来→长寿'], ['aolai', 'difu', '傲来→地府'], ['aolai', 'beiju', '傲来→北俱'],        
-                ['changshou', 'changan', '长寿→长安'], ['changshou', 'aolai', '长寿→傲来'], ['changshou', 'beiju', '长寿→北俱'], ['changshou', 'difu', '长寿→地府'],  
-                ['difu', 'changan', '地府→长安'], ['difu', 'aolai', '地府→傲来'],  ['difu', 'beiju', '地府→北俱'], ['difu', 'changshou', '地府→长寿'],
-                ['beiju', 'changan', '北俱→长安'],  ['beiju', 'difu', '北俱→地府'] ，['beiju', 'aolai', '北俱→傲来'],      ['beiju', 'changshou', '北俱→长寿']
-            ];
+                    ['changan', 'aolai', '长安→傲来'], 
+                    ['changan', 'changshou', '长安→长寿'], 
+                    ['changan', 'difu', '长安→地府'], 
+                    ['changan', 'beiju', '长安→北俱'],
+                    ['aolai', 'changan', '傲来→长安'],
+                    ['aolai', 'changshou', '傲来→长寿'], 
+                    ['aolai', 'difu', '傲来→地府'],
+                    ['aolai', 'beiju', '傲来→北俱'],        
+                    ['changshou', 'changan', '长寿→长安'], 
+                    ['changshou', 'aolai', '长寿→傲来'], 
+                    ['changshou', 'beiju', '长寿→北俱'], 
+                    ['changshou', 'difu', '长寿→地府'],  
+                    ['difu', 'changan', '地府→长安'], 
+                    ['difu', 'aolai', '地府→傲来'], 
+                    ['difu', 'beiju', '地府→北俱'],
+                    ['difu', 'changshou', '地府→长寿'],
+                    ['beiju', 'changan', '北俱→长安'], 
+                    ['beiju', 'difu', '北俱→地府'] ，
+                    ['beiju', 'aolai', '北俱→傲来'], 
+                    ['beiju', 'changshou', '北俱→长寿']
+                  ];
 
     let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
     for (let [from, to, label] of pairs) {
