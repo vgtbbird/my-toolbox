@@ -799,28 +799,34 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 点击商人 =====
-        container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.sh-shop-btn');
-            if (btn) {
-                e.stopPropagation();
-                const locId = btn.dataset.location;
-                const shopIdx = parseInt(btn.dataset.shop);
-                const key = locId + '_' + shopIdx;
+container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sh-shop-btn');
+    if (btn) {
+        e.stopPropagation();
+        const locId = btn.dataset.location;
+        const shopIdx = parseInt(btn.dataset.shop);
+        const key = locId + '_' + shopIdx;
 
-                if (this.shopPrices[key] === 'low') {
-                    delete this.shopPrices[key];
-                    const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
-                    delete this.shopPrices[otherKey];
-                } else {
-                    this.shopPrices[key] = 'low';
-                    const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
-                    this.shopPrices[otherKey] = 'high';
-                }
-                this.saveData();
-                this.updateShopColors();
-            }
-        });
+        // ✅ 点击商人时，自动标记当前地点
+        if (this.currentLocation !== locId) {
+            this.currentLocation = locId;
+        }
+
+        if (this.shopPrices[key] === 'low') {
+            delete this.shopPrices[key];
+            const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
+            delete this.shopPrices[otherKey];
+        } else {
+            this.shopPrices[key] = 'low';
+            const otherKey = locId + '_' + (shopIdx === 0 ? 1 : 0);
+            this.shopPrices[otherKey] = 'high';
+        }
+        this.saveData();
+        // ✅ 更新状态（地点高亮 + 状态标签）+ 商人颜色
+        this.updateStatusOnly();
+        this.renderTravelTimes();
+    }
+});
 
         // ===== 当前价格输入 =====
         container.addEventListener('input', (e) => {
