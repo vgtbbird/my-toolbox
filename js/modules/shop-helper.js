@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 重构完整版 v9
-//  修复：一行显示 + 一刷自动重置 + 价格宽度自适应
+//  🏃 跑商助手模块 - 完整版 v10
+//  优化：去掉箭头 + 压缩间距 + 4位数完整显示 + 一刷自动重置
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -33,8 +33,6 @@ const ShopHelperModule = {
     goodsRefPrices: {},
     priceHistory: {},
     runRecords: [],
-
-    // 记录上次一刷的分钟数，用于检测一刷是否发生
     lastFirstRefreshMinute: -1,
 
     locations: [
@@ -96,54 +94,8 @@ const ShopHelperModule = {
         this._timer = setInterval(() => {
             this.updateTimeDisplay();
             this.updateStatusOnly();
-            this.checkFirstRefresh(); // 检查一刷是否发生
+            this.checkFirstRefresh();
         }, 1000);
-    },
-
-    // ===== 检查一刷是否发生 =====
-    checkFirstRefresh() {
-        const now = new Date();
-        const currentMinute = now.getMinutes();
-        const currentSecond = now.getSeconds();
-        
-        // 一刷时间：每10分钟的 10秒 + offset
-        const firstMinute = Math.floor(currentMinute / 10) * 10;
-        const firstSecond = 10 + this.firstOffset;
-        
-        // 如果当前秒数在一刷的 ±1 秒范围内，且分钟数变了（说明刚过一刷）
-        if (Math.abs(currentSecond - firstSecond) <= 1) {
-            if (this.lastFirstRefreshMinute !== currentMinute) {
-                this.lastFirstRefreshMinute = currentMinute;
-                // 一刷触发！重置所有价格和商人标记
-                this.resetPricesAndShops();
-            }
-        }
-    },
-
-    // ===== 重置所有当前价格和商人标记 =====
-    resetPricesAndShops() {
-        console.log('🔄 一刷触发！重置所有价格和商人标记');
-        
-        // 清空所有当前价格
-        this.goodsPrices = {};
-        
-        // 清空所有商人标记
-        this.shopPrices = {};
-        
-        this.saveData();
-        
-        // 重新渲染地图（更新UI）
-        this.renderMap();
-        
-        // 显示提示
-        const msg = document.getElementById('syncResultMsg');
-        if (msg) {
-            msg.textContent = '🔄 一刷已触发，价格和商人标记已重置！';
-            msg.style.color = '#2d6b2d';
-            setTimeout(() => {
-                msg.textContent = '';
-            }, 3000);
-        }
     },
 
     render() {
@@ -152,6 +104,34 @@ const ShopHelperModule = {
         this.renderTravelTimes();
         this.saveData();
         this.applyUISettings();
+    },
+
+    checkFirstRefresh() {
+        const now = new Date();
+        const currentMinute = now.getMinutes();
+        const currentSecond = now.getSeconds();
+        const firstMinute = Math.floor(currentMinute / 10) * 10;
+        const firstSecond = 10 + this.firstOffset;
+        if (Math.abs(currentSecond - firstSecond) <= 1) {
+            if (this.lastFirstRefreshMinute !== currentMinute) {
+                this.lastFirstRefreshMinute = currentMinute;
+                this.resetPricesAndShops();
+            }
+        }
+    },
+
+    resetPricesAndShops() {
+        console.log('🔄 一刷触发！重置所有价格和商人标记');
+        this.goodsPrices = {};
+        this.shopPrices = {};
+        this.saveData();
+        this.renderMap();
+        const msg = document.getElementById('syncResultMsg');
+        if (msg) {
+            msg.textContent = '🔄 一刷已触发，价格和商人标记已重置！';
+            msg.style.color = '#2d6b2d';
+            setTimeout(() => { msg.textContent = ''; }, 3000);
+        }
     },
 
     getArrivalTime(travelSeconds) {
@@ -404,38 +384,22 @@ const ShopHelperModule = {
                 }
                 .sh-location-wrap {
                     border-radius: 12px;
-                    padding: 10px 10px;
+                    padding: 10px 8px;
                     transition: all 0.2s;
                     border: 1px solid #e0e8f0;
                 }
                 .sh-location-name {
                     cursor: pointer;
                     user-select: none;
-                    flex: 1;
-                    text-align: left;
-                    min-width: 0;
                 }
                 .sh-location-name:hover {
                     opacity: 0.7;
                 }
-                .sh-travel-display {
-                    flex: 1;
-                    text-align: right;
-                    font-weight: 700;
-                    font-size: 0.8rem;
-                    min-width: 0;
-                }
-                .sh-location-header {
-                    display: flex;
-                    flex-direction: row !important;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 8px;
-                    width: 100%;
-                }
                 .sh-shop-btn {
                     cursor: pointer;
                     transition: all 0.2s;
+                    padding: 4px 6px !important;
+                    font-size: 0.75rem !important;
                 }
                 .sh-shop-btn:hover {
                     opacity: 0.8;
@@ -443,49 +407,63 @@ const ShopHelperModule = {
                 }
                 .sh-price-input, .sh-goods-refprice-input {
                     background: white !important;
-                    min-width: 44px;
-                    max-width: 60px;
+                    -moz-appearance: textfield;
+                    appearance: textfield;
+                }
+                .sh-price-input::-webkit-outer-spin-button,
+                .sh-price-input::-webkit-inner-spin-button,
+                .sh-goods-refprice-input::-webkit-outer-spin-button,
+                .sh-goods-refprice-input::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
                 }
                 .sh-del-goods-btn {
                     cursor: pointer;
+                    background: transparent;
+                    border: none;
+                    color: #ccc;
+                    font-size: 0.8rem;
+                    padding: 0 2px;
+                    font-weight: 700;
+                    flex-shrink: 0;
                 }
                 .sh-del-goods-btn:hover {
                     color: #e06060 !important;
                 }
                 .sh-price-dot {
-                    width: 12px;
-                    height: 12px;
+                    width: 10px;
+                    height: 10px;
                     border-radius: 50%;
                     display: inline-block;
                     flex-shrink: 0;
                 }
-                .sh-price-dot.low {
-                    background: #2d7a2d;
-                }
-                .sh-price-dot.high {
-                    background: #c0392b;
-                }
-                .sh-price-dot.neutral {
-                    background: #b0b8c0;
-                }
-                .sh-price-dot.empty {
-                    background: #e8e8e8;
-                }
+                .sh-price-dot.low { background: #2d7a2d; }
+                .sh-price-dot.high { background: #c0392b; }
+                .sh-price-dot.neutral { background: #b0b8c0; }
+                .sh-price-dot.empty { background: #e8e8e8; }
                 .sh-goods-item {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 3px 0;
-                    gap: 3px;
+                    padding: 2px 0;
+                    gap: 2px;
                     border-bottom: 1px solid #e8eef5;
                     flex-wrap: nowrap;
                 }
                 .sh-goods-name {
-                    min-width: 28px;
+                    min-width: 26px;
                     font-weight: 800;
                     color: #0a1a2a;
-                    font-size: 0.8rem;
+                    font-size: 0.78rem;
                     flex-shrink: 0;
+                }
+                .sh-location-header {
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 6px;
+                    width: 100%;
                 }
             </style>
             <div class="sh-map-grid">
@@ -522,16 +500,16 @@ const ShopHelperModule = {
             let shopsHtml = '';
             if (loc.shopLayout === 'horizontal') {
                 shopsHtml = `
-                    <div style="display:flex;gap:4px;justify-content:center;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
+                    <div style="display:flex;gap:3px;justify-content:center;margin:3px 0;">
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
                     </div>
                 `;
             } else {
                 shopsHtml = `
-                    <div style="display:flex;flex-direction:column;gap:3px;margin:4px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="padding:5px 8px;border-radius:8px;border:2px solid #b0c0d0;background:#f0f4f8;font-size:0.8rem;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
+                    <div style="display:flex;flex-direction:column;gap:2px;margin:3px 0;">
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
                     </div>
                 `;
             }
@@ -562,35 +540,35 @@ const ShopHelperModule = {
                     return `
                         <div class="sh-goods-item">
                             <span class="sh-goods-name">${g.name}</span>
-                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:44px;padding:2px 3px;border:1px solid #b0c8d8;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:50px;padding:2px 3px;border:2px solid #c0d0e0;border-radius:6px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            <span class="sh-price-dot ${dotClass}" style="width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0;background:${dotColor};"></span>
-                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}" style="background:transparent;border:none;color:#ccc;font-size:0.8rem;padding:0 2px;font-weight:700;flex-shrink:0;">✕</button>
+                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:52px;padding:1px 2px;border:1px solid #b0c8d8;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:52px;padding:1px 2px;border:2px solid #c0d0e0;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <span class="sh-price-dot ${dotClass}" style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;background:${dotColor};"></span>
+                            <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}">✕</button>
                         </div>
                     `;
                 }).join('');
             }
 
             const addGoodsHtml = `
-                <div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">
-                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:40px;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;background:white;color:#0a1a2a;font-weight:600;">
-                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:40px;padding:2px 4px;border:1px solid #d0dce8;border-radius:6px;font-size:0.65rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
-                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:6px;padding:0 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">+</button>
+                <div style="display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;">
+                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:36px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;background:white;color:#0a1a2a;font-weight:600;">
+                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:36px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
+                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:4px;padding:0 8px;font-size:0.65rem;font-weight:700;cursor:pointer;">+</button>
                 </div>
             `;
 
             html += `
                 <div class="sh-location-wrap" data-location="${loc.id}" style="${bgStyle}">
                     <div class="sh-location-header">
-                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:1rem;font-weight:800;color:#0a1a2a;white-space:nowrap;flex:1;text-align:left;cursor:pointer;">${loc.icon} ${loc.name}</span>
-                        <span class="sh-travel-display" style="flex:1;text-align:right;font-weight:700;font-size:0.8rem;color:${isCurrent ? s.colorCurrent : '#1a3a5a'};white-space:nowrap;">${arrivalDisplay}</span>
+                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:0.95rem;font-weight:800;color:#0a1a2a;white-space:nowrap;flex:1;text-align:left;cursor:pointer;min-width:0;">${loc.icon} ${loc.name}</span>
+                        <span class="sh-travel-display" style="flex-shrink:0;text-align:right;font-weight:700;font-size:0.75rem;color:${isCurrent ? s.colorCurrent : '#1a3a5a'};white-space:nowrap;">${arrivalDisplay}</span>
                     </div>
                     <div class="sh-status-row">
                         <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};">🔄一刷 ${firstStatus}</span>
                         <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};">🔄二刷 ${secondStatus}</span>
                     </div>
                     ${shopsHtml}
-                    <div style="border-top:1px solid #e0e8f0;margin-top:4px;padding-top:4px;">
+                    <div style="border-top:1px solid #e0e8f0;margin-top:3px;padding-top:3px;">
                         ${goodsHtml}
                         ${addGoodsHtml}
                     </div>
@@ -770,14 +748,10 @@ const ShopHelperModule = {
         `;
     },
 
-    // ============================================================
-    //  🔗 绑定事件
-    // ============================================================
     bindEvents() {
         const container = document.getElementById('shopHelperContainer');
         if (!container) return;
 
-        // ===== 1. 点击地点名称 =====
         container.addEventListener('click', (e) => {
             const nameEl = e.target.closest('.sh-location-name');
             if (nameEl) {
@@ -792,7 +766,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 2. 点击商人 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-shop-btn');
             if (btn) {
@@ -815,7 +788,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 3. 价格输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-price-input');
             if (input) {
@@ -833,7 +805,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 4. 参考价输入 =====
         container.addEventListener('input', (e) => {
             const input = e.target.closest('.sh-goods-refprice-input');
             if (input) {
@@ -852,7 +823,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 5. 添加商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-add-goods-btn');
             if (btn) {
@@ -877,7 +847,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 6. 删除商品 =====
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.sh-del-goods-btn');
             if (btn) {
@@ -895,7 +864,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 7. 跑动时间输入 =====
         container.addEventListener('change', (e) => {
             const input = e.target.closest('.sh-travel-input');
             if (input) {
@@ -911,7 +879,6 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 8. 一刷微调 =====
         document.getElementById('shFirstMinus').addEventListener('click', () => {
             this.firstOffset = Math.max(-10, this.firstOffset - 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
@@ -925,7 +892,6 @@ const ShopHelperModule = {
             this.updateStatusOnly();
         });
 
-        // ===== 9. 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -938,7 +904,6 @@ const ShopHelperModule = {
             alert('✅ 二刷时间已设置！');
         });
 
-        // ===== 10. 折叠 =====
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
             document.getElementById('shTimeBody').classList.toggle('hidden');
             this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
@@ -952,7 +917,6 @@ const ShopHelperModule = {
             this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 11. 颜色 =====
         const colorMap = {
             'shColorCanReach': 'colorCanReach',
             'shColorCannotReach': 'colorCannotReach',
@@ -970,7 +934,6 @@ const ShopHelperModule = {
             });
         }
 
-        // ===== 12. 字体 =====
         document.getElementById('shFontSize').addEventListener('change', function() {
             const val = parseInt(this.value) || 15;
             ShopHelperModule.uiSettings.fontSize = val;
@@ -978,7 +941,6 @@ const ShopHelperModule = {
             ShopHelperModule.applyUISettings();
         });
 
-        // ===== 13. 重置颜色 =====
         document.getElementById('shResetUIColors').addEventListener('click', function() {
             if (!confirm('重置所有颜色为默认值？')) return;
             const defaults = {
@@ -1007,7 +969,6 @@ const ShopHelperModule = {
         });
     },
 
-    // ===== 更新单个价格小圆点 =====
     updatePriceDot(input) {
         const goodsItem = input.closest('.sh-goods-item');
         if (!goodsItem) return;
@@ -1039,7 +1000,6 @@ const ShopHelperModule = {
         }
     },
 
-    // ===== 更新所有价格小圆点 =====
     updateAllDots() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
