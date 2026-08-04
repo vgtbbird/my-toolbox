@@ -907,7 +907,7 @@ const ShopHelperModule = {
             this.updateStatusOnly();
         });
         document.getElementById('shFirstPlus').addEventListener('click', () => {
-            this.firstOffset = Math.min(10, this.firstOffset + 10);
+            this.firstOffset = Math.min(60, this.firstOffset + 10);
             document.getElementById('shFirstOffsetDisplay').textContent = this.firstOffset;
             this.saveData();
             this.updateStatusOnly();
