@@ -1,6 +1,6 @@
 // ============================================================
-//  🏃 跑商助手模块 - 完整版 v10
-//  优化：去掉箭头 + 压缩间距 + 4位数完整显示 + 一刷自动重置
+//  🏃 跑商助手模块 - 完整版 v11
+//  优化：状态用圆点表示 + 4位数完整显示 + 一刷自动重置
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -155,23 +155,28 @@ const ShopHelperModule = {
             const isCurrent = this.currentLocation === loc.id;
             const status = this.checkRefreshStatus(loc.id);
 
-            let firstStatus = status.first === 'can' ? '赶得上 ✅' : '赶不上 ❌';
-            let firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
-            let secondStatus = status.second === 'can' ? '赶得上 ✅' : '赶不上 ❌';
-            let secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
+            // 用圆点表示状态
+            const firstDot = status.first === 'can' ? '🟢' : '🔴';
+            const secondDot = status.second === 'can' ? '🟢' : '🔴';
+            const firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
+            const secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
 
+            let firstLabel = status.first === 'can' ? '赶得上' : '赶不上';
+            let secondLabel = status.second === 'can' ? '赶得上' : '赶不上';
             if (status.isCurrent) {
-                firstStatus = '📍当前';
-                firstColor = s.colorCurrent;
-                secondStatus = '📍当前';
-                secondColor = s.colorCurrent;
+                firstLabel = '📍当前';
+                secondLabel = '📍当前';
             }
 
             const statusRow = wrap.querySelector('.sh-status-row');
             if (statusRow) {
                 statusRow.innerHTML = `
-                    <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};padding:2px 10px;border-radius:12px;font-weight:800;font-size:0.75rem;white-space:nowrap;display:inline-block;">🔄一刷 ${firstStatus}</span>
-                    <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};padding:2px 10px;border-radius:12px;font-weight:800;font-size:0.75rem;white-space:nowrap;display:inline-block;">🔄二刷 ${secondStatus}</span>
+                    <span class="sh-status-text" style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-weight:700;font-size:0.7rem;white-space:nowrap;background:${firstColor}22;color:${firstColor};">
+                        <span style="font-size:0.8rem;">${firstDot}</span> 一刷
+                    </span>
+                    <span class="sh-status-text" style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;font-weight:700;font-size:0.7rem;white-space:nowrap;background:${secondColor}22;color:${secondColor};">
+                        <span style="font-size:0.8rem;">${secondDot}</span> 二刷
+                    </span>
                 `;
             }
 
@@ -370,21 +375,23 @@ const ShopHelperModule = {
                 .sh-status-row {
                     display: flex;
                     flex-direction: row;
-                    gap: 4px;
+                    gap: 3px;
                     flex-wrap: wrap;
-                    margin: 3px 0;
+                    margin: 2px 0;
                 }
                 .sh-status-text {
-                    display: inline-block;
-                    padding: 2px 10px;
-                    border-radius: 12px;
-                    font-weight: 800;
-                    font-size: 0.75rem;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                    padding: 1px 6px;
+                    border-radius: 10px;
+                    font-weight: 700;
+                    font-size: 0.7rem;
                     white-space: nowrap;
                 }
                 .sh-location-wrap {
                     border-radius: 12px;
-                    padding: 10px 8px;
+                    padding: 8px 6px;
                     transition: all 0.2s;
                     border: 1px solid #e0e8f0;
                 }
@@ -398,8 +405,13 @@ const ShopHelperModule = {
                 .sh-shop-btn {
                     cursor: pointer;
                     transition: all 0.2s;
-                    padding: 4px 6px !important;
-                    font-size: 0.75rem !important;
+                    padding: 3px 5px !important;
+                    font-size: 0.7rem !important;
+                    border-radius: 6px;
+                    border: 2px solid #b0c0d0;
+                    background: #f0f4f8;
+                    font-weight: 700;
+                    color: #0a1a2a;
                 }
                 .sh-shop-btn:hover {
                     opacity: 0.8;
@@ -422,7 +434,7 @@ const ShopHelperModule = {
                     background: transparent;
                     border: none;
                     color: #ccc;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     padding: 0 2px;
                     font-weight: 700;
                     flex-shrink: 0;
@@ -451,10 +463,10 @@ const ShopHelperModule = {
                     flex-wrap: nowrap;
                 }
                 .sh-goods-name {
-                    min-width: 26px;
+                    min-width: 24px;
                     font-weight: 800;
                     color: #0a1a2a;
-                    font-size: 0.78rem;
+                    font-size: 0.75rem;
                     flex-shrink: 0;
                 }
                 .sh-location-header {
@@ -462,7 +474,7 @@ const ShopHelperModule = {
                     flex-direction: row;
                     justify-content: space-between;
                     align-items: center;
-                    gap: 6px;
+                    gap: 4px;
                     width: 100%;
                 }
             </style>
@@ -473,16 +485,16 @@ const ShopHelperModule = {
             const isCurrent = this.currentLocation === loc.id;
             const status = this.checkRefreshStatus(loc.id);
 
-            let firstStatus = status.first === 'can' ? '赶得上 ✅' : '赶不上 ❌';
-            let firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
-            let secondStatus = status.second === 'can' ? '赶得上 ✅' : '赶不上 ❌';
-            let secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
+            const firstDot = status.first === 'can' ? '🟢' : '🔴';
+            const secondDot = status.second === 'can' ? '🟢' : '🔴';
+            const firstColor = status.first === 'can' ? s.colorCanReach : s.colorCannotReach;
+            const secondColor = status.second === 'can' ? s.colorCanReach : s.colorCannotReach;
 
+            let firstLabel = status.first === 'can' ? '赶得上' : '赶不上';
+            let secondLabel = status.second === 'can' ? '赶得上' : '赶不上';
             if (status.isCurrent) {
-                firstStatus = '📍当前';
-                firstColor = s.colorCurrent;
-                secondStatus = '📍当前';
-                secondColor = s.colorCurrent;
+                firstLabel = '📍当前';
+                secondLabel = '📍当前';
             }
 
             let arrivalDisplay = '';
@@ -500,16 +512,16 @@ const ShopHelperModule = {
             let shopsHtml = '';
             if (loc.shopLayout === 'horizontal') {
                 shopsHtml = `
-                    <div style="display:flex;gap:3px;justify-content:center;margin:3px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
+                    <div style="display:flex;gap:2px;justify-content:center;margin:2px 0;">
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="flex:1;">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="flex:1;">${loc.shops[1]}</button>
                     </div>
                 `;
             } else {
                 shopsHtml = `
-                    <div style="display:flex;flex-direction:column;gap:2px;margin:3px 0;">
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0" style="border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[0]}</button>
-                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1" style="border-radius:6px;border:2px solid #b0c0d0;background:#f0f4f8;font-weight:700;color:#0a1a2a;">${loc.shops[1]}</button>
+                    <div style="display:flex;flex-direction:column;gap:2px;margin:2px 0;">
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="0">${loc.shops[0]}</button>
+                        <button class="sh-shop-btn" data-location="${loc.id}" data-shop="1">${loc.shops[1]}</button>
                     </div>
                 `;
             }
@@ -540,8 +552,8 @@ const ShopHelperModule = {
                     return `
                         <div class="sh-goods-item">
                             <span class="sh-goods-name">${g.name}</span>
-                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:52px;padding:1px 2px;border:1px solid #b0c8d8;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
-                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:52px;padding:1px 2px;border:2px solid #c0d0e0;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-goods-refprice-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${refPrice}" step="100" style="width:50px;padding:1px 2px;border:1px solid #b0c8d8;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
+                            <input class="sh-price-input" data-location="${loc.id}" data-goods="${g.key}" type="number" value="${currentPrice}" placeholder="价" style="width:50px;padding:1px 2px;border:2px solid #c0d0e0;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;flex-shrink:0;">
                             <span class="sh-price-dot ${dotClass}" style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;background:${dotColor};"></span>
                             <button class="sh-del-goods-btn" data-location="${loc.id}" data-goods="${g.key}">✕</button>
                         </div>
@@ -550,25 +562,29 @@ const ShopHelperModule = {
             }
 
             const addGoodsHtml = `
-                <div style="display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;">
-                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:36px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;background:white;color:#0a1a2a;font-weight:600;">
-                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:36px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
-                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:4px;padding:0 8px;font-size:0.65rem;font-weight:700;cursor:pointer;">+</button>
+                <div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;">
+                    <input class="sh-new-goods-name" data-location="${loc.id}" placeholder="商品" style="flex:1;min-width:32px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;background:white;color:#0a1a2a;font-weight:600;">
+                    <input class="sh-new-goods-price" data-location="${loc.id}" placeholder="参考价" style="width:34px;padding:1px 3px;border:1px solid #d0dce8;border-radius:4px;font-size:0.6rem;text-align:center;background:white;color:#0a1a2a;font-weight:600;">
+                    <button class="sh-add-goods-btn" data-location="${loc.id}" style="background:#4c7a5c;color:#fff;border:none;border-radius:4px;padding:0 8px;font-size:0.6rem;font-weight:700;cursor:pointer;">+</button>
                 </div>
             `;
 
             html += `
                 <div class="sh-location-wrap" data-location="${loc.id}" style="${bgStyle}">
                     <div class="sh-location-header">
-                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:0.95rem;font-weight:800;color:#0a1a2a;white-space:nowrap;flex:1;text-align:left;cursor:pointer;min-width:0;">${loc.icon} ${loc.name}</span>
-                        <span class="sh-travel-display" style="flex-shrink:0;text-align:right;font-weight:700;font-size:0.75rem;color:${isCurrent ? s.colorCurrent : '#1a3a5a'};white-space:nowrap;">${arrivalDisplay}</span>
+                        <span class="sh-location-name" data-location="${loc.id}" style="font-size:0.9rem;font-weight:800;color:#0a1a2a;white-space:nowrap;flex:1;text-align:left;cursor:pointer;min-width:0;">${loc.icon} ${loc.name}</span>
+                        <span class="sh-travel-display" style="flex-shrink:0;text-align:right;font-weight:700;font-size:0.7rem;color:${isCurrent ? s.colorCurrent : '#1a3a5a'};white-space:nowrap;">${arrivalDisplay}</span>
                     </div>
                     <div class="sh-status-row">
-                        <span class="sh-status-text" style="background:${firstColor}33;color:${firstColor};">🔄一刷 ${firstStatus}</span>
-                        <span class="sh-status-text" style="background:${secondColor}33;color:${secondColor};">🔄二刷 ${secondStatus}</span>
+                        <span class="sh-status-text" style="background:${firstColor}22;color:${firstColor};">
+                            <span style="font-size:0.75rem;">${firstDot}</span> 一刷
+                        </span>
+                        <span class="sh-status-text" style="background:${secondColor}22;color:${secondColor};">
+                            <span style="font-size:0.75rem;">${secondDot}</span> 二刷
+                        </span>
                     </div>
                     ${shopsHtml}
-                    <div style="border-top:1px solid #e0e8f0;margin-top:3px;padding-top:3px;">
+                    <div style="border-top:1px solid #e0e8f0;margin-top:2px;padding-top:2px;">
                         ${goodsHtml}
                         ${addGoodsHtml}
                     </div>
@@ -632,15 +648,15 @@ const ShopHelperModule = {
             ['beiju', 'difu', '北俱→地府']
         ];
 
-        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px 6px;">';
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:3px 4px;">';
         for (let [from, to, label] of pairs) {
             const key = from + '_' + to;
             const val = this.travelTimes[key] || 180;
             html += `
-                <div style="display:flex;align-items:center;gap:3px;font-size:0.75rem;padding:2px 5px;background:#f5f8fc;border-radius:6px;border:1px solid #e8eef5;">
-                    <span style="color:#0a1a2a;min-width:50px;font-size:0.7rem;font-weight:700;">${label}</span>
-                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:44px;padding:2px 3px;border:1px solid #bccad9;border-radius:6px;font-size:0.75rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
-                    <span style="color:#4a6a8a;font-size:0.55rem;font-weight:600;">秒</span>
+                <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;padding:2px 4px;background:#f5f8fc;border-radius:4px;border:1px solid #e8eef5;">
+                    <span style="color:#0a1a2a;min-width:44px;font-size:0.65rem;font-weight:700;">${label}</span>
+                    <input type="number" class="sh-travel-input" data-from="${from}" data-to="${to}" value="${val}" min="0" max="600" style="width:40px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.7rem;text-align:center;background:white;color:#0a1a2a;font-weight:700;">
+                    <span style="color:#4a6a8a;font-size:0.5rem;font-weight:600;">秒</span>
                 </div>
             `;
         }
@@ -653,94 +669,94 @@ const ShopHelperModule = {
         if (!container) return;
 
         container.innerHTML = `
-            <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:10px;">
+            <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:12px;margin-bottom:8px;padding:6px 10px;">
                 <div class="module-header">
-                    <div class="title">⏰ 刷新时间 <span class="hint">— 一刷自动重置价格和商人标记</span></div>
+                    <div class="title" style="font-size:0.9rem;">⏰ 刷新时间 <span class="hint" style="font-size:0.65rem;">— 一刷自动重置价格</span></div>
                     <div>
-                        <button class="toggle-btn" id="shToggleTimeBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;cursor:pointer;">👁️ 隐藏</button>
+                        <button class="toggle-btn" id="shToggleTimeBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                     </div>
                 </div>
                 <div class="module-body" id="shTimeBody">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0;">
-                        <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.8rem;font-weight:700;color:#0a1a2a;">📌 一刷（大刷）</div>
-                            <div style="font-weight:700;color:#0a1a2a;font-size:0.95rem;" id="shFirstTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
-                                <button class="btn-small" id="shFirstMinus" style="padding:2px 10px;font-size:0.6rem;font-weight:700;">-10秒</button>
-                                <button class="btn-small" id="shFirstPlus" style="padding:2px 10px;font-size:0.6rem;font-weight:700;">+10秒</button>
-                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">当前微调: <span id="shFirstOffsetDisplay">0</span>秒</span>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0;">
+                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
+                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
+                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                <button class="btn-small" id="shFirstMinus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">-10s</button>
+                                <button class="btn-small" id="shFirstPlus" style="padding:1px 8px;font-size:0.55rem;font-weight:700;">+10s</button>
+                                <span style="font-size:0.55rem;color:#4a6a8a;line-height:22px;font-weight:600;">微调: <span id="shFirstOffsetDisplay">0</span>s</span>
                             </div>
-                            <div style="font-size:0.6rem;color:#c0392b;margin-top:4px;font-weight:600;">⚠️ 一刷到达时，自动重置所有当前价格和商人标记</div>
+                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 一刷自动重置价格和商人标记</div>
                         </div>
-                        <div style="background:#f8faff;border-radius:12px;padding:8px 12px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.8rem;font-weight:700;color:#0a1a2a;">📌 二刷（卖价刷新）</div>
-                            <div style="font-weight:700;color:#0a1a2a;font-size:0.95rem;" id="shSecondTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
-                                <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:40px;padding:2px 4px;border:1px solid #bccad9;border-radius:8px;font-size:0.75rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.75rem;color:#4a6a8a;line-height:28px;font-weight:600;">分</span>
-                                <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:40px;padding:2px 4px;border:1px solid #bccad9;border-radius:8px;font-size:0.75rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.75rem;color:#4a6a8a;line-height:28px;font-weight:600;">秒</span>
-                                <button class="btn-small" id="shSetSecondBtn" style="padding:2px 14px;font-size:0.65rem;font-weight:700;">设置</button>
+                        <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
+                            <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
+                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                                <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
+                                <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
+                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
+                                <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:0.7rem;color:#4a6a8a;padding:4px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
+                    <div style="font-size:0.6rem;color:#4a6a8a;padding:2px 0;font-weight:600;">💡 点击 <strong>地点名称</strong> 标记当前位置 | 点击 <strong>商人</strong> 标记低价/高价</div>
                 </div>
             </div>
 
-            <div id="shMapContainer" style="margin-bottom:10px;"></div>
+            <div id="shMapContainer" style="margin-bottom:6px;"></div>
 
-            <div style="display:flex;gap:14px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #e8eef5;font-size:0.7rem;font-weight:600;color:#4a6a8a;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;padding:4px 0;border-top:1px solid #e8eef5;font-size:0.6rem;font-weight:600;color:#4a6a8a;">
                 <span>🟢 赶得上</span><span>🔴 赶不上</span>
-                <span>| 点击地点名称标记当前位置</span>
+                <span>| 点击地点名标记</span>
                 <span>| 点击商人标记低价/高价</span>
                 <span>| ● 价格小圆点：绿=低，红=高，灰=持平</span>
             </div>
 
-            <div class="module" style="margin-top:10px;">
+            <div class="module" style="margin-top:6px;padding:6px 8px;">
                 <div class="module-header">
-                    <div class="title">🕐 跑动时间配置 <span class="hint">— 双向独立设置</span></div>
-                    <button class="toggle-btn" id="shToggleTravelBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;cursor:pointer;">👁️ 隐藏</button>
+                    <div class="title" style="font-size:0.85rem;">🕐 跑动时间 <span class="hint" style="font-size:0.6rem;">— 双向独立</span></div>
+                    <button class="toggle-btn" id="shToggleTravelBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                 </div>
                 <div class="module-body" id="shTravelBody">
                     <div id="shTravelTimesContainer"></div>
-                    <div style="font-size:0.65rem;color:#4a6a8a;margin-top:4px;font-weight:600;">💡 修改后自动保存，用于计算到达时刻</div>
+                    <div style="font-size:0.55rem;color:#4a6a8a;margin-top:2px;font-weight:600;">💡 修改后自动保存，用于计算到达时刻</div>
                 </div>
             </div>
 
-            <div class="module" style="margin-top:10px;">
+            <div class="module" style="margin-top:6px;padding:6px 8px;">
                 <div class="module-header">
-                    <div class="title">🎨 界面设置</div>
-                    <button class="toggle-btn" id="shToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;cursor:pointer;">👁️ 隐藏</button>
+                    <div class="title" style="font-size:0.85rem;">🎨 界面设置</div>
+                    <button class="toggle-btn" id="shToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                 </div>
                 <div class="module-body" id="shUISettingsBody">
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;padding:8px 0;">
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:4px;padding:4px 0;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
                             <label>🟢 赶得上</label>
-                            <input type="color" id="shColorCanReach" value="${this.uiSettings.colorCanReach}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
+                            <input type="color" id="shColorCanReach" value="${this.uiSettings.colorCanReach}" style="width:32px;height:24px;border-radius:4px;border:1px solid #ddd;cursor:pointer;display:block;margin:1px auto;">
                         </div>
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
                             <label>🔴 赶不上</label>
-                            <input type="color" id="shColorCannotReach" value="${this.uiSettings.colorCannotReach}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
+                            <input type="color" id="shColorCannotReach" value="${this.uiSettings.colorCannotReach}" style="width:32px;height:24px;border-radius:4px;border:1px solid #ddd;cursor:pointer;display:block;margin:1px auto;">
                         </div>
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
-                            <label>📍 当前位置高亮</label>
-                            <input type="color" id="shColorCurrent" value="${this.uiSettings.colorCurrent}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
+                            <label>📍 高亮</label>
+                            <input type="color" id="shColorCurrent" value="${this.uiSettings.colorCurrent}" style="width:32px;height:24px;border-radius:4px;border:1px solid #ddd;cursor:pointer;display:block;margin:1px auto;">
                         </div>
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
                             <label>🟢 低价商</label>
-                            <input type="color" id="shColorLow" value="${this.uiSettings.colorLowPrice}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
+                            <input type="color" id="shColorLow" value="${this.uiSettings.colorLowPrice}" style="width:32px;height:24px;border-radius:4px;border:1px solid #ddd;cursor:pointer;display:block;margin:1px auto;">
                         </div>
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
                             <label>🔴 高价商</label>
-                            <input type="color" id="shColorHigh" value="${this.uiSettings.colorHighPrice}" style="width:40px;height:30px;border-radius:6px;border:1px solid #ddd;cursor:pointer;display:block;margin:2px auto;">
+                            <input type="color" id="shColorHigh" value="${this.uiSettings.colorHighPrice}" style="width:32px;height:24px;border-radius:4px;border:1px solid #ddd;cursor:pointer;display:block;margin:1px auto;">
                         </div>
-                        <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#0a1a2a;">
+                        <div style="text-align:center;font-size:0.6rem;font-weight:700;color:#0a1a2a;">
                             <label>🔤 字体</label>
-                            <input type="number" id="shFontSize" value="${this.uiSettings.fontSize}" min="12" max="24" style="width:50px;padding:2px;border-radius:8px;border:1px solid #ddd;text-align:center;display:block;margin:2px auto;font-weight:700;color:#0a1a2a;">
+                            <input type="number" id="shFontSize" value="${this.uiSettings.fontSize}" min="12" max="24" style="width:40px;padding:1px;border-radius:4px;border:1px solid #ddd;text-align:center;display:block;margin:1px auto;font-weight:700;color:#0a1a2a;">
                         </div>
                         <div style="display:flex;align-items:center;justify-content:center;">
-                            <button class="btn-small" id="shResetUIColors" style="background:#b48b5f;color:#fff;border:none;padding:4px 14px;border-radius:30px;cursor:pointer;font-weight:700;">↩️ 重置</button>
+                            <button class="btn-small" id="shResetUIColors" style="background:#b48b5f;color:#fff;border:none;padding:2px 10px;border-radius:30px;cursor:pointer;font-weight:700;font-size:0.55rem;">↩️</button>
                         </div>
                     </div>
                 </div>
@@ -906,15 +922,15 @@ const ShopHelperModule = {
 
         document.getElementById('shToggleTimeBtn').addEventListener('click', function() {
             document.getElementById('shTimeBody').classList.toggle('hidden');
-            this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            this.textContent = document.getElementById('shTimeBody').classList.contains('hidden') ? '👁️' : '👁️';
         });
         document.getElementById('shToggleTravelBtn').addEventListener('click', function() {
             document.getElementById('shTravelBody').classList.toggle('hidden');
-            this.textContent = document.getElementById('shTravelBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            this.textContent = document.getElementById('shTravelBody').classList.contains('hidden') ? '👁️' : '👁️';
         });
         document.getElementById('shToggleUISettings').addEventListener('click', function() {
             document.getElementById('shUISettingsBody').classList.toggle('hidden');
-            this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+            this.textContent = document.getElementById('shUISettingsBody').classList.contains('hidden') ? '👁️' : '👁️';
         });
 
         const colorMap = {
