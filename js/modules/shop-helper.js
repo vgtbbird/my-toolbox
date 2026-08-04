@@ -43,31 +43,36 @@ const ShopHelperModule = {
         { id: 'beiju', name: '北俱', icon: '⛰️', shopLayout: 'vertical', shops: ['上商', '下商'] }
     ],
 
-    defaultGoods: {
-        'aolai': [
-            { key: 'yan', name: '盐', refPrice: 6500 },
-            { key: 'maozi', name: '帽子', refPrice: 3000 },
-            { key: 'jiu', name: '酒', refPrice: 3500 }
-        ],
-        'changshou': [
-            { key: 'lurong', name: '鹿茸', refPrice: 7000 },
-            { key: 'mianfen', name: '面粉', refPrice: 3000 },
-            { key: 'fu', name: '符', refPrice: 5000 }
-        ],
+        defaultGoods: {
         'changan': [
-            { key: 'fozhu', name: '佛珠', refPrice: 7000 },
-            { key: 'shanzi', name: '扇子', refPrice: 3800 },
-            { key: 'wuqi', name: '武器', refPrice: 4000 }
+            { key: 'fozhu', name: '📿 佛珠', refPrice: 7200 },
+            { key: 'wuqi', name: '⚔️ 武器', refPrice: 4500 },
+            { key: 'shanzi', name: '🪭 扇子', refPrice: 4050 },
+            { key: 'mianbu', name: '🧵 棉布', refPrice: 3200 }
         ],
         'difu': [
-            { key: 'zhiqian', name: '纸钱', refPrice: 3000 },
-            { key: 'shoushi', name: '首饰', refPrice: 4300 },
-            { key: 'yemingzhu', name: '夜明珠', refPrice: 8000 }
+            { key: 'yemingzhu', name: '💎 夜明珠', refPrice: 8000 },
+            { key: 'shoushi', name: '💍 首饰', refPrice: 4500 },
+            { key: 'zhenzhu', name: '🦪 珍珠', refPrice: 5500 },
+            { key: 'zhiqian', name: '📄 纸钱', refPrice: 2700 }
+        ],
+        'aolai': [
+            { key: 'yan', name: '🧂 盐', refPrice: 5700 },
+            { key: 'jiu', name: '🍶 酒', refPrice: 4050 },
+            { key: 'maozi', name: '🧢 帽子', refPrice: 3150 },
+            { key: 'lazhu', name: '🕯️ 蜡烛', refPrice: 1800 }
         ],
         'beiju': [
-            { key: 'xiangyou', name: '香油', refPrice: 4000 },
-            { key: 'renshen', name: '人参', refPrice: 7500 },
-            { key: 'lingdang', name: '铃铛', refPrice: 4000 }
+            { key: 'renshen', name: '🌿 人参', refPrice: 7200 },
+            { key: 'lingdang', name: '🔔 铃铛', refPrice: 4500 },
+            { key: 'xiangyou', name: '🫒 香油', refPrice: 4050 },
+            { key: 'yijia', name: '🛡️ 衣甲', refPrice: 2000 }
+        ],
+        'changshou': [
+            { key: 'lurong', name: '🦌 鹿茸', refPrice: 7200 },
+            { key: 'fu', name: '📜 符', refPrice: 5400 },
+            { key: 'mutou', name: '🪵 木材', refPrice: 3600 },
+            { key: 'mianfen', name: '🌾 面粉', refPrice: 2700 }
         ]
     },
 
