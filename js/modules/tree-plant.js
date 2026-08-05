@@ -28,8 +28,8 @@ const TreePlantModule = {
     treeStage: 'idle',          // idle | growing | withered
     treeAlerts: {               // 各阶段是否已提醒
         '5min': false,
-        '15min': false,
-        '20min': false
+        '10min': false,
+        '15min': false
     },
     careCount: 0,               // 已照顾次数（0-3）
     shakeReady: false,          // 是否可以摇树
@@ -120,7 +120,7 @@ const TreePlantModule = {
         // 🆕 加载种树提醒状态
         this.treeStartTime = data.treeStartTime || null;
         this.treeStage = data.treeStage || 'idle';
-        this.treeAlerts = data.treeAlerts || { '5min': false, '15min': false, '20min': false };
+        this.treeAlerts = data.treeAlerts || { '5min': false, '10min': false, '15min': false };
         this.careCount = data.careCount || 0;
         this.shakeReady = data.shakeReady || false;
         this.hasEarlyRipen = data.hasEarlyRipen || false;
@@ -536,33 +536,33 @@ const TreePlantModule = {
             this.updateTreeStatusUI();
             return;
         }
-
-        // 5分钟提醒
-        if (elapsed >= 5 && !this.treeAlerts['5min']) {
-            this.treeAlerts['5min'] = true;
-            this.saveData();
-            this.sendTreeAlert('⏰ 该浇水了！', '🌱 种树5分钟了，第一次浇水施肥！点击「已照顾」继续', false, true);
-            this.updateTreeStatusUI();
-            return;
-        }
-
-        // 15分钟提醒
-        if (elapsed >= 15 && !this.treeAlerts['15min']) {
-            this.treeAlerts['15min'] = true;
-            this.saveData();
-            this.sendTreeAlert('⏰ 第二次浇水！', '🌱 种树15分钟了，第二次浇水施肥！点击「已照顾」继续', false, true);
-            this.updateTreeStatusUI();
-            return;
-        }
-
-        // 20分钟提醒
-        if (elapsed >= 20 && !this.treeAlerts['20min']) {
-            this.treeAlerts['20min'] = true;
-            this.saveData();
-            this.sendTreeAlert('⏰ 最后一次浇水！', '🌱 种树20分钟了，最后一次浇水施肥！点击「已照顾」完成', false, true);
-            this.updateTreeStatusUI();
-            return;
-        }
+        
+            // ✅ 5分钟提醒（第一次）
+            if (elapsed >= 5 && !this.treeAlerts['5min']) {
+                this.treeAlerts['5min'] = true;
+                this.saveData();
+                this.sendTreeAlert('⏰ 第一次浇水！', '🌱 种树5分钟了，第一次浇水施肥！点击「已照顾」继续', false, true);
+                this.updateTreeStatusUI();
+                return;
+            }
+        
+            // ✅ 10分钟提醒（第二次）
+            if (elapsed >= 10 && !this.treeAlerts['10min']) {
+                this.treeAlerts['10min'] = true;
+                this.saveData();
+                this.sendTreeAlert('⏰ 第二次浇水！', '🌱 种树10分钟了，第二次浇水施肥！点击「已照顾」继续', false, true);
+                this.updateTreeStatusUI();
+                return;
+            }
+        
+            // ✅ 15分钟提醒（第三次）
+            if (elapsed >= 15 && !this.treeAlerts['15min']) {
+                this.treeAlerts['15min'] = true;
+                this.saveData();
+                this.sendTreeAlert('⏰ 第三次浇水！', '🌱 种树15分钟了，最后一次浇水施肥！点击「已照顾」完成', false, true);
+                this.updateTreeStatusUI();
+                return;
+            }
 
     },
 
@@ -922,7 +922,7 @@ const TreePlantModule = {
             // 重置所有状态
             TreePlantModule.treeStartTime = Date.now();
             TreePlantModule.treeStage = 'growing';
-            TreePlantModule.treeAlerts = { '5min': false, '15min': false, '20min': false };
+            TreePlantModule.treeAlerts = { '5min': false, '10min': false, '15min': false };
             TreePlantModule.careCount = 0;
             TreePlantModule.shakeReady = false;
             TreePlantModule.hasEarlyRipen = false;
@@ -961,7 +961,7 @@ const TreePlantModule = {
             if (!confirm('重置种树状态？')) return;
             TreePlantModule.treeStartTime = null;
             TreePlantModule.treeStage = 'idle';
-            TreePlantModule.treeAlerts = { '5min': false, '15min': false, '20min': false };
+            TreePlantModule.treeAlerts = { '5min': false, '10min': false, '15min': false };
             TreePlantModule.careCount = 0;
             TreePlantModule.shakeReady = false;
             TreePlantModule.hasEarlyRipen = false;
