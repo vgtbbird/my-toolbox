@@ -340,6 +340,105 @@ const EquipmentQueryModule = {
         '落霞陨星坠': { level: 160, part: '项链' },
     },
 
+    // ============================================================
+//  🔍 编辑距离算法（Levenshtein Distance）
+// ============================================================
+levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return matrix[b.length][a.length];
+},
+
+    // ===== 计算两个字符串的相似度（0-1，1为完全匹配） =====
+calculateSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+    const maxLen = Math.max(str1.length, str2.length);
+    if (maxLen === 0) return 1;
+    const dist = this.levenshteinDistance(str1, str2);
+    return 1 - dist / maxLen;
+},
+
+    // ===== 高级模糊匹配（综合多种算法） =====
+fuzzyMatchEquipmentAdvanced(ocrText) {
+    const nameMap = this.equipmentNameMap;
+    const results = [];
+    
+    // 清理OCR文本
+    const cleanedText = ocrText
+        .replace(/[（(][^)）]*[)）]/g, '') // 移除括号内容
+        .replace(/[0-9０-９]+[点\.][0-9０-９]+/g, '') // 移除小数
+        .replace(/\s+/g, '');
+    
+    for (let [name, info] of Object.entries(nameMap)) {
+        let score = 0;
+        const nameClean = name.replace(/[^一-龥a-zA-Z0-9]/g, '');
+        
+        // 1. 编辑距离相似度（权重40%）
+        const sim = this.calculateSimilarity(cleanedText, nameClean);
+        score += sim * 0.4;
+        
+        // 2. 逐字匹配度（权重30%）
+        let matchCount = 0;
+        for (let char of nameClean) {
+            if (cleanedText.includes(char)) {
+                matchCount++;
+            }
+        }
+        const charMatch = matchCount / (nameClean.length || 1);
+        score += charMatch * 0.3;
+        
+        // 3. 等级匹配（权重15%）
+        const levelMatch = info.level && ocrText.includes(String(info.level));
+        if (levelMatch) {
+            score += 0.15;
+        }
+        
+        // 4. 部位匹配（权重15%）
+        const partMatch = info.part && ocrText.includes(info.part);
+        if (partMatch) {
+            score += 0.15;
+        }
+        
+        // 额外加分：完整匹配
+        if (cleanedText.includes(nameClean) || cleanedText.includes(name)) {
+            score += 0.3;
+        }
+        
+        // 阈值0.35以上才进入候选
+        if (score >= 0.35) {
+            results.push({ 
+                name, 
+                info, 
+                score: Math.min(score, 1),
+                matchDetails: {
+                    sim: Math.round(sim * 100),
+                    charMatch: Math.round(charMatch * 100),
+                    levelMatch: !!levelMatch,
+                    partMatch: !!partMatch
+                }
+            });
+        }
+    }
+    
+    // 按分数排序
+    results.sort((a, b) => b.score - a.score);
+    return results;
+},
       // ============================================================
 //  🔍 模糊匹配方法
 // ============================================================
@@ -1296,6 +1395,13 @@ preprocessImage(imageSource) {
 
         const parsed = this.parseEquipmentText(text);
         if (!parsed || !parsed.name) {
+            // 如果有多个候选，提示用户选择
+            if (parsed._candidates && parsed._candidates.length > 1) {
+                resultEl.textContent = `⚠️ 识别到多个可能: ${parsed._candidates.join('、')}，请确认`;
+                resultEl.style.color = '#e0a060';
+                this.showCandidateSelect(parsed._candidates, parsed);
+                return;
+            }
             resultEl.textContent = '⚠️ 未能识别出有效装备信息，请确认截图清晰或手动输入';
             resultEl.style.color = '#e0a060';
             return;
@@ -1327,7 +1433,7 @@ preprocessImage(imageSource) {
     // ============================================================
     //  📝 解析装备文本
     // ============================================================
-  parseEquipmentText(text) {
+parseEquipmentText(text) {
     const lines = text.split('\n').map(s => s.trim()).filter(s => s);
     const fullText = lines.join(' ');
 
@@ -1342,13 +1448,27 @@ preprocessImage(imageSource) {
     };
 
     // 1. 提取等级
-    result.level = this.extractLevel(fullText);
+    const levelPatterns = [
+        /等级\s*[:：]?\s*(\d+)/,
+        /(\d+)\s*级/,
+        /(\d+)[\s\n]*级/,
+    ];
+    for (let pattern of levelPatterns) {
+        const match = fullText.match(pattern);
+        if (match) {
+            const level = parseInt(match[1]);
+            if (level >= 10 && level <= 200) {
+                result.level = level;
+                break;
+            }
+        }
+    }
 
     // 2. 提取部位
     result.part = this.extractPart(fullText);
 
-    // 3. 提取装备名称（用模糊匹配）
-    const matches = this.fuzzyMatchEquipment(fullText);
+    // 3. 提取装备名称（用新的高级模糊匹配）
+    const matches = this.fuzzyMatchEquipmentAdvanced(fullText);
     if (matches.length > 0) {
         const best = matches[0];
         result.name = best.name;
@@ -1359,10 +1479,11 @@ preprocessImage(imageSource) {
         if (!result.part && best.info.part) {
             result.part = best.info.part;
         }
-        console.log(`🔍 模糊匹配: ${best.name} (匹配度: ${Math.round(best.score * 100)}%)`);
-        if (matches.length > 1) {
-            console.log(`  其他候选: ${matches.slice(1, 3).map(m => m.name).join(', ')}`);
-        }
+        console.log(`🔍 高级模糊匹配: ${best.name} (综合得分: ${Math.round(best.score * 100)}%)`);
+        console.log(`   - 编辑距离匹配: ${best.matchDetails.sim}%`);
+        console.log(`   - 逐字匹配: ${best.matchDetails.charMatch}%`);
+        console.log(`   - 等级匹配: ${best.matchDetails.levelMatch ? '✅' : '❌'}`);
+        console.log(`   - 部位匹配: ${best.matchDetails.partMatch ? '✅' : '❌'}`);
     }
 
     // 4. 提取打造方式
@@ -1374,18 +1495,18 @@ preprocessImage(imageSource) {
 
     // 5. 提取属性值
     const attrPatterns = {
-        '伤害': /伤害[+\s]*(\d+\.?\d*)/,
-        '命中': /命中[+\s]*(\d+\.?\d*)/,
-        '防御': /防御[+\s]*(\d+\.?\d*)/,
-        '灵力': /灵力[+\s]*(\d+\.?\d*)/,
-        '气血': /气血[+\s]*(\d+\.?\d*)/,
-        '魔法': /魔法[+\s]*(\d+\.?\d*)/,
-        '敏捷': /敏捷[+\s]*(\d+\.?\d*)/,
-        '体质': /体质[+\s]*(\d+\.?\d*)/,
-        '魔力': /魔力[+\s]*(\d+\.?\d*)/,
-        '力量': /力量[+\s]*(\d+\.?\d*)/,
-        '耐力': /耐力[+\s]*(\d+\.?\d*)/,
-        '耐久': /耐久度?[+\s]*(\d+\.?\d*)/
+        '伤害': /伤害[：:+\s]*(\d+\.?\d*)/,
+        '命中': /命中[：:+\s]*(\d+\.?\d*)/,
+        '防御': /防御[：:+\s]*(\d+\.?\d*)/,
+        '灵力': /灵力[：:+\s]*(\d+\.?\d*)/,
+        '气血': /气血[：:+\s]*(\d+\.?\d*)/,
+        '魔法': /魔法[：:+\s]*(\d+\.?\d*)/,
+        '敏捷': /敏捷[：:+\s]*(\d+\.?\d*)/,
+        '体质': /体质[：:+\s]*(\d+\.?\d*)/,
+        '魔力': /魔力[：:+\s]*(\d+\.?\d*)/,
+        '力量': /力量[：:+\s]*(\d+\.?\d*)/,
+        '耐力': /耐力[：:+\s]*(\d+\.?\d*)/,
+        '耐久': /耐久度?[：:+\s]*(\d+\.?\d*)/
     };
 
     for (let [attr, pattern] of Object.entries(attrPatterns)) {
@@ -1398,11 +1519,11 @@ preprocessImage(imageSource) {
         }
     }
 
-    // 6. 如果没有匹配到装备名，但识别到了等级和部位，尝试用组合查找
+    // 6. 如果没有匹配到装备名，但识别到了等级和部位，尝试组合查找
     if (!result.name && result.level && result.part) {
         const levelStr = String(result.level);
         const partMap = {
-            '武器': ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒', '幡', '钺', '戟', '锏', '槊', '弓', '弩'],
+            '武器': ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒'],
             '衣服': ['衣', '袍', '裙', '甲', '铠'],
             '项链': ['链', '坠', '佩', '环', '珠'],
             '帽子': ['帽', '冠', '盔'],
@@ -1429,6 +1550,112 @@ preprocessImage(imageSource) {
     return result;
 },
 
+    // ===== 显示候选装备让用户选择 =====
+showCandidateSelect(candidates, parsedData) {
+    // 移除旧弹窗
+    const oldOverlay = document.getElementById('candidateSelectOverlay');
+    if (oldOverlay) oldOverlay.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'candidateSelectOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    `;
+
+    let listHtml = candidates.map(name => `
+        <button class="candidate-option" data-name="${name}" style="
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            margin: 4px 0;
+            border: 1px solid #d0dce8;
+            border-radius: 12px;
+            background: white;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        ">${name}</button>
+    `).join('');
+
+    overlay.innerHTML = `
+        <div style="
+            background: #f8faff;
+            border-radius: 24px;
+            padding: 24px 28px 28px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        ">
+            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.1rem;">⚠️ 多个匹配</h3>
+            <div style="font-size:0.85rem;color:#5a7a94;margin-bottom:14px;">
+                OCR识别到多个可能装备，请选择正确的：
+            </div>
+            <div style="max-height:300px;overflow-y:auto;">
+                ${listHtml}
+            </div>
+            <div style="margin-top:14px;text-align:right;">
+                <button id="candidateCancelBtn" style="
+                    padding:6px 20px;
+                    border-radius:30px;
+                    border:none;
+                    background:#dce5ef;
+                    color:#1f3b53;
+                    font-weight:600;
+                    cursor:pointer;
+                    font-size:0.85rem;
+                ">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 点击选择
+    overlay.querySelectorAll('.candidate-option').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const name = this.dataset.name;
+            // 填入选中的装备名
+            const parsed = parsedData;
+            parsed.name = name;
+            // 从装备库获取完整信息
+            const info = EquipmentQueryModule.equipmentNameMap[name];
+            if (info) {
+                if (!parsed.level) parsed.level = info.level;
+                if (!parsed.part) parsed.part = info.part;
+            }
+            // 填入数据
+            EquipmentQueryModule.fillRecognizedData(parsed);
+            // 重新渲染
+            EquipmentQueryModule.render();
+            // 关闭弹窗
+            overlay.remove();
+            // 显示成功提示
+            const resultEl = document.getElementById('eqOcrResult');
+            if (resultEl) {
+                resultEl.textContent = `✅ 已选择：${name}`;
+                resultEl.style.color = '#60d080';
+            }
+        });
+    });
+
+    document.getElementById('candidateCancelBtn').addEventListener('click', function() {
+        overlay.remove();
+    });
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+    });
+},
     // ============================================================
     //  🖊️ 填入识别数据
     // ============================================================
