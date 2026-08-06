@@ -1530,21 +1530,51 @@ parseEquipmentText(text) {
         result.craftType = '普通';
     }
 
-   // 5. 提取属性值（支持带空格的格式）
-    const attrPatterns = {
-        '伤害': /伤害\s*[+：:]\s*([\d.]+)/,
-        '命中': /命中\s*[+：:]\s*([\d.]+)/,
-        '防御': /防御\s*[+：:]\s*([\d.]+)/,
-        '灵力': /灵力\s*[+：:]\s*([\d.]+)/,
-        '气血': /气血\s*[+：:]\s*([\d.]+)/,
-        '魔法': /魔法\s*[+：:]\s*([\d.]+)/,
-        '敏捷': /敏捷\s*[+：:]\s*([\d.]+)/,
-        '体质': /体质\s*[+：:]\s*([\d.]+)/,
-        '魔力': /魔力\s*[+：:]\s*([\d.]+)/,
-        '力量': /力量\s*[+：:]\s*([\d.]+)/,
-        '耐力': /耐力\s*[+：:]\s*([\d.]+)/,
-        '耐久': /耐久\s*度?\s*[+：:]\s*([\d.]+)/,
-    };
+// 5. 提取属性值（先尝试常规匹配）
+const attrPatterns = {
+    '伤害': /伤害\s*[+：:]\s*([\d.]+)/,
+    '命中': /命中\s*[+：:]\s*([\d.]+)/,
+    '防御': /防御\s*[+：:]\s*([\d.]+)/,
+    '灵力': /灵力\s*[+：:]\s*([\d.]+)/,
+    '气血': /气血\s*[+：:]\s*([\d.]+)/,
+    '魔法': /魔法\s*[+：:]\s*([\d.]+)/,
+    '敏捷': /敏捷\s*[+：:]\s*([\d.]+)/,
+    '体质': /体质\s*[+：:]\s*([\d.]+)/,
+    '魔力': /魔力\s*[+：:]\s*([\d.]+)/,
+    '力量': /力量\s*[+：:]\s*([\d.]+)/,
+    '耐力': /耐力\s*[+：:]\s*([\d.]+)/
+};
+for (let [attr, pattern] of Object.entries(attrPatterns)) {
+    const match = fullText.match(pattern);
+    if (match) {
+        const val = parseFloat(match[1]);
+        if (!isNaN(val) && val > 0) {
+            result.attrs[attr] = val;
+        }
+    }
+}
+
+// ✅ 单独处理耐力（OCR可能识别为"耐 力"）
+if (!result.attrs['耐力']) {
+    const match = fullText.match(/耐\s*力\s*[+：:]\s*([\d.]+)/);
+    if (match) {
+        const val = parseFloat(match[1]);
+        if (!isNaN(val) && val > 0) {
+            result.attrs['耐力'] = val;
+        }
+    }
+}
+
+// ✅ 单独处理耐久（OCR可能识别为"耐 久 度 500"）
+if (!result.attrs['耐久']) {
+    const match = fullText.match(/耐\s*久\s*度?\s*([\d.]+)/);
+    if (match) {
+        const val = parseFloat(match[1]);
+        if (!isNaN(val) && val > 0) {
+            result.attrs['耐久'] = val;
+        }
+    }
+}
 
     for (let [attr, pattern] of Object.entries(attrPatterns)) {
         const match = fullText.match(pattern);
