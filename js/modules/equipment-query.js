@@ -1584,15 +1584,16 @@ parseEquipmentText(text) {
         '耐力': /耐\s*力?\s*[+-]?\s*([-]?[\d.]+)/
     };
 
-    for (let [attr, pattern] of Object.entries(attrPatterns)) {
-        const match = fullText.match(pattern);
-        if (match) {
-            const val = parseFloat(match[1]);
-            if (!isNaN(val) && val !== 0) {
-                result.attrs[attr] = val;
+     for (let [attr, pattern] of Object.entries(attrPatterns)) {
+            const match = fullText.match(pattern);
+            console.log(`🔍 匹配 ${attr}:`, match);  // ← 加这行
+            if (match) {
+                const val = parseFloat(match[1]);
+                if (!isNaN(val) && val !== 0) {
+                    result.attrs[attr] = val;
+                }
             }
         }
-    }
 
     // 6. ✅ 单独处理耐久
     if (!result.attrs['耐久']) {
