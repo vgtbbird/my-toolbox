@@ -1,7 +1,7 @@
 // ============================================================
-//  🧬 炼妖助手模块 - 完整版 v2
+//  🧬 炼妖助手模块 - 完整版 v3
 //  功能：胚子管理 + 炼妖记录 + 技能模拟 + 统计看板
-//  优化：图鉴向导添加胚子 + 全部资质字段 + 技能快速选择
+//  优化：必带技能标记 + 合成模拟结果展示 + 重置按钮
 // ============================================================
 const AlchemyModule = {
     id: 'alchemy',
@@ -148,18 +148,24 @@ const AlchemyModule = {
     },
 
     // ============================================================
+    //  获取宠物的必带技能（从图鉴查）
+    // ============================================================
+    getMustSkills(petName) {
+        const type = this.petTypes[petName];
+        return type ? type.mustSkills : [];
+    },
+
+    // ============================================================
     //  构建UI
     // ============================================================
     buildUI() {
         const container = document.getElementById('alchemyContainer');
         if (!container) return;
 
-        // 生成图鉴下拉选项
         const petTypeOptions = Object.keys(this.petTypes).map(name =>
             `<option value="${name}">${name}（${this.petTypes[name].mustSkills.join('、')}）</option>`
         ).join('');
 
-        // 生成技能快速选择按钮
         const skillBtns = this.skillLibrary.map(skill =>
             `<button class="al-skill-quick-btn" data-skill="${skill}" style="padding:2px 8px;border-radius:12px;border:1px solid #d0dce8;background:#f5f8fc;cursor:pointer;font-size:0.6rem;margin:2px;">${skill}</button>`
         ).join('');
@@ -233,7 +239,10 @@ const AlchemyModule = {
             <div class="module">
                 <div class="module-header">
                     <div class="title">⚗️ 合成模拟 <span class="hint">— 选择两只胚子模拟合成结果</span></div>
-                    <button class="toggle-btn" id="alToggleSimBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
+                    <div>
+                        <button class="btn-small" id="alResetSimBtn" style="background:#b48b5f;color:#fff;border:none;padding:2px 14px;border-radius:30px;cursor:pointer;font-size:0.65rem;font-weight:600;">🔄 重置</button>
+                        <button class="toggle-btn" id="alToggleSimBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
+                    </div>
                 </div>
                 <div class="module-body" id="alSimBody">
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -265,11 +274,11 @@ const AlchemyModule = {
                 </div>
             </div>
 
-            <!-- 弹窗：添加胚子（向导版） -->
+            <!-- 弹窗：添加胚子 -->
             <div class="modal-overlay" id="alAddPetModal">
                 <div class="modal-box" style="max-width:560px;max-height:90vh;overflow-y:auto;">
                     <h3>➕ 添加胚子</h3>
-                    <div class="modal-desc">从图鉴选择自动填充，或手动输入</div>
+                    <div class="modal-desc">从图鉴选择自动填充必带技能，或手动输入</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;">
 
                         <!-- 图鉴选择 -->
@@ -352,8 +361,9 @@ const AlchemyModule = {
 
                         <!-- 技能列表 -->
                         <div style="display:flex;flex-direction:column;gap:3px;grid-column:1/-1;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📜 技能列表</label>
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📜 技能列表（逗号分隔，必带技能自动标记 🟡）</label>
                             <input type="text" id="alNewPetSkills" placeholder="如：鬼魂术,夜战,弱点雷" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;">
+                            <div id="alNewPetSkillTags" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;padding:4px;border:1px solid #eef2f7;border-radius:8px;min-height:30px;"></div>
                             <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;max-height:80px;overflow-y:auto;padding:4px;border:1px solid #eef2f7;border-radius:8px;">
                                 ${skillBtns}
                             </div>
@@ -494,6 +504,7 @@ const AlchemyModule = {
             document.getElementById('alNewPetDodge').value = '';
             document.getElementById('alNewPetGrowth').value = '';
             document.getElementById('alNewPetSkills').value = '';
+            document.getElementById('alNewPetSkillTags').innerHTML = '';
             document.getElementById('alNewPetRare').checked = false;
             document.getElementById('alNewPetType').value = '';
             document.getElementById('alAddPetModal').classList.add('show');
@@ -513,16 +524,27 @@ const AlchemyModule = {
             if (!type) return;
             document.getElementById('alNewPetName').value = name;
             document.getElementById('alNewPetSkills').value = type.mustSkills.join(',');
-            // 自动设置技能数
-            const count = type.mustSkills.length;
-            document.getElementById('alNewPetSkillCount').value = count;
+            // 触发技能标签更新
+            document.getElementById('alNewPetSkills').dispatchEvent(new Event('input'));
+        });
+
+        // ===== 技能输入实时更新标签 =====
+        document.getElementById('alNewPetSkills').addEventListener('input', function() {
+            const container = document.getElementById('alNewPetSkillTags');
+            const mustSkills = AlchemyModule.getMustSkills(document.getElementById('alNewPetName').value.trim());
+            const skills = this.value.split(',').map(s => s.trim()).filter(s => s);
+            let html = '';
+            for (let skill of skills) {
+                const isMust = mustSkills.includes(skill);
+                html += `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.65rem;margin:2px;background:${isMust ? '#f0d060' : '#e8eef5'};color:${isMust ? '#1f344b' : '#0a1a2a'};border:1px solid ${isMust ? '#dbbd7c' : '#d0dce8'};">${skill}${isMust ? ' 🟡' : ''}</span>`;
+            }
+            container.innerHTML = html || '<span style="color:#aaa;font-size:0.65rem;">输入技能后自动识别必带技能 🟡</span>';
         });
 
         // ===== 技能快速选择按钮 =====
         container.addEventListener('click', function(e) {
             const btn = e.target.closest('.al-skill-quick-btn');
             if (!btn) return;
-            // 如果是技能库按钮（有 data-skill）
             if (btn.dataset.skill) {
                 const skill = btn.dataset.skill;
                 const input = document.getElementById('alNewPetSkills');
@@ -531,8 +553,8 @@ const AlchemyModule = {
                 if (!skills.includes(skill)) {
                     skills.push(skill);
                     input.value = skills.join(',');
+                    input.dispatchEvent(new Event('input'));
                 }
-                // 按钮反馈
                 btn.style.background = '#4CAF50';
                 btn.style.color = '#fff';
                 setTimeout(() => {
@@ -541,11 +563,9 @@ const AlchemyModule = {
                 }, 300);
                 return;
             }
-            // 如果是技能数快速按钮
             if (btn.dataset.value !== undefined) {
                 const val = btn.dataset.value;
                 document.getElementById('alNewPetSkillCount').value = val;
-                // 按钮高亮反馈
                 document.querySelectorAll('.al-skill-quick-btn[data-value]').forEach(b => {
                     b.style.background = '#f0f4f8';
                     b.style.color = '#0a1a2a';
@@ -629,6 +649,14 @@ const AlchemyModule = {
             if (!pet1Id || !pet2Id) { alert('请选择两只胚子！'); return; }
             if (pet1Id === pet2Id) { alert('请选择不同的胚子！'); return; }
             AlchemyModule.runSimulation(pet1Id, pet2Id);
+        });
+
+        // ===== 重置合成模拟 =====
+        document.getElementById('alResetSimBtn').addEventListener('click', function() {
+            document.getElementById('alSimPet1').value = '';
+            document.getElementById('alSimPet2').value = '';
+            document.getElementById('alSimResult').innerHTML = '💡 选择两只胚子后点击「模拟合成」';
+            document.getElementById('alSimResult').style.color = '#5a7a94';
         });
 
         // ===== 记录炼妖 =====
@@ -720,8 +748,12 @@ const AlchemyModule = {
 
         let html = '';
         for (let p of this.pets) {
+            const mustSkills = this.getMustSkills(p.name);
             const rareText = p.isRare ? '⭐' : '';
-            const skillsText = p.skills && p.skills.length > 0 ? p.skills.join('、') : '无';
+            const skillsText = p.skills && p.skills.length > 0 ? p.skills.map(s => {
+                const isMust = mustSkills.includes(s);
+                return isMust ? `<span style="color:#dbbd7c;font-weight:700;">${s}🟡</span>` : s;
+            }).join('、') : '无';
             html += `
                 <div class="pet-item" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid #f0f4f8;font-size:0.75rem;flex-wrap:wrap;">
                     <span style="font-weight:600;min-width:50px;">${p.name}</span>
@@ -804,7 +836,7 @@ const AlchemyModule = {
     },
 
     // ============================================================
-    //  合成模拟核心
+    //  合成模拟核心（优化版）
     // ============================================================
     runSimulation(pet1Id, pet2Id) {
         const pet1 = this.pets.find(p => p.id === pet1Id);
@@ -813,35 +845,102 @@ const AlchemyModule = {
 
         const result = document.getElementById('alSimResult');
 
-        const resultName = pet1.name;
-        const petTypeInfo = this.petTypes[resultName] || { mustSkills: [] };
-        const mustSkills = petTypeInfo.mustSkills || [];
+        // 确定结果宠物（随机取一个作为造型）
+        const resultName = Math.random() > 0.5 ? pet1.name : pet2.name;
 
-        const allSkills = [...pet1.skills, ...pet2.skills];
-        const removedSkills = mustSkills.filter(skill => !allSkills.includes(skill));
+        // 获取结果宠物的必带技能
+        const mustSkills = this.getMustSkills(resultName);
 
-        const skillPool = [...new Set(allSkills)];
+        // 所有技能池（父母技能 + 必带技能）
+        const allSkills = [...new Set([...pet1.skills, ...pet2.skills, ...mustSkills])];
 
-        const totalSkills = pet1.skillCount + pet2.skillCount;
-        const minResult = Math.floor(totalSkills * 0.5) + mustSkills.length;
-        const maxResult = Math.min(Math.floor(totalSkills * 0.7) + mustSkills.length, 12);
+        // 统计每个技能的来源
+        const skillSources = {};
+        for (let skill of allSkills) {
+            const fromPet1 = pet1.skills.includes(skill);
+            const fromPet2 = pet2.skills.includes(skill);
+            const isMust = mustSkills.includes(skill);
+            const isRemovedMust = isMust && !fromPet1 && !fromPet2;
+            skillSources[skill] = { fromPet1, fromPet2, isMust, isRemovedMust };
+        }
 
+        // 计算继承概率
         const skillProb = {};
-        for (let skill of skillPool) {
-            let count = 0;
-            if (pet1.skills.includes(skill)) count++;
-            if (pet2.skills.includes(skill)) count++;
-            if (count === 2) skillProb[skill] = 0.75;
-            else if (count === 1) skillProb[skill] = 0.45;
-            else skillProb[skill] = 0.2;
+        for (let [skill, source] of Object.entries(skillSources)) {
+            let prob = 0;
+            const count = (source.fromPet1 ? 1 : 0) + (source.fromPet2 ? 1 : 0);
+            if (source.isMust && !source.isRemovedMust) {
+                // 必带技能且没有被垫书打掉 → 必出
+                prob = 1.0;
+            } else if (source.isRemovedMust) {
+                // 必带技能被打掉了 → 作为普通技能参与
+                prob = 0.30;
+            } else if (count === 2) {
+                // 父母共有 → 高概率
+                prob = 0.70;
+            } else if (count === 1) {
+                // 单方有 → 中等概率
+                prob = 0.40;
+            } else {
+                prob = 0.15;
+            }
+            skillProb[skill] = prob;
         }
 
-        for (let skill of removedSkills) {
-            skillProb[skill] = 0.35;
+        // 计算预计技能数
+        const totalSkillCount = pet1.skillCount + pet2.skillCount;
+        const baseSkills = Math.floor(totalSkillCount * 0.5);
+        const bonusSkills = Math.floor(totalSkillCount * 0.2);
+        const minResult = Math.max(mustSkills.length, baseSkills);
+        const maxResult = Math.min(Math.floor(totalSkillCount * 0.7), 12);
+
+        // 模拟多次，取平均
+        let avgCount = 0;
+        let bestSkills = [];
+        let worstSkills = [];
+        let allSimResults = [];
+
+        for (let sim = 0; sim < 50; sim++) {
+            const selected = [];
+            const available = Object.entries(skillProb);
+            // 必带技能优先
+            for (let [skill, prob] of available) {
+                if (prob === 1.0 && !selected.includes(skill)) {
+                    selected.push(skill);
+                }
+            }
+            // 其他技能按概率抽取
+            for (let [skill, prob] of available) {
+                if (prob < 1.0 && Math.random() < prob && !selected.includes(skill) && selected.length < 12) {
+                    selected.push(skill);
+                }
+            }
+            // 随机打乱顺序
+            selected.sort(() => Math.random() - 0.5);
+            // 限制最大技能数
+            while (selected.length > 12) selected.pop();
+            avgCount += selected.length;
+            allSimResults.push(selected);
         }
 
-        const sorted = Object.entries(skillProb).sort((a, b) => b[1] - a[1]);
+        avgCount = Math.round(avgCount / 50);
 
+        // 找最佳和最差结果
+        allSimResults.sort((a, b) => a.length - b.length);
+        worstSkills = allSimResults[0] || [];
+        bestSkills = allSimResults[allSimResults.length - 1] || [];
+
+        // 计算最可能的技能组合（出现频率最高的技能）
+        const skillFreq = {};
+        for (let sim of allSimResults) {
+            for (let skill of sim) {
+                skillFreq[skill] = (skillFreq[skill] || 0) + 1;
+            }
+        }
+        const sortedSkills = Object.entries(skillFreq).sort((a, b) => b[1] - a[1]);
+        const mostLikelySkills = sortedSkills.slice(0, Math.min(8, sortedSkills.length)).map(s => s[0]);
+
+        // 生成结果HTML
         let html = `
             <div style="font-weight:600;color:#1f3b53;margin-bottom:6px;">🔮 模拟结果</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -857,43 +956,56 @@ const AlchemyModule = {
                 </div>
                 <div style="background:#e8f0e8;border-radius:8px;padding:6px 10px;text-align:center;border:1px solid #5f8f5f;">
                     <div style="font-size:0.6rem;color:#5a7a94;">预计结果</div>
-                    <div style="font-weight:700;color:#2d6b2d;font-size:1.1rem;">${minResult}-${maxResult}技能</div>
+                    <div style="font-weight:700;color:#2d6b2d;font-size:1.1rem;">${avgCount}技能</div>
                     <div style="font-size:0.6rem;color:#5a7a94;">${resultName}</div>
                 </div>
             </div>
-            <div style="font-size:0.75rem;color:#5a7a94;margin-bottom:6px;">📊 技能继承概率（前10个）</div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                <div style="background:#f5f8fc;border-radius:8px;padding:6px 10px;border:1px solid #dce5ef;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">最可能技能</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+                        ${mostLikelySkills.map(s => {
+                            const isMust = mustSkills.includes(s);
+                            return `<span style="padding:1px 6px;border-radius:8px;font-size:0.65rem;background:${isMust ? '#f0d060' : '#e8eef5'};border:1px solid ${isMust ? '#dbbd7c' : '#d0dce8'};">${s}</span>`;
+                        }).join('') || '<span style="color:#aaa;font-size:0.65rem;">无</span>'}
+                    </div>
+                </div>
+                <div style="background:#f5f8fc;border-radius:8px;padding:6px 10px;border:1px solid #dce5ef;">
+                    <div style="font-size:0.6rem;color:#5a7a94;">技能范围</div>
+                    <div style="font-weight:700;color:#1f3b53;font-size:1rem;">${minResult} - ${maxResult} 技能</div>
+                    <div style="font-size:0.6rem;color:#5a7a94;">基础 ${baseSkills} + 浮动 ${bonusSkills}</div>
+                </div>
+            </div>
+            <div style="font-size:0.75rem;color:#5a7a94;margin-bottom:4px;">📊 技能继承概率</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px;">
         `;
 
-        for (let i = 0; i < Math.min(10, sorted.length); i++) {
-            const [skill, prob] = sorted[i];
-            const color = prob >= 0.7 ? '#2d6b2d' : prob >= 0.4 ? '#b48b3a' : '#5a7a94';
+        const sortedProb = Object.entries(skillProb).sort((a, b) => b[1] - a[1]);
+        for (let i = 0; i < Math.min(12, sortedProb.length); i++) {
+            const [skill, prob] = sortedProb[i];
+            const color = prob >= 0.8 ? '#2d6b2d' : prob >= 0.5 ? '#b48b3a' : '#5a7a94';
+            const isMust = mustSkills.includes(skill);
             html += `
-                <span style="background:white;border:1px solid #dce5ef;border-radius:12px;padding:2px 10px;font-size:0.7rem;">
+                <span style="background:white;border:1px solid #dce5ef;border-radius:12px;padding:2px 8px;font-size:0.65rem;">
                     ${skill}
+                    ${isMust ? '🟡' : ''}
                     <span style="color:${color};font-weight:700;">${Math.round(prob * 100)}%</span>
                 </span>
             `;
         }
 
-        if (removedSkills.length > 0) {
-            html += `
-                <div style="width:100%;margin-top:4px;font-size:0.65rem;color:#5a7a94;">
-                    💡 已打掉必带技能：${removedSkills.join('、')}（已加入技能池）
-                </div>
-            `;
-        }
+        html += `</div>`;
 
         if (mustSkills.length > 0) {
             html += `
-                <div style="width:100%;margin-top:4px;font-size:0.65rem;color:#5a7a94;">
-                    📌 ${resultName}必带技能：${mustSkills.join('、')}（未打掉则必出）
+                <div style="margin-top:6px;font-size:0.65rem;color:#5a7a94;">
+                    📌 ${resultName}必带技能：${mustSkills.join('、')}（🟡标记，未打掉则必出）
                 </div>
             `;
         }
 
-        html += `</div>`;
         result.innerHTML = html;
+        result.style.color = '#1a1a2e';
     }
 };
 
