@@ -1,6 +1,7 @@
 // ============================================================
-//  🧬 炼妖助手模块 - 完整版
+//  🧬 炼妖助手模块 - 完整版 v2
 //  功能：胚子管理 + 炼妖记录 + 技能模拟 + 统计看板
+//  优化：图鉴向导添加胚子 + 全部资质字段 + 技能快速选择
 // ============================================================
 const AlchemyModule = {
     id: 'alchemy',
@@ -52,24 +53,23 @@ const AlchemyModule = {
         '吸血', '高级吸血', '夜舞倾城', '水攻', '法术防御',
         '反震', '高级反震', '感知', '高级感知', '驱鬼', '高级驱鬼',
         '毒', '高级毒', '永恒', '高级永恒', '冥思', '高级冥思',
-        '慧根', '高级慧根', '再生', '高级再生', '神迹', '高级神迹',
+        '慧根', '高级慧根', '神迹', '高级神迹',
         '精神集中', '高级精神集中', '否定信仰', '高级否定信仰',
     ],
 
     // ============================================================
     //  生命周期
     // ============================================================
-        init() {
-            this.loadData();
-            this.buildUI();
-            this.bindEvents();
-            App.register(this);
-            // ✅ 延迟渲染，确保容器可见后再填充内容
-            setTimeout(() => {
-                this.render();
-            }, 200);
-            setTimeout(() => this.applyUISettings(), 350);
-        },
+    init() {
+        this.loadData();
+        this.buildUI();
+        this.bindEvents();
+        App.register(this);
+        setTimeout(() => {
+            this.render();
+        }, 200);
+        setTimeout(() => this.applyUISettings(), 350);
+    },
 
     render() {
         this.renderStats();
@@ -153,6 +153,16 @@ const AlchemyModule = {
     buildUI() {
         const container = document.getElementById('alchemyContainer');
         if (!container) return;
+
+        // 生成图鉴下拉选项
+        const petTypeOptions = Object.keys(this.petTypes).map(name =>
+            `<option value="${name}">${name}（${this.petTypes[name].mustSkills.join('、')}）</option>`
+        ).join('');
+
+        // 生成技能快速选择按钮
+        const skillBtns = this.skillLibrary.map(skill =>
+            `<button class="al-skill-quick-btn" data-skill="${skill}" style="padding:2px 8px;border-radius:12px;border:1px solid #d0dce8;background:#f5f8fc;cursor:pointer;font-size:0.6rem;margin:2px;">${skill}</button>`
+        ).join('');
 
         container.innerHTML = `
             <!-- 界面设置 -->
@@ -255,36 +265,101 @@ const AlchemyModule = {
                 </div>
             </div>
 
-            <!-- 弹窗：添加胚子 -->
+            <!-- 弹窗：添加胚子（向导版） -->
             <div class="modal-overlay" id="alAddPetModal">
-                <div class="modal-box" style="max-width:480px;">
+                <div class="modal-box" style="max-width:560px;max-height:90vh;overflow-y:auto;">
                     <h3>➕ 添加胚子</h3>
-                    <div class="modal-desc">输入胚子信息，用于炼妖记录和合成模拟</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
+                    <div class="modal-desc">从图鉴选择自动填充，或手动输入</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;">
+
+                        <!-- 图鉴选择 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;grid-column:1/-1;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📖 从图鉴选择</label>
+                            <select id="alNewPetType" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;background:white;">
+                                <option value="">— 手动输入 —</option>
+                                ${petTypeOptions}
+                            </select>
+                        </div>
+
+                        <!-- 宠物名 -->
                         <div style="display:flex;flex-direction:column;gap:3px;grid-column:1/-1;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">🐾 宠物名 *</label>
                             <input type="text" id="alNewPetName" placeholder="如：吸血鬼" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;">
                         </div>
+
+                        <!-- 技能数 -->
                         <div style="display:flex;flex-direction:column;gap:3px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📊 技能数</label>
-                            <input type="number" id="alNewPetSkillCount" min="0" max="12" placeholder="5" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                            <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">
+                                <button class="al-skill-quick-btn" data-value="0" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">0</button>
+                                <button class="al-skill-quick-btn" data-value="3" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">3</button>
+                                <button class="al-skill-quick-btn" data-value="4" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">4</button>
+                                <button class="al-skill-quick-btn" data-value="5" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">5</button>
+                                <button class="al-skill-quick-btn" data-value="6" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">6</button>
+                                <button class="al-skill-quick-btn" data-value="7" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">7</button>
+                                <button class="al-skill-quick-btn" data-value="8" style="padding:2px 8px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;cursor:pointer;font-size:0.6rem;">8</button>
+                                <input type="number" id="alNewPetSkillCount" min="0" max="12" placeholder="5" style="width:50px;padding:4px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.75rem;text-align:center;">
+                            </div>
                         </div>
+
+                        <!-- 成本 -->
                         <div style="display:flex;flex-direction:column;gap:3px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">💰 成本(万)</label>
                             <input type="number" id="alNewPetCost" min="0" step="0.1" placeholder="50" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
                         </div>
+
+                        <!-- 攻击 -->
                         <div style="display:flex;flex-direction:column;gap:3px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚔️ 攻击</label>
                             <input type="number" id="alNewPetAttack" min="0" placeholder="1450" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
                         </div>
+
+                        <!-- 防御 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">🛡️ 防御</label>
+                            <input type="number" id="alNewPetDefense" min="0" placeholder="1200" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+
+                        <!-- 体力 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">❤️ 体力</label>
+                            <input type="number" id="alNewPetHealth" min="0" placeholder="1100" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+
+                        <!-- 法力 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">💙 法力</label>
+                            <input type="number" id="alNewPetMana" min="0" placeholder="1000" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+
+                        <!-- 速度 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">💨 速度</label>
+                            <input type="number" id="alNewPetSpeed" min="0" placeholder="1100" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+
+                        <!-- 躲避 -->
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">🌀 躲避</label>
+                            <input type="number" id="alNewPetDodge" min="0" placeholder="900" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                        </div>
+
+                        <!-- 成长 -->
                         <div style="display:flex;flex-direction:column;gap:3px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📈 成长</label>
                             <input type="number" id="alNewPetGrowth" step="0.001" placeholder="1.254" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
                         </div>
+
+                        <!-- 技能列表 -->
                         <div style="display:flex;flex-direction:column;gap:3px;grid-column:1/-1;">
-                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📜 技能列表（用逗号分隔）</label>
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">📜 技能列表</label>
                             <input type="text" id="alNewPetSkills" placeholder="如：鬼魂术,夜战,弱点雷" style="padding:6px 10px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;">
+                            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;max-height:80px;overflow-y:auto;padding:4px;border:1px solid #eef2f7;border-radius:8px;">
+                                ${skillBtns}
+                            </div>
                         </div>
+
+                        <!-- 稀有 -->
                         <div style="display:flex;align-items:center;gap:8px;grid-column:1/-1;padding:4px 0;">
                             <input type="checkbox" id="alNewPetRare">
                             <label style="font-size:0.8rem;color:#1f3b53;">⭐ 稀有宠物</label>
@@ -412,9 +487,15 @@ const AlchemyModule = {
             document.getElementById('alNewPetSkillCount').value = '';
             document.getElementById('alNewPetCost').value = '';
             document.getElementById('alNewPetAttack').value = '';
+            document.getElementById('alNewPetDefense').value = '';
+            document.getElementById('alNewPetHealth').value = '';
+            document.getElementById('alNewPetMana').value = '';
+            document.getElementById('alNewPetSpeed').value = '';
+            document.getElementById('alNewPetDodge').value = '';
             document.getElementById('alNewPetGrowth').value = '';
             document.getElementById('alNewPetSkills').value = '';
             document.getElementById('alNewPetRare').checked = false;
+            document.getElementById('alNewPetType').value = '';
             document.getElementById('alAddPetModal').classList.add('show');
         });
         document.getElementById('alAddPetCancel').addEventListener('click', function() {
@@ -423,12 +504,69 @@ const AlchemyModule = {
         document.getElementById('alAddPetModal').addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('show');
         });
+
+        // ===== 图鉴选择自动填充 =====
+        document.getElementById('alNewPetType').addEventListener('change', function() {
+            const name = this.value;
+            if (!name) return;
+            const type = AlchemyModule.petTypes[name];
+            if (!type) return;
+            document.getElementById('alNewPetName').value = name;
+            document.getElementById('alNewPetSkills').value = type.mustSkills.join(',');
+            // 自动设置技能数
+            const count = type.mustSkills.length;
+            document.getElementById('alNewPetSkillCount').value = count;
+        });
+
+        // ===== 技能快速选择按钮 =====
+        container.addEventListener('click', function(e) {
+            const btn = e.target.closest('.al-skill-quick-btn');
+            if (!btn) return;
+            // 如果是技能库按钮（有 data-skill）
+            if (btn.dataset.skill) {
+                const skill = btn.dataset.skill;
+                const input = document.getElementById('alNewPetSkills');
+                const current = input.value.trim();
+                const skills = current ? current.split(',').map(s => s.trim()).filter(s => s) : [];
+                if (!skills.includes(skill)) {
+                    skills.push(skill);
+                    input.value = skills.join(',');
+                }
+                // 按钮反馈
+                btn.style.background = '#4CAF50';
+                btn.style.color = '#fff';
+                setTimeout(() => {
+                    btn.style.background = '#f5f8fc';
+                    btn.style.color = '#0a1a2a';
+                }, 300);
+                return;
+            }
+            // 如果是技能数快速按钮
+            if (btn.dataset.value !== undefined) {
+                const val = btn.dataset.value;
+                document.getElementById('alNewPetSkillCount').value = val;
+                // 按钮高亮反馈
+                document.querySelectorAll('.al-skill-quick-btn[data-value]').forEach(b => {
+                    b.style.background = '#f0f4f8';
+                    b.style.color = '#0a1a2a';
+                });
+                btn.style.background = '#4CAF50';
+                btn.style.color = '#fff';
+            }
+        });
+
+        // ===== 保存胚子 =====
         document.getElementById('alAddPetConfirm').addEventListener('click', function() {
             const name = document.getElementById('alNewPetName').value.trim();
             if (!name) { alert('请输入宠物名！'); return; }
             const skillCount = parseInt(document.getElementById('alNewPetSkillCount').value) || 0;
             const cost = parseFloat(document.getElementById('alNewPetCost').value) || 0;
             const attack = parseInt(document.getElementById('alNewPetAttack').value) || 0;
+            const defense = parseInt(document.getElementById('alNewPetDefense').value) || 0;
+            const health = parseInt(document.getElementById('alNewPetHealth').value) || 0;
+            const mana = parseInt(document.getElementById('alNewPetMana').value) || 0;
+            const speed = parseInt(document.getElementById('alNewPetSpeed').value) || 0;
+            const dodge = parseInt(document.getElementById('alNewPetDodge').value) || 0;
             const growth = parseFloat(document.getElementById('alNewPetGrowth').value) || 1.2;
             const skillsStr = document.getElementById('alNewPetSkills').value.trim();
             const skills = skillsStr ? skillsStr.split(',').map(s => s.trim()).filter(s => s) : [];
@@ -440,6 +578,11 @@ const AlchemyModule = {
                 skillCount,
                 cost,
                 attack,
+                defense,
+                health,
+                mana,
+                speed,
+                dodge,
                 growth,
                 skills,
                 isRare,
@@ -580,14 +723,16 @@ const AlchemyModule = {
             const rareText = p.isRare ? '⭐' : '';
             const skillsText = p.skills && p.skills.length > 0 ? p.skills.join('、') : '无';
             html += `
-                <div class="pet-item" style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f4f8;font-size:0.8rem;flex-wrap:wrap;">
-                    <span style="font-weight:600;min-width:60px;">${p.name}</span>
-                    <span style="color:#5a7a94;min-width:40px;">${rareText} ${p.skillCount}技能</span>
-                    <span style="color:#5a7a94;min-width:50px;">⚔️${p.attack || '-'}</span>
-                    <span style="color:#5a7a94;min-width:50px;">📈${p.growth || '-'}</span>
-                    <span style="color:#5a7a94;min-width:50px;">💰${p.cost || 0}万</span>
-                    <span style="color:#5a7a94;font-size:0.65rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">技能:${skillsText}</span>
-                    <button class="al-del-pet" data-id="${p.id}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
+                <div class="pet-item" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid #f0f4f8;font-size:0.75rem;flex-wrap:wrap;">
+                    <span style="font-weight:600;min-width:50px;">${p.name}</span>
+                    <span style="color:#5a7a94;min-width:32px;">${rareText} ${p.skillCount}技</span>
+                    <span style="color:#5a7a94;min-width:40px;">⚔️${p.attack || '-'}</span>
+                    <span style="color:#5a7a94;min-width:40px;">🛡️${p.defense || '-'}</span>
+                    <span style="color:#5a7a94;min-width:40px;">💨${p.speed || '-'}</span>
+                    <span style="color:#5a7a94;min-width:44px;">📈${p.growth || '-'}</span>
+                    <span style="color:#5a7a94;min-width:40px;">💰${p.cost || 0}万</span>
+                    <span style="color:#5a7a94;font-size:0.6rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">技能:${skillsText}</span>
+                    <button class="al-del-pet" data-id="${p.id}" style="background:#f5d0d0;border:none;border-radius:30px;padding:1px 10px;font-size:0.6rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
                 </div>
             `;
         }
@@ -610,16 +755,16 @@ const AlchemyModule = {
             const pc = r.profit >= 0 ? 'profit-positive' : 'profit-negative';
             const profitText = r.profit >= 0 ? `+${r.profit.toFixed(1)}万` : `${r.profit.toFixed(1)}万`;
             html += `
-                <div class="record-item" style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f4f8;font-size:0.8rem;flex-wrap:wrap;">
-                    <span style="color:#5a7a94;min-width:70px;">${r.date || '未知'}</span>
-                    <span style="font-weight:600;min-width:80px;">${r.pet1?.name || '?'} + ${r.pet2?.name || '?'}</span>
-                    <span style="color:#5a7a94;min-width:40px;">→ ${r.resultName}</span>
-                    <span style="color:#5a7a94;min-width:40px;">${r.resultSkills}技</span>
-                    <span style="color:#5a7a94;min-width:50px;">💰${r.cost?.toFixed(1) || 0}万</span>
-                    <span style="color:#5a7a94;min-width:50px;">📊${r.income?.toFixed(1) || 0}万</span>
-                    <span class="${pc}" style="font-weight:700;min-width:60px;">${profitText}</span>
-                    ${r.note ? `<span style="color:#5a7a94;font-size:0.7rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.note}</span>` : ''}
-                    <button class="al-del-record" data-id="${r.id}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
+                <div class="record-item" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid #f0f4f8;font-size:0.75rem;flex-wrap:wrap;">
+                    <span style="color:#5a7a94;min-width:60px;">${r.date || '未知'}</span>
+                    <span style="font-weight:600;min-width:70px;">${r.pet1?.name || '?'} + ${r.pet2?.name || '?'}</span>
+                    <span style="color:#5a7a94;min-width:32px;">→ ${r.resultName}</span>
+                    <span style="color:#5a7a94;min-width:32px;">${r.resultSkills}技</span>
+                    <span style="color:#5a7a94;min-width:40px;">💰${r.cost?.toFixed(1) || 0}万</span>
+                    <span style="color:#5a7a94;min-width:40px;">📊${r.income?.toFixed(1) || 0}万</span>
+                    <span class="${pc}" style="font-weight:700;min-width:50px;">${profitText}</span>
+                    ${r.note ? `<span style="color:#5a7a94;font-size:0.65rem;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.note}</span>` : ''}
+                    <button class="al-del-record" data-id="${r.id}" style="background:#f5d0d0;border:none;border-radius:30px;padding:1px 10px;font-size:0.6rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
                 </div>
             `;
         }
@@ -627,7 +772,6 @@ const AlchemyModule = {
     },
 
     renderSkillSimulator() {
-        // 更新下拉列表
         const select1 = document.getElementById('alSimPet1');
         const select2 = document.getElementById('alSimPet2');
         if (!select1 || !select2) return;
@@ -669,41 +813,33 @@ const AlchemyModule = {
 
         const result = document.getElementById('alSimResult');
 
-        // 获取结果宠物的必带技能
         const resultName = pet1.name;
         const petTypeInfo = this.petTypes[resultName] || { mustSkills: [] };
         const mustSkills = petTypeInfo.mustSkills || [];
 
-        // 检查父母身上哪些必带技能被打掉了
         const allSkills = [...pet1.skills, ...pet2.skills];
         const removedSkills = mustSkills.filter(skill => !allSkills.includes(skill));
 
-        // 技能池
         const skillPool = [...new Set(allSkills)];
 
-        // 计算预计技能数
         const totalSkills = pet1.skillCount + pet2.skillCount;
         const minResult = Math.floor(totalSkills * 0.5) + mustSkills.length;
         const maxResult = Math.min(Math.floor(totalSkills * 0.7) + mustSkills.length, 12);
 
-        // 计算每个技能的继承概率（简化版）
         const skillProb = {};
         for (let skill of skillPool) {
             let count = 0;
             if (pet1.skills.includes(skill)) count++;
             if (pet2.skills.includes(skill)) count++;
-            // 共有技能概率更高
             if (count === 2) skillProb[skill] = 0.75;
             else if (count === 1) skillProb[skill] = 0.45;
             else skillProb[skill] = 0.2;
         }
 
-        // 已打掉的必带技能作为普通技能参与
         for (let skill of removedSkills) {
             skillProb[skill] = 0.35;
         }
 
-        // 排序
         const sorted = Object.entries(skillProb).sort((a, b) => b[1] - a[1]);
 
         let html = `
