@@ -59,14 +59,17 @@ const AlchemyModule = {
     // ============================================================
     //  生命周期
     // ============================================================
-    init() {
-        this.loadData();
-        this.buildUI();
-        this.bindEvents();
-        App.register(this);
-        this.render();
-        setTimeout(() => this.applyUISettings(), 150);
-    },
+        init() {
+            this.loadData();
+            this.buildUI();
+            this.bindEvents();
+            App.register(this);
+            // ✅ 延迟渲染，确保容器可见后再填充内容
+            setTimeout(() => {
+                this.render();
+            }, 200);
+            setTimeout(() => this.applyUISettings(), 350);
+        },
 
     render() {
         this.renderStats();
