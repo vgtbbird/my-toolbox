@@ -903,7 +903,7 @@ extractPart(ocrText) {
                         <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
                             <span style="font-size:0.8rem;color:#1f3b53;">📷 截图识别</span>
                             <button class="btn-small" id="eqOcrBtn" style="background:#6b8baa;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">📤 上传截图</button>
-                            <span style="font-size:0.65rem;color:#5a7a94;">支持 JPG/PNG，拖拽或点击上传</span>
+                            <span style="font-size:0.65rem;color:#5a7a94;">支持 JPG/PNG，拖拽、点击上传 或 Ctrl+V 粘贴</span>
                         </div>
                         <div id="eqOcrResult" style="font-size:0.75rem;color:#5a7a94;margin-top:4px;min-height:20px;">点击上传装备截图，自动识别属性</div>
                         <input type="file" id="eqOcrFileInput" accept="image/*" style="display:none;">
@@ -1303,6 +1303,35 @@ extractPart(ocrText) {
                 }
             });
         }
+
+                // ===== 粘贴图片识别（Ctrl+V） =====
+        document.addEventListener('paste', function(e) {
+            const container = document.getElementById('equipmentQueryContainer');
+            if (!container || !container.closest('.tab-content.active')) return;
+            
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            
+            for (let item of items) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            const imageDataUrl = ev.target.result;
+                            const resultEl = document.getElementById('eqOcrResult');
+                            if (resultEl) {
+                                resultEl.textContent = '📋 检测到粘贴图片，开始识别...';
+                                resultEl.style.color = '#8ab0c8';
+                            }
+                            EquipmentQueryModule.recognizeEquipment(imageDataUrl);
+                        };
+                        reader.readAsDataURL(file);
+                        break;
+                    }
+                }
+            }
+        });
     },
 
     // ============================================================
