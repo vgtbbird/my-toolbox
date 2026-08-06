@@ -1660,6 +1660,15 @@ parseEquipmentText(text) {
             console.log(`✅ 提取到 ${name}: ${val}`);
         }
     }
+    
+    // ✅ 单独提取防御
+if (!allAttrs['防御']) {
+    const defMatch = fullText.match(/防\s*御\s*[+：:]\s*(\d+)/);
+    if (defMatch) {
+        allAttrs['防御'] = parseInt(defMatch[1]);
+        console.log(`✅ 单独提取到 防御: ${allAttrs['防御']}`);
+    }
+}
 
     // 方法二：如果方法一没提取到任何属性，用更宽松的方式
     if (Object.keys(allAttrs).length === 0) {
