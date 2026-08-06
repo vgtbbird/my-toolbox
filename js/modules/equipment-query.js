@@ -522,6 +522,40 @@ extractPart(ocrText) {
     }
     return null;
 },
+    // ===== OCR常见错误修正 =====
+    correctOcrErrors(text) {
+        const corrections = {
+            // 装备属性关键词修正
+            '合中': '命中',
+            '合 中': '命中',
+            '命 中': '命中',
+            '人 力': '耐力',
+            '人 为': '耐力',
+            '耐 力': '耐力',
+            '体 质': '体质',
+            '体 力': '体力',
+            '力 量': '力量',
+            '敏 捷': '敏捷',
+            '魔 力': '魔力',
+            '灵 力': '灵力',
+            '防 御': '防御',
+            '伤 害': '伤害',
+            '耐 久': '耐久',
+            '耐 久 度': '耐久度',
+            // 装备名常见错误
+            '灵 犀 望 月': '灵犀望月',
+            '灵 犀 之 形': '灵犀望月',
+            // 数字修正
+            '＋': '+',
+            '—': '-',
+            '＝': '=',
+        };
+        let corrected = text;
+        for (let [wrong, right] of Object.entries(corrections)) {
+            corrected = corrected.replace(new RegExp(wrong, 'g'), right);
+        }
+        return corrected;
+    },
     // ============================================================
     //  ✅ 人物装备 - 基础主属性数据（已锁定 60-160级）
     // ============================================================
@@ -1434,11 +1468,12 @@ preprocessImage(imageSource) {
     //  📝 解析装备文本
     // ============================================================
 parseEquipmentText(text) {
-    const lines = text.split('\n').map(s => s.trim()).filter(s => s);
+    console.log('原始OCR文本:', text);
+    const correctedText = this.correctOcrErrors(text);
+    console.log('修正后文本:', correctedText);
+    const lines = correctedText.split('\n').map(s => s.trim()).filter(s => s);
     const fullText = lines.join(' ');
-
-    console.log('📝 解析文本:', fullText);
-
+    console.log('解析文本:', fullText);
     const result = {
         name: null,
         level: null,
