@@ -1514,6 +1514,7 @@ parseEquipmentText(text) {
     const lines = correctedText.split('\n').map(s => s.trim()).filter(s => s);
     const fullText = lines.join(' ');
     console.log('解析文本:', fullText);
+
     const result = {
         name: null,
         level: null,
@@ -1542,12 +1543,11 @@ parseEquipmentText(text) {
     // 2. 提取部位
     result.part = this.extractPart(fullText);
 
-    // 3. 提取装备名称（用新的高级模糊匹配）
+    // 3. 提取装备名称
     const matches = this.fuzzyMatchEquipmentAdvanced(fullText);
     if (matches.length > 0) {
         const best = matches[0];
         result.name = best.name;
-        // 补充等级和部位
         if (!result.level && best.info.level) {
             result.level = best.info.level;
         }
@@ -1562,79 +1562,72 @@ parseEquipmentText(text) {
     }
 
     // 4. 提取打造方式
-    if (fullText.includes('强化')) {
+    if (fullText.includes('强化') || fullText.includes('强')) {
         result.craftType = '强化';
-    } else if (fullText.includes('普通')) {
+    } else if (fullText.includes('普通') || fullText.includes('普')) {
         result.craftType = '普通';
     }
 
-// 5. 提取属性值（先尝试常规匹配）
-const attrPatterns = {
-    '伤害': /伤害\s*[+：:]\s*([\d.]+)/,
-    '命中': /命中\s*[+：:]\s*([\d.]+)/,
-    '防御': /防御\s*[+：:]\s*([\d.]+)/,
-    '灵力': /灵力\s*[+：:]\s*([\d.]+)/,
-    '气血': /气血\s*[+：:]\s*([\d.]+)/,
-    '魔法': /魔法\s*[+：:]\s*([\d.]+)/,
-    // ✅ 绿字属性全部支持负值
-    '敏捷': /敏捷\s*[+：:]\s*([-]?[\d.]+)/,
-    '体质': /体质\s*[+：:]\s*([-]?[\d.]+)/,
-    '魔力': /魔力\s*[+：:]\s*([-]?[\d.]+)/,
-    '力量': /力量\s*[+：:]\s*([-]?[\d.]+)/,
-    '耐力': /耐力\s*[+：:]\s*([-]?[\d.]+)/
-};
-for (let [attr, pattern] of Object.entries(attrPatterns)) {
-    const match = fullText.match(pattern);
-    if (match) {
-        const val = parseFloat(match[1]);
-        if (!isNaN(val) && val > 0) {
-            result.attrs[attr] = val;
-        }
-    }
-}
-
-// ✅ 单独处理耐力（OCR可能识别为"耐 力"）
-if (!result.attrs['耐力']) {
-    const match = fullText.match(/耐\s*力\s*[+：:]\s*([\d.]+)/);
-    if (match) {
-        const val = parseFloat(match[1]);
-        if (!isNaN(val) && val > 0) {
-            result.attrs['耐力'] = val;
-        }
-    }
-}
-
-// ✅ 单独处理耐久（OCR可能识别为"耐 久 度 500"）
-if (!result.attrs['耐久']) {
-    const match = fullText.match(/耐\s*久\s*度?\s*([\d.]+)/);
-    if (match) {
-        const val = parseFloat(match[1]);
-        if (!isNaN(val) && val > 0) {
-            result.attrs['耐久'] = val;
-        }
-    }
-}
+    // 5. ✅ 属性提取（支持负值和空格）
+    const attrPatterns = {
+        '伤害': /伤害\s*[+：:]\s*([\d.]+)/,
+        '命中': /命中\s*[+：:]\s*([\d.]+)/,
+        '防御': /防御\s*[+：:]\s*([\d.]+)/,
+        '灵力': /灵力\s*[+：:]\s*([\d.]+)/,
+        '气血': /气血\s*[+：:]\s*([\d.]+)/,
+        '魔法': /魔法\s*[+：:]\s*([\d.]+)/,
+        // 绿字属性支持 + 和 -
+        '敏捷': /敏\s*捷?\s*[+-]?\s*([-]?[\d.]+)/,
+        '体质': /体\s*质?\s*[+-]?\s*([-]?[\d.]+)/,
+        '魔力': /魔\s*力?\s*[+-]?\s*([-]?[\d.]+)/,
+        '力量': /力\s*量?\s*[+-]?\s*([-]?[\d.]+)/,
+        '耐力': /耐\s*力?\s*[+-]?\s*([-]?[\d.]+)/
+    };
 
     for (let [attr, pattern] of Object.entries(attrPatterns)) {
         const match = fullText.match(pattern);
         if (match) {
             const val = parseFloat(match[1]);
-            if (!isNaN(val) && val > 0) {
+            if (!isNaN(val) && val !== 0) {
                 result.attrs[attr] = val;
             }
         }
     }
 
-    // 6. 如果没有匹配到装备名，但识别到了等级和部位，尝试组合查找
+    // 6. ✅ 单独处理耐久
+    if (!result.attrs['耐久']) {
+        const match = fullText.match(/耐久\s*度?\s*([\d.]+)/);
+        if (match) {
+            const val = parseFloat(match[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs['耐久'] = val;
+            }
+        }
+    }
+
+    // 7. ✅ 如果 fullText 匹配不到，尝试用原始文本匹配
+    if (Object.keys(result.attrs).length === 0) {
+        for (let [attr, pattern] of Object.entries(attrPatterns)) {
+            const match = correctedText.match(pattern);
+            if (match) {
+                const val = parseFloat(match[1]);
+                if (!isNaN(val) && val !== 0) {
+                    result.attrs[attr] = val;
+                }
+            }
+        }
+    }
+
+    // 8. 组合查找（等级+部位）
     if (!result.name && result.level && result.part) {
         const levelStr = String(result.level);
         const partMap = {
-            '武器': ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒'],
-            '衣服': ['衣', '袍', '裙', '甲', '铠'],
-            '项链': ['链', '坠', '佩', '环', '珠'],
-            '帽子': ['帽', '冠', '盔'],
-            '腰带': ['带', '腰', '束'],
-            '鞋子': ['鞋', '靴', '履']
+            '武器': ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒', '弓', '弩'],
+            '衣服': ['衣', '袍', '裙', '甲', '铠', '衫', '服'],
+            '项链': ['链', '坠', '佩', '环', '珠', '璎珞', '项圈'],
+            '帽子': ['帽', '冠', '盔', '头冠', '发冠'],
+            '腰带': ['带', '腰', '束', '绦', '玉带'],
+            '鞋子': ['鞋', '靴', '履', '踏', '云履']
         };
         const keywords = partMap[result.part] || [];
         for (let kw of keywords) {
