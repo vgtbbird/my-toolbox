@@ -559,6 +559,16 @@ extractPart(ocrText) {
     '防 御': '防御',
     '气血': '气血',
     '气 血': '气血',
+    '放力': '魔力',
+    '放 力': '魔力',
+    '谭力': '魔力',
+    '谭 力': '魔力',
+    '力量': '力量',
+    '力 量': '力量',
+    '耐力': '耐力',
+    '耐 力': '耐力',
+    '体质': '体质',
+    '体 质': '体质',
     // 负号修正
     '—': '-',
     '－': '-',
@@ -1596,7 +1606,7 @@ parseEquipmentText(text) {
 
      for (let [attr, pattern] of Object.entries(attrPatterns)) {
             const match = fullText.match(pattern);
-            console.log(`🔍 匹配 ${attr}:`, match);  // ← 加这行
+            console.log(`🔍 匹配 ${attr}:`, match);  
             if (match) {
                 const val = parseFloat(match[1]);
                 if (!isNaN(val) && val !== 0) {
@@ -1613,6 +1623,33 @@ if (Object.keys(result.attrs).length === 0) {
             const val = parseFloat(match[1]);
             if (!isNaN(val) && val !== 0) {
                 result.attrs[attr] = val;
+            }
+        }
+    }
+}
+
+    // ✅ 统一提取所有绿字属性（支持各种识别错误）
+const greenAttrMap = {
+    '体质': /[体休]\\s*质?\\s*[+-]?\\s*([-]?[\\d.]+)/,
+    '魔力': /[魔放谭]\\s*力?\\s*[+-]?\\s*([-]?[\\d.]+)/,
+    '力量': /力\\s*量?\\s*[+-]?\\s*([-]?[\\d.]+)/,
+    '耐力': /[耐奈]\\s*力?\\s*[+-]?\\s*([-]?[\\d.]+)/,
+    '敏捷': /敏\\s*捷?\\s*[+-]?\\s*([-]?[\\d.]+)/
+};
+
+// 从 fullText 中提取所有绿字属性
+const greenMatches = fullText.match(/([体质魔力力量耐力敏捷][^+\\-]*?[+-]\\s*[\\d.]+)/g);
+if (greenMatches) {
+    for (let match of greenMatches) {
+        // 判断是哪个属性
+        for (let [attr, pattern] of Object.entries(greenAttrMap)) {
+            const m = match.match(pattern);
+            if (m) {
+                const val = parseFloat(m[1]);
+                if (!isNaN(val) && val !== 0) {
+                    result.attrs[attr] = val;
+                    break;
+                }
             }
         }
     }
