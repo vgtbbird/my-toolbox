@@ -560,6 +560,9 @@ extractPart(ocrText) {
         // ===== 绿字属性修正 =====
         // 魔力
         '魔 力': '魔力',
+        '大 力': '魔力',
+        '大力': '魔力',
+        '大 力': '魔力',
         '魔 力 ': '魔力',
         '魔力': '魔力',
         '放力': '魔力',        // OCR常见错误
@@ -1669,6 +1672,25 @@ if (!allAttrs['防御']) {
         console.log(`✅ 单独提取到 防御: ${allAttrs['防御']}`);
     }
 }
+    // ✅ 单独提取魔力（OCR 可能识别成 "大力" 或 "大 力"）
+if (!allAttrs['魔力']) {
+    const match = fullText.match(/[大魔]\s*力\s*([+-])\s*(\d+)/);
+    if (match) {
+        const val = parseInt(match[2]);
+        allAttrs['魔力'] = match[1] === '-' ? -val : val;
+        console.log(`✅ 单独提取到 魔力: ${allAttrs['魔力']}`);
+    }
+}
+
+// ✅ 单独提取力量
+if (!allAttrs['力量']) {
+    const match = fullText.match(/力量\s*([+-])\s*(\d+)/);
+    if (match) {
+        const val = parseInt(match[2]);
+        allAttrs['力量'] = match[1] === '-' ? -val : val;
+        console.log(`✅ 单独提取到 力量: ${allAttrs['力量']}`);
+    }
+}
 
     // 方法二：如果方法一没提取到任何属性，用更宽松的方式
     if (Object.keys(allAttrs).length === 0) {
@@ -1701,6 +1723,7 @@ if (!allAttrs['防御']) {
             result.attrs[key] = val;
         }
     }
+    console.log('📦 最终合并到 result.attrs:', result.attrs);
 
     // 6. 组合查找（等级+部位）
     if (!result.name && result.level && result.part) {
