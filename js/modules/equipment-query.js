@@ -340,6 +340,89 @@ const EquipmentQueryModule = {
         '落霞陨星坠': { level: 160, part: '项链' },
     },
 
+      // ============================================================
+//  🔍 模糊匹配方法
+// ============================================================
+
+// 1. 模糊匹配装备名（OCR识别结果模糊匹配装备库）
+fuzzyMatchEquipment(ocrText) {
+    const nameMap = this.equipmentNameMap;
+    const results = [];
+    
+    for (let [name, info] of Object.entries(nameMap)) {
+        let score = 0;
+        const nameChars = name.split('');
+        let matchCount = 0;
+        
+        // 逐字匹配
+        for (let char of nameChars) {
+            if (ocrText.includes(char)) {
+                matchCount++;
+            }
+        }
+        
+        // 匹配度 = 匹配字数 / 总字数
+        score = matchCount / nameChars.length;
+        
+        // 额外加分：等级匹配
+        if (info.level && ocrText.includes(String(info.level))) {
+            score += 0.2;
+        }
+        
+        // 额外加分：部位匹配
+        if (info.part && ocrText.includes(info.part)) {
+            score += 0.15;
+        }
+        
+        // 40%以上匹配度就算
+        if (score >= 0.4) {
+            results.push({ name, info, score });
+        }
+    }
+    
+    // 按分数排序
+    results.sort((a, b) => b.score - a.score);
+    return results;
+},
+
+// 2. 提取等级
+extractLevel(ocrText) {
+    const patterns = [
+        /等级\s*(\d+)/,
+        /(\d+)\s*级/,
+        /(\d+)[\s\n]*级/,
+    ];
+    for (let pattern of patterns) {
+        const match = ocrText.match(pattern);
+        if (match) {
+            const level = parseInt(match[1]);
+            if (level >= 10 && level <= 200) {
+                return level;
+            }
+        }
+    }
+    return null;
+},
+
+// 3. 提取部位
+extractPart(ocrText) {
+    const partMap = {
+        '武器': ['武器', '剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒', '幡', '钺', '戟', '锏', '槊', '弓', '弩', '盾', '神兵', '利器'],
+        '衣服': ['衣服', '衣', '袍', '裙', '甲', '铠甲', '战甲', '长袍', '长裙', '霓裳', '羽衣', '法袍'],
+        '项链': ['项链', '链', '坠', '佩', '环', '珠', '宝玉', '灵佩', '护符', '璎珞', '项圈'],
+        '帽子': ['帽子', '帽', '冠', '盔', '头', '发冠', '头盔', '王冠', '凤冠'],
+        '腰带': ['腰带', '带', '腰', '束', '绦', '环带', '玉带', '金带'],
+        '鞋子': ['鞋子', '鞋', '靴', '履', '足', '踏', '履', '云履', '战靴'],
+    };
+    for (let [part, keywords] of Object.entries(partMap)) {
+        for (let kw of keywords) {
+            if (ocrText.includes(kw)) {
+                return part;
+            }
+        }
+    }
+    return null;
+},
     // ============================================================
     //  ✅ 人物装备 - 基础主属性数据（已锁定 60-160级）
     // ============================================================
@@ -1244,87 +1327,107 @@ preprocessImage(imageSource) {
     // ============================================================
     //  📝 解析装备文本
     // ============================================================
-    parseEquipmentText(text) {
-        const lines = text.split('\n').map(s => s.trim()).filter(s => s);
-        const fullText = lines.join(' ');
+  parseEquipmentText(text) {
+    const lines = text.split('\n').map(s => s.trim()).filter(s => s);
+    const fullText = lines.join(' ');
 
-        console.log('📝 解析文本:', fullText);
+    console.log('📝 解析文本:', fullText);
 
-        const result = {
-            name: null,
-            level: null,
-            part: null,
-            craftType: null,
-            attrs: {}
-        };
+    const result = {
+        name: null,
+        level: null,
+        part: null,
+        craftType: null,
+        attrs: {}
+    };
 
-        // 1. 提取等级
-        const levelMatch = fullText.match(/等级\s*(\d+)/);
-        if (levelMatch) {
-            result.level = parseInt(levelMatch[1]);
+    // 1. 提取等级
+    result.level = this.extractLevel(fullText);
+
+    // 2. 提取部位
+    result.part = this.extractPart(fullText);
+
+    // 3. 提取装备名称（用模糊匹配）
+    const matches = this.fuzzyMatchEquipment(fullText);
+    if (matches.length > 0) {
+        const best = matches[0];
+        result.name = best.name;
+        // 补充等级和部位
+        if (!result.level && best.info.level) {
+            result.level = best.info.level;
         }
+        if (!result.part && best.info.part) {
+            result.part = best.info.part;
+        }
+        console.log(`🔍 模糊匹配: ${best.name} (匹配度: ${Math.round(best.score * 100)}%)`);
+        if (matches.length > 1) {
+            console.log(`  其他候选: ${matches.slice(1, 3).map(m => m.name).join(', ')}`);
+        }
+    }
 
-        // 2. 提取装备名称（从映射表匹配）
-        let foundName = null;
-        let foundLevel = null;
-        let foundPart = null;
+    // 4. 提取打造方式
+    if (fullText.includes('强化')) {
+        result.craftType = '强化';
+    } else if (fullText.includes('普通')) {
+        result.craftType = '普通';
+    }
 
-        const nameKeys = Object.keys(this.equipmentNameMap).sort((a, b) => b.length - a.length);
-        for (let name of nameKeys) {
-            if (fullText.includes(name)) {
-                const info = this.equipmentNameMap[name];
-                if (result.level === info.level || info.level === 0 || !result.level) {
-                    foundName = name;
-                    foundLevel = info.level;
-                    foundPart = info.part;
-                    break;
-                }
+    // 5. 提取属性值
+    const attrPatterns = {
+        '伤害': /伤害[+\s]*(\d+\.?\d*)/,
+        '命中': /命中[+\s]*(\d+\.?\d*)/,
+        '防御': /防御[+\s]*(\d+\.?\d*)/,
+        '灵力': /灵力[+\s]*(\d+\.?\d*)/,
+        '气血': /气血[+\s]*(\d+\.?\d*)/,
+        '魔法': /魔法[+\s]*(\d+\.?\d*)/,
+        '敏捷': /敏捷[+\s]*(\d+\.?\d*)/,
+        '体质': /体质[+\s]*(\d+\.?\d*)/,
+        '魔力': /魔力[+\s]*(\d+\.?\d*)/,
+        '力量': /力量[+\s]*(\d+\.?\d*)/,
+        '耐力': /耐力[+\s]*(\d+\.?\d*)/,
+        '耐久': /耐久度?[+\s]*(\d+\.?\d*)/
+    };
+
+    for (let [attr, pattern] of Object.entries(attrPatterns)) {
+        const match = fullText.match(pattern);
+        if (match) {
+            const val = parseFloat(match[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs[attr] = val;
             }
         }
+    }
 
-        if (foundName && foundLevel === 0 && result.level) {
-            foundLevel = result.level;
-        }
-
-        result.name = foundName;
-        result.level = foundLevel || result.level;
-        result.part = foundPart;
-
-        // 3. 提取打造方式
-        if (fullText.includes('强化')) {
-            result.craftType = '强化';
-        } else if (fullText.includes('普通')) {
-            result.craftType = '普通';
-        }
-
-        // 4. 提取属性值
-        const attrPatterns = {
-            '伤害': /伤害[+\s]*(\d+\.?\d*)/,
-            '命中': /命中[+\s]*(\d+\.?\d*)/,
-            '防御': /防御[+\s]*(\d+\.?\d*)/,
-            '灵力': /灵力[+\s]*(\d+\.?\d*)/,
-            '气血': /气血[+\s]*(\d+\.?\d*)/,
-            '魔法': /魔法[+\s]*(\d+\.?\d*)/,
-            '敏捷': /敏捷[+\s]*(\d+\.?\d*)/,
-            '体质': /体质[+\s]*(\d+\.?\d*)/,
-            '魔力': /魔力[+\s]*(\d+\.?\d*)/,
-            '力量': /力量[+\s]*(\d+\.?\d*)/,
-            '耐力': /耐力[+\s]*(\d+\.?\d*)/,
-            '耐久': /耐久度[+\s]*(\d+\.?\d*)/
+    // 6. 如果没有匹配到装备名，但识别到了等级和部位，尝试用组合查找
+    if (!result.name && result.level && result.part) {
+        const levelStr = String(result.level);
+        const partMap = {
+            '武器': ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒', '幡', '钺', '戟', '锏', '槊', '弓', '弩'],
+            '衣服': ['衣', '袍', '裙', '甲', '铠'],
+            '项链': ['链', '坠', '佩', '环', '珠'],
+            '帽子': ['帽', '冠', '盔'],
+            '腰带': ['带', '腰', '束'],
+            '鞋子': ['鞋', '靴', '履']
         };
-
-        for (let [attr, pattern] of Object.entries(attrPatterns)) {
-            const match = fullText.match(pattern);
-            if (match) {
-                const val = parseFloat(match[1]);
-                if (!isNaN(val) && val > 0) {
-                    result.attrs[attr] = val;
+        const keywords = partMap[result.part] || [];
+        for (let kw of keywords) {
+            const pattern = new RegExp(levelStr + '[\\s\\n]*' + kw);
+            if (pattern.test(fullText)) {
+                for (let [name, info] of Object.entries(this.equipmentNameMap)) {
+                    if (info.part === result.part && name.includes(kw) && (info.level === result.level || info.level === 0)) {
+                        result.name = name;
+                        console.log(`🔍 组合匹配: ${name} (等级${result.level} + 部位${result.part})`);
+                        break;
+                    }
                 }
+                if (result.name) break;
             }
         }
+    }
 
-        return result;
-    },
+    console.log('📦 解析结果:', result);
+    return result;
+},
 
     // ============================================================
     //  🖊️ 填入识别数据
