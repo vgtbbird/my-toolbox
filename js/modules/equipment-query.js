@@ -1156,59 +1156,90 @@ const EquipmentQueryModule = {
         });
     },
 
+    // ===== 图片转灰度图（提高OCR识别率） =====
+preprocessImage(imageSource) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                data[i] = gray;
+                data[i + 1] = gray;
+                data[i + 2] = gray;
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = imageSource;
+    });
+},
     // ============================================================
     //  📷 截图识别核心
     // ============================================================
-    async recognizeEquipment(imageSource) {
-        const resultEl = document.getElementById('eqOcrResult');
-        if (!resultEl) return;
+  async recognizeEquipment(imageSource) {
+    const resultEl = document.getElementById('eqOcrResult');
+    if (!resultEl) return;
 
-        if (typeof Tesseract === 'undefined') {
-            resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
-            resultEl.style.color = '#e06060';
+    if (typeof Tesseract === 'undefined') {
+        resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
+        resultEl.style.color = '#e06060';
+        return;
+    }
+
+    resultEl.textContent = '⏳ 正在预处理图片...';
+    resultEl.style.color = '#8ab0c8';
+
+    try {
+        // ✅ 灰度图预处理
+        const grayImage = await this.preprocessImage(imageSource);
+        
+        resultEl.textContent = '⏳ 正在识别中（约3-8秒），请稍候...';
+        
+        const worker = await Tesseract.createWorker('chi_sim');
+        const { data: { text } } = await worker.recognize(grayImage);
+        await worker.terminate();
+
+        console.log('📷 OCR原始结果:', text);
+
+        const parsed = this.parseEquipmentText(text);
+        if (!parsed || !parsed.name) {
+            resultEl.textContent = '⚠️ 未能识别出有效装备信息，请确认截图清晰或手动输入';
+            resultEl.style.color = '#e0a060';
             return;
         }
 
-        resultEl.textContent = '⏳ 正在识别中（约3-8秒），请稍候...';
-        resultEl.style.color = '#8ab0c8';
-
-        try {
-            const worker = await Tesseract.createWorker('chi_sim');
-            const { data: { text } } = await worker.recognize(imageSource);
-            await worker.terminate();
-
-            console.log('📷 OCR原始结果:', text);
-
-            const parsed = this.parseEquipmentText(text);
-            if (!parsed || !parsed.name) {
-                resultEl.textContent = '⚠️ 未能识别出有效装备信息，请确认截图清晰或手动输入';
-                resultEl.style.color = '#e0a060';
-                return;
-            }
-
-            let previewText = `✅ 识别到：${parsed.name}`;
-            if (parsed.level) previewText += ` | ${parsed.level}级`;
-            if (parsed.part) previewText += ` | ${parsed.part}`;
-            if (parsed.craftType) previewText += ` | ${parsed.craftType}打造`;
-            if (Object.keys(parsed.attrs || {}).length > 0) {
-                const attrCount = Object.keys(parsed.attrs).length;
-                previewText += ` | ${attrCount}项属性`;
-            }
-            resultEl.textContent = previewText;
-            resultEl.style.color = '#60d080';
-
-            this.fillRecognizedData(parsed);
-
-            if (Object.keys(parsed.attrs || {}).length > 0) {
-                this.render();
-            }
-
-        } catch (err) {
-            console.error('OCR识别失败:', err);
-            resultEl.textContent = '❌ 识别失败：' + err.message;
-            resultEl.style.color = '#e06060';
+        let previewText = `✅ 识别到：${parsed.name}`;
+        if (parsed.level) previewText += ` | ${parsed.level}级`;
+        if (parsed.part) previewText += ` | ${parsed.part}`;
+        if (parsed.craftType) previewText += ` | ${parsed.craftType}打造`;
+        if (Object.keys(parsed.attrs || {}).length > 0) {
+            previewText += ` | ${Object.keys(parsed.attrs).length}项属性`;
         }
-    },
+        resultEl.textContent = previewText;
+        resultEl.style.color = '#60d080';
+
+        this.fillRecognizedData(parsed);
+
+        if (Object.keys(parsed.attrs || {}).length > 0) {
+            this.render();
+        }
+
+    } catch (err) {
+        console.error('OCR识别失败:', err);
+        resultEl.textContent = '❌ 识别失败：' + err.message;
+        resultEl.style.color = '#e06060';
+    }
+},
 
     // ============================================================
     //  📝 解析装备文本
