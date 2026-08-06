@@ -549,6 +549,16 @@ extractPart(ocrText) {
     '气血': '气血',
     '魔力': '魔力',
     '力量': '力量',
+   // 属性关键词修正
+    '谭力': '魔力',
+    '谭 力': '魔力',
+    '魔 力': '魔力',
+    '力量': '力量',
+    '力 量': '力量',
+    '防御': '防御',
+    '防 御': '防御',
+    '气血': '气血',
+    '气 血': '气血',
     // 负号修正
     '—': '-',
     '－': '-',
@@ -1594,6 +1604,19 @@ parseEquipmentText(text) {
                 }
             }
         }
+
+    // 如果 fullText 匹配失败，尝试用 text 原文匹配
+if (Object.keys(result.attrs).length === 0) {
+    for (let [attr, pattern] of Object.entries(attrPatterns)) {
+        const match = text.match(pattern);
+        if (match) {
+            const val = parseFloat(match[1]);
+            if (!isNaN(val) && val !== 0) {
+                result.attrs[attr] = val;
+            }
+        }
+    }
+}
 
     // 6. ✅ 单独处理耐久
     if (!result.attrs['耐久']) {
