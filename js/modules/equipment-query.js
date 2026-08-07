@@ -1053,52 +1053,76 @@ if (nameMatch) {
     result.part = nameMatch.info.part;
 }
 
-    // 2. 判断部位（从装备名或主属性）
-    const petNameKeywords = {
-        '护腕': ['护腕', '腕'],
-        '项圈': ['环', '项圈', '圈'],
-        '铠甲': ['甲', '铠']
-    };
+// 2. 判断部位（按主属性优先级）
+let part = null;
 
-    for (let [part, keywords] of Object.entries(petNameKeywords)) {
-        for (let kw of keywords) {
-            if (fullText.includes(kw)) {
-                result.part = part;
-                console.log(`✅ 宠装部位(装备名): ${part}`);
-                break;
-            }
-        }
-        if (result.part) break;
-    }
+// 方法一：从属性中推断部位（最可靠）
+if (result.attrs['命中率'] || fullText.includes('%')) {
+    part = '护腕';
+    console.log(`✅ 宠装部位(主属性命中率): 护腕`);
+}
+// 方法二：识别到速度 → 项圈
+else if (result.attrs['速度'] || fullText.includes('速度')) {
+    part = '项圈';
+    console.log(`✅ 宠装部位(主属性速度): 项圈`);
+}
+// 方法三：识别到防御 → 铠甲
+else if (result.attrs['防御'] || fullText.includes('防御')) {
+    part = '铠甲';
+    console.log(`✅ 宠装部位(主属性防御): 铠甲`);
+}
 
-    if (!result.part) {
-        if (fullText.includes('速度')) {
-            result.part = '项圈';
-            console.log(`✅ 宠装部位(主属性速度): 项圈`);
-        } else if (fullText.includes('防御')) {
-            result.part = '铠甲';
-            console.log(`✅ 宠装部位(主属性防御): 铠甲`);
-        } else if (fullText.includes('命中率')) {
-            result.part = '护腕';
-            console.log(`✅ 宠装部位(主属性命中率): 护腕`);
+// 如果主属性没判断出来，再用装备名匹配
+if (!part) {
+    let nameMatch = null;
+    const cleanFullText = fullText.replace(/\s/g, '');
+    for (let [name, info] of Object.entries(this.petNameMap)) {
+        const cleanName = name.replace(/\s/g, '');
+        if (cleanFullText.includes(cleanName)) {
+            nameMatch = { name, info };
+            console.log(`✅ 宠装名称匹配: ${name} → ${info.level}级 ${info.part}`);
+            break;
         }
     }
+    if (nameMatch) {
+        part = nameMatch.info.part;
+        if (!result.level) {
+            result.level = nameMatch.info.level;
+        }
+    }
+}
+
+// 最后，如果属性中有速度但没有命中率和防御，强制为项圈
+if (!part) {
+    if (result.attrs['速度']) {
+        part = '项圈';
+        console.log(`✅ 宠装部位(强制): 项圈（有速度属性）`);
+    } else if (result.attrs['防御']) {
+        part = '铠甲';
+        console.log(`✅ 宠装部位(强制): 铠甲（有防御属性）`);
+    } else if (result.attrs['命中率']) {
+        part = '护腕';
+        console.log(`✅ 宠装部位(强制): 护腕（有命中率属性）`);
+    }
+}
+
+result.part = part;
 
      // 修改 petAttrMap 的顺序，命中率放在命中前面
-    const petAttrMap = {
-        '命中率': /命中率?\s*[+：:]\s*(\d+)%?/,  // 先匹配命中率
-        '伤害': /伤害\s*[+：:]\s*(\d+)/,
-        '灵力': /灵力\s*[+：:]\s*(\d+)/,
-        '气血': /气血\s*[+：:]\s*(\d+)/,
-        '体质': /体质\s*[+：:]\s*(\d+)/,
-        '耐力': /耐力\s*[+：:]\s*(\d+)/,
-        '魔力': /魔力\s*[+：:]\s*(\d+)/,
-        '力量': /力量\s*[+：:]\s*(\d+)/,
-        '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
-        '速度': /速度\s*[+：:]\s*(\d+)/,
-        '防御': /防御\s*[+：:]\s*(\d+)/,
-        '命中': /命中\s*[+：:]\s*(\d+)/,  // 命中放最后
+        const petAttrMap = {
+            '命中率': /命中率?\s*[+：:]\s*(\d+)%?/,  // 护腕主属性
+            '伤害': /伤害\s*[+：:]\s*(\d+)/,
+            '灵力': /灵力\s*[+：:]\s*(\d+)/,
+            '气血': /气血\s*[+：:]\s*(\d+)/,
+            '体质': /体质\s*[+：:]\s*(\d+)/,
+            '耐力': /耐力\s*[+：:]\s*(\d+)/,
+            '魔力': /魔力\s*[+：:]\s*(\d+)/,
+            '力量': /力量\s*[+：:]\s*(\d+)/,
+            '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
+            '速度': /速度\s*[+：:]\s*(\d+)/,
+            '防御': /防御\s*[+：:]\s*(\d+)/,
         };
+        // ❌ 没有 '命中'
 
     for (let [attr, pattern] of Object.entries(petAttrMap)) {
         const match = fullText.match(pattern);
@@ -1110,6 +1134,18 @@ if (nameMatch) {
             }
         }
     }
+
+    // 单独处理命中率（宠装专属，不影响人物装备）
+if (!result.attrs['命中率']) {
+    const hitRateMatch = fullText.match(/命中率?\s*[+：:]\s*(\d+)%?/);
+    if (hitRateMatch) {
+        const val = parseInt(hitRateMatch[1]);
+        if (!isNaN(val) && val > 0) {
+            result.attrs['命中率'] = val;
+            console.log(`✅ 宠装属性 命中率: ${val}`);
+        }
+    }
+}
 
     // 4. 处理OCR识别错误（命中率）
     if (!result.attrs['命中率']) {
