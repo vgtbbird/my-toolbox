@@ -645,6 +645,13 @@ extractPart(ocrText) {
         '展': '度',           // 耐久展 → 耐久度
         '#': '+',            // 体质#7 → 体质+7
         '%6': '%',           // 14%6 → 14%
+       // 宠装相关
+        '般力': '耐力',
+        '般 力': '耐力',
+        '敏捷 1a': '敏捷 +',  // 修正 敏捷 1a → 敏捷 +
+        '1a': '+',
+        'a': '+',
+        '兽 p': '',
     };
         let corrected = text;
         for (let [wrong, right] of Object.entries(corrections)) {
@@ -1029,17 +1036,18 @@ parsePetEquipmentText(text) {
         result.level = level;
     }
 
-    // 1.5 ✅ 匹配装备名（先查名称映射表）
+// 1.5 ✅ 匹配装备名（去除空格后匹配）
 let nameMatch = null;
+const cleanFullText = fullText.replace(/\s/g, '');
 for (let [name, info] of Object.entries(this.petNameMap)) {
-    if (fullText.includes(name)) {
+    const cleanName = name.replace(/\s/g, '');
+    if (cleanFullText.includes(cleanName)) {
         nameMatch = { name, info };
         console.log(`✅ 宠装名称匹配: ${name} → ${info.level}级 ${info.part}`);
         break;
     }
 }
 
-// 如果匹配到了，直接用映射表的数据
 if (nameMatch) {
     result.level = nameMatch.info.level;
     result.part = nameMatch.info.part;
@@ -1076,8 +1084,9 @@ if (nameMatch) {
         }
     }
 
-    // 3. 提取所有属性值
+     // 修改 petAttrMap 的顺序，命中率放在命中前面
     const petAttrMap = {
+        '命中率': /命中率?\s*[+：:]\s*(\d+)%?/,  // 先匹配命中率
         '伤害': /伤害\s*[+：:]\s*(\d+)/,
         '灵力': /灵力\s*[+：:]\s*(\d+)/,
         '气血': /气血\s*[+：:]\s*(\d+)/,
@@ -1088,8 +1097,8 @@ if (nameMatch) {
         '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
         '速度': /速度\s*[+：:]\s*(\d+)/,
         '防御': /防御\s*[+：:]\s*(\d+)/,
-        '命中率': /命中[襟率]?\s*[+：:]\s*(\d+)%?/
-    };
+        '命中': /命中\s*[+：:]\s*(\d+)/,  // 命中放最后
+        };
 
     for (let [attr, pattern] of Object.entries(petAttrMap)) {
         const match = fullText.match(pattern);
