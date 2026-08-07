@@ -1563,11 +1563,14 @@ preprocessImage(imageSource) {
         }
         resultEl.textContent = previewText;
         resultEl.style.color = '#60d080';
-
+        // 先填入数据
         this.fillRecognizedData(parsed);
-
+        
         if (Object.keys(parsed.attrs || {}).length > 0) {
+            // 重新渲染界面（生成输入框）
             this.render();
+            // 再次填入数据（确保输入框存在后填入）
+            this.fillRecognizedData(parsed);
         }
 
     } catch (err) {
@@ -2098,6 +2101,7 @@ showCandidateSelect(candidates, parsedData) {
     // ============================================================
     fillRecognizedData(parsed) {
         if (!parsed) return;
+        this.updateMeltInputs();
 
         // 自动切换等级
         if (parsed.level && this.levels.includes(parsed.level)) {
