@@ -1603,9 +1603,9 @@ extractAllByContext(text) {
         
         const startPos = match.index;
         const endPos = startPos + match[0].length;
-        const contextBefore = fullText.substring(Math.max(0, startPos - 8), startPos);
-        const contextAfter = fullText.substring(endPos, Math.min(fullText.length, endPos + 5));
-        
+        const contextBefore = fullText.substring(Math.max(0, startPos - 13), startPos);
+        const contextAfter = fullText.substring(endPos, Math.min(fullText.length, endPos + 8));
+            
         const isNegative = contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
         const finalValue = isNegative ? -Math.abs(numValue) : Math.abs(numValue);
         
@@ -1652,8 +1652,8 @@ extractAllByContext(text) {
                 if (combinedContext.includes(kw)) {
                     const score = kw.length * 2;
                     const kwPos = combinedContext.indexOf(kw);
-                    const distance = Math.abs(kwPos - 8);
-                    const distanceScore = Math.max(0, 8 - distance) / 8;
+                    const distance = Math.abs(kwPos - 13);
+                    const distanceScore = Math.max(0, 13 - distance) / 13;
                     const totalScore = score * 0.6 + distanceScore * 0.4;
                     
                     if (totalScore > bestMatchScore) {
