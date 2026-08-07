@@ -1686,6 +1686,11 @@ while ((match = numberPattern.exec(fullText)) !== null) {
 
         // 耐久
         if (cleanBefore.includes('久') || cleanBefore.includes('度') || (cleanBefore.includes('耐') && (cleanBefore.includes('久') || cleanBefore.includes('度')))) {
+            // ✅ 排除速度
+            if (cleanBefore.includes('速')) {
+                console.log(`⏭️ 跳过速度（被误识别为耐久）: ${finalValue}，前文="${cleanBefore}"`);
+                continue;
+            }
             result.attrs['耐久'] = Math.abs(finalValue);
             console.log(`✅ 耐久: ${result.attrs['耐久']}`);
             continue;
