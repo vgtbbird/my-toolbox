@@ -815,6 +815,237 @@ extractPart(ocrText) {
     petAttrList: ['伤害', '灵力', '气血', '体质', '耐力', '魔力', '力量', '敏捷', '速度', '防御', '命中率'],
 
     // ============================================================
+//  🐾 宠装识别（独立模块，不影响人物装备）
+// ============================================================
+
+// 宠装名称关键词映射
+petNameKeywords: {
+    '护腕': ['护腕', '腕'],
+    '项圈': ['环', '项圈', '圈'],
+    '铠甲': ['甲', '铠']
+},
+
+// 宠装属性映射（OCR错误修正）
+petAttrMap: {
+    '伤害': '伤害',
+    '伤 害': '伤害',
+    '力量': '力量',
+    '力 量': '力量',
+    '敏捷': '敏捷',
+    '敏 捷': '敏捷',
+    '速度': '速度',
+    '速 度': '速度',
+    '防御': '防御',
+    '防 御': '防御',
+    '灵力': '灵力',
+    '灵 力': '灵力',
+    '魔力': '魔力',
+    '魔 力': '魔力',
+    '体质': '体质',
+    '体 质': '体质',
+    '耐力': '耐力',
+    '耐 力': '耐力',
+    '气血': '气血',
+    '气 血': '气血',
+    '命中率': '命中率',
+    '命 中 率': '命中率',
+    '命中': '命中率',
+    '命 中': '命中率'
+},
+
+// 宠装属性列表（用于识别）
+petAttrKeys: ['伤害', '灵力', '气血', '体质', '耐力', '魔力', '力量', '敏捷', '速度', '防御', '命中率'],
+
+// 识别宠装
+recognizePetEquipment(imageSource) {
+    const resultEl = document.getElementById('peOcrResult');
+    if (!resultEl) {
+        alert('请先在宠装模块添加识别结果展示区域');
+        return;
+    }
+
+    if (typeof Tesseract === 'undefined') {
+        resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
+        resultEl.style.color = '#e06060';
+        return;
+    }
+
+    resultEl.textContent = '⏳ 正在识别宠装...';
+    resultEl.style.color = '#8ab0c8';
+
+    const worker = Tesseract.createWorker('chi_sim');
+    worker.then(async (w) => {
+        try {
+            const { data: { text } } = await w.recognize(imageSource);
+            await w.terminate();
+
+            console.log('📷 宠装OCR原始结果:', text);
+
+            const parsed = this.parsePetEquipmentText(text);
+            
+            if (!parsed || Object.keys(parsed.attrs).length === 0) {
+                resultEl.textContent = '⚠️ 未能识别出有效宠装信息，请确认截图清晰';
+                resultEl.style.color = '#e0a060';
+                return;
+            }
+
+            let previewText = `✅ 识别到：`;
+            if (parsed.part) previewText += ` ${parsed.part}`;
+            if (parsed.level) previewText += ` | ${parsed.level}级`;
+            const attrCount = Object.keys(parsed.attrs).length;
+            previewText += ` | ${attrCount}项属性`;
+            resultEl.textContent = previewText;
+            resultEl.style.color = '#60d080';
+
+            this.fillPetRecognizedData(parsed);
+
+        } catch (err) {
+            console.error('宠装OCR识别失败:', err);
+            resultEl.textContent = '❌ 识别失败：' + err.message;
+            resultEl.style.color = '#e06060';
+        }
+    });
+},
+
+// 解析宠装文本
+parsePetEquipmentText(text) {
+    const fullText = text.replace(/\s+/g, ' ').trim();
+    console.log('📝 宠装解析文本:', fullText);
+
+    const result = {
+        level: null,
+        part: null,
+        attrs: {}
+    };
+
+    // 1. 提取等级
+    const levelMatch = fullText.match(/等级\s*[:：]?\s*(\d+)/);
+    if (levelMatch) {
+        const level = parseInt(levelMatch[1]);
+        if (level >= 65 && level <= 145) {
+            result.level = level;
+            console.log(`✅ 宠装等级: ${level}`);
+        }
+    }
+
+    // 2. 判断部位（从装备名或主属性）
+    const petNameKeywords = {
+        '护腕': ['护腕', '腕'],
+        '项圈': ['环', '项圈', '圈'],
+        '铠甲': ['甲', '铠']
+    };
+
+    for (let [part, keywords] of Object.entries(petNameKeywords)) {
+        for (let kw of keywords) {
+            if (fullText.includes(kw)) {
+                result.part = part;
+                console.log(`✅ 宠装部位(装备名): ${part}`);
+                break;
+            }
+        }
+        if (result.part) break;
+    }
+
+    if (!result.part) {
+        if (fullText.includes('速度')) {
+            result.part = '项圈';
+            console.log(`✅ 宠装部位(主属性速度): 项圈`);
+        } else if (fullText.includes('防御')) {
+            result.part = '铠甲';
+            console.log(`✅ 宠装部位(主属性防御): 铠甲`);
+        } else if (fullText.includes('命中率')) {
+            result.part = '护腕';
+            console.log(`✅ 宠装部位(主属性命中率): 护腕`);
+        }
+    }
+
+    // 3. 提取所有属性值
+    const petAttrMap = {
+        '伤害': /伤害\s*[+：:]\s*(\d+)/,
+        '灵力': /灵力\s*[+：:]\s*(\d+)/,
+        '气血': /气血\s*[+：:]\s*(\d+)/,
+        '体质': /体质\s*[+：:]\s*(\d+)/,
+        '耐力': /耐力\s*[+：:]\s*(\d+)/,
+        '魔力': /魔力\s*[+：:]\s*(\d+)/,
+        '力量': /力量\s*[+：:]\s*(\d+)/,
+        '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
+        '速度': /速度\s*[+：:]\s*(\d+)/,
+        '防御': /防御\s*[+：:]\s*(\d+)/,
+        '命中率': /命中率\s*[+：:]\s*(\d+)%?/
+    };
+
+    for (let [attr, pattern] of Object.entries(petAttrMap)) {
+        const match = fullText.match(pattern);
+        if (match) {
+            const val = parseInt(match[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs[attr] = val;
+                console.log(`✅ 宠装属性 ${attr}: ${val}`);
+            }
+        }
+    }
+
+    // 4. 处理OCR识别错误
+    if (!result.attrs['命中率']) {
+        const hitMatch = fullText.match(/命\s*中\s*率?\s*[+：:]\s*(\d+)%?/);
+        if (hitMatch) {
+            const val = parseInt(hitMatch[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs['命中率'] = val;
+                console.log(`✅ 宠装属性 命中率(修正): ${val}`);
+            }
+        }
+    }
+
+    console.log('📦 宠装解析结果:', result);
+    return result;
+},
+
+// 填入宠装识别数据
+fillPetRecognizedData(parsed) {
+    if (!parsed) return;
+
+    if (parsed.level && this.petLevels.includes(parsed.level)) {
+        this.petCurrentLevel = parsed.level;
+        document.querySelectorAll('.pe-btn-level').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.value) === parsed.level);
+        });
+    }
+
+    if (parsed.part) {
+        const partMap = {
+            '护腕': '护腕',
+            '项圈': '项圈',
+            '铠甲': '铠甲'
+        };
+        const mappedPart = partMap[parsed.part];
+        if (mappedPart) {
+            this.petCurrentPart = mappedPart;
+            document.querySelectorAll('.pe-btn-part').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === mappedPart);
+            });
+        }
+    }
+
+    if (parsed.attrs) {
+        this.updatePetInputs();
+        for (let [attr, val] of Object.entries(parsed.attrs)) {
+            const input = document.getElementById(`peAttr_${attr}`);
+            if (input) {
+                input.value = val;
+                this.petInputValues[attr] = val;
+                console.log(`📝 填入宠装 ${attr}: ${val}`);
+            } else {
+                console.warn(`⚠️ 找不到宠装输入框: peAttr_${attr}`);
+            }
+        }
+        this.render();
+    }
+},
+
+    
+
+    // ============================================================
     //  生命周期
     // ============================================================
     init() {
@@ -1074,6 +1305,16 @@ extractPart(ocrText) {
                     </div>
                 </div>
                 <div class="module-body">
+                    <!-- 🐾 宠装截图识别 -->
+                        <div style="margin-bottom:10px;padding:10px 14px;background:#f0f5fb;border-radius:12px;border:1px dashed #6b8baa;text-align:center;" id="peOcrDropZone">
+                            <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+                                <span style="font-size:0.8rem;color:#1f3b53;">📷 宠装截图识别</span>
+                                <button class="btn-small" id="peOcrBtn" style="background:#6b8baa;color:#fff;border:none;padding:4px 16px;border-radius:30px;cursor:pointer;font-weight:600;">📤 上传截图</button>
+                                <span style="font-size:0.65rem;color:#5a7a94;">支持 JPG/PNG，拖拽、点击上传 或 Ctrl+V 粘贴</span>
+                            </div>
+                            <div id="peOcrResult" style="font-size:0.75rem;color:#5a7a94;margin-top:4px;min-height:20px;">上传宠装截图，自动识别属性</div>
+                            <input type="file" id="peOcrFileInput" accept="image/*" style="display:none;">
+                        </div>
                     <div style="margin-bottom:8px;">
                         <div style="font-weight:600;font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">📌 等级</div>
                         <div style="display:flex;flex-wrap:wrap;gap:4px;">${petLevelBtns}</div>
@@ -1418,6 +1659,71 @@ extractPart(ocrText) {
                 }
             }
         });
+
+
+        // ===== 粘贴图片识别（Ctrl+V） =====
+document.addEventListener('paste', function(e) {
+    const container = document.getElementById('equipmentQueryContainer');
+    if (!container || !container.closest('.tab-content.active')) return;
+
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (let item of items) {
+        if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const imageDataUrl = ev.target.result;
+                    const resultEl = document.getElementById('eqOcrResult');
+                    if (resultEl) {
+                        resultEl.textContent = '检测到粘贴图片，开始识别...';
+                        resultEl.style.color = '#8ab0c8';
+                    }
+                    EquipmentQueryModule.recognizeEquipment(imageDataUrl);
+                };
+                reader.readAsDataURL(file);
+                break;
+            }
+        }
+    }
+});
+
+// ✅ 在这里添加宠装的粘贴识别
+document.addEventListener('paste', function(e) {
+    const container = document.getElementById('equipmentQueryContainer');
+    if (!container || !container.closest('.tab-content.active')) return;
+    
+    // 检查是否在宠装输入区域
+    const target = e.target;
+    const isPetSection = target.closest('#peAttrInputArea') || target.closest('.pe-attr-input') || target.closest('#peOcrDropZone');
+    if (!isPetSection) return;
+    
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    
+    for (let item of items) {
+        if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const imageDataUrl = ev.target.result;
+                    const resultEl = document.getElementById('peOcrResult');
+                    if (resultEl) {
+                        resultEl.textContent = '📋 检测到粘贴宠装图片，开始识别...';
+                        resultEl.style.color = '#8ab0c8';
+                    }
+                    EquipmentQueryModule.recognizePetEquipment(imageDataUrl);
+                };
+                reader.readAsDataURL(file);
+                break;
+            }
+        }
+    }
+});
+        
     },
 
     // ============================================================
