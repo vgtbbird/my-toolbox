@@ -1603,7 +1603,7 @@ extractAllByContext(text) {
         
         const startPos = match.index;
         const endPos = startPos + match[0].length;
-        const contextBefore = fullText.substring(Math.max(0, startPos - 30), startPos);
+        const contextBefore = fullText.substring(Math.max(0, startPos - 15), startPos);
         const contextAfter = fullText.substring(endPos, Math.min(fullText.length, endPos + 15));
         
         const isNegative = contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
@@ -1644,7 +1644,7 @@ extractAllByContext(text) {
             '魔力': ['魔力', '魔 力', '放力', '放 力', '谭力', '谭 力', '摩力', '摩 力', '大力', '大 力'],
             '力量': ['力量', '力 量'],
             '耐力': ['耐力', '耐 力', '奈力', '奈 力', '人而力', '人 而 力', '人 力'],
-            '耐久': ['耐久度', '耐 久 度', '耐久', '耐 久']
+            '耐久': ['耐久度', '耐 久 度', '耐久', '耐 久', '度', '久', '耐 久', '久度']
         };
 
         for (let [attr, keywords] of Object.entries(exactMatches)) {
