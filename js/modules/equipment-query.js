@@ -1580,12 +1580,17 @@ preprocessImage(imageSource) {
     }
 },
 
-// ===== 智能属性提取 v3（基于上下文逻辑判断） =====
-extractAllAttributes(text) {
-    const result = {};
+// ===== 智能上下文提取（数字 + 上下文，适用于所有属性） =====
+extractAllByContext(text) {
+    const result = {
+        level: null,
+        part: null,
+        craftType: null,
+        attrs: {}
+    };
     const fullText = text.replace(/\s+/g, ' ').trim();
     
-    console.log('🔍 开始智能属性提取 v3');
+    console.log('🔍 开始智能上下文提取');
 
     // 1. 提取所有带数字的片段
     const numberPattern = /([+-]?\s*\d+)/g;
@@ -1598,8 +1603,8 @@ extractAllAttributes(text) {
         
         const startPos = match.index;
         const endPos = startPos + match[0].length;
-        const contextBefore = fullText.substring(Math.max(0, startPos - 20), startPos);
-        const contextAfter = fullText.substring(endPos, Math.min(fullText.length, endPos + 10));
+        const contextBefore = fullText.substring(Math.max(0, startPos - 25), startPos);
+        const contextAfter = fullText.substring(endPos, Math.min(fullText.length, endPos + 15));
         
         const isNegative = contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
         const finalValue = isNegative ? -Math.abs(numValue) : Math.abs(numValue);
@@ -1616,39 +1621,39 @@ extractAllAttributes(text) {
 
     console.log(`📊 找到 ${numberMatches.length} 个数字片段`);
 
-    // 2. 对每个数字，通过上下文判断属性
+    // 2. 对每个数字，通过上下文判断
     for (let item of numberMatches) {
         const { value, contextBefore, contextAfter } = item;
         const combinedContext = contextBefore + ' ' + contextAfter;
         
-        let matchedAttr = null;
-        let bestMatchScore = 0;
-
         // ============================================================
-        // 第一优先级：精确匹配（两个字的属性名）
+        // 第一优先级：精确匹配属性
         // ============================================================
         const exactMatches = {
-            '伤害': ['伤害', '伤 害'],
-            '命中': ['命中', '命 中', '合中', '合 中'],
-            '防御': ['防御', '防 御'],
+            '防御': ['防御', '防 御', '防卸'],
             '气血': ['气血', '气 血'],
+            '伤害': ['伤害', '伤 害', '伤者', '伤 者', '伤', '害'],
+            '命中': ['命中', '命 中', '合中', '合 中', '中', '合'],
             '灵力': ['灵力', '灵 力'],
             '魔法': ['魔法', '魔 法'],
             '敏捷': ['敏捷', '敏 捷'],
-            '体质': ['体质', '体 质'],
-            '魔力': ['魔力', '魔 力'],
+            '体质': ['体质', '体 质', '休质'],
+            '魔力': ['魔力', '魔 力', '放力', '谭力', '摩力', '大力', '大 力'],
             '力量': ['力量', '力 量'],
-            '耐力': ['耐力', '耐 力'],
+            '耐力': ['耐力', '耐 力', '奈力', '人而力'],
             '耐久': ['耐久度', '耐 久 度', '耐久', '耐 久']
         };
+
+        let matchedAttr = null;
+        let bestMatchScore = 0;
 
         for (let [attr, keywords] of Object.entries(exactMatches)) {
             for (let kw of keywords) {
                 if (combinedContext.includes(kw)) {
                     const score = kw.length * 2;
                     const kwPos = combinedContext.indexOf(kw);
-                    const distance = Math.abs(kwPos - 20);
-                    const distanceScore = Math.max(0, 20 - distance) / 20;
+                    const distance = Math.abs(kwPos - 25);
+                    const distanceScore = Math.max(0, 25 - distance) / 25;
                     const totalScore = score * 0.6 + distanceScore * 0.4;
                     
                     if (totalScore > bestMatchScore) {
@@ -1661,122 +1666,86 @@ extractAllAttributes(text) {
         }
 
         // ============================================================
-        // 第二优先级：通过上下文逻辑判断
+        // 第二优先级：上下文逻辑判断
         // ============================================================
         if (!matchedAttr) {
-            // ---- 判断是不是 "耐久" ----
-            // 规则：数字前面有 "耐" 且有 "久" 或 "度"
-            if (contextBefore.includes('耐') && (contextBefore.includes('久') || contextBefore.includes('度') || contextAfter.includes('久') || contextAfter.includes('度'))) {
+            // ---- 等级：数字前后有 "等级" 或 "级" ----
+            if (combinedContext.includes('等级') || combinedContext.includes('级')) {
+                // 但排除耐久（"耐久度"）
+                if (!combinedContext.includes('耐久') && !combinedContext.includes('耐 久')) {
+                    result.level = Math.abs(value);
+                    console.log(`🔍 逻辑判定: 等级 ${result.level} (有"等级"或"级")`);
+                    continue;
+                }
+            }
+            // ---- 耐久 ----
+            else if (combinedContext.includes('耐') && (combinedContext.includes('久') || combinedContext.includes('度'))) {
                 matchedAttr = '耐久';
                 console.log(`🔍 逻辑判定: 耐久 (有"耐"+"久/度")`);
             }
-            // ---- 判断是不是 "耐力" ----
-            // 规则：数字前面有 "耐" 且有 "力"，但没有 "久" 和 "度"
-            else if (contextBefore.includes('耐') && contextBefore.includes('力') && !contextBefore.includes('久') && !contextBefore.includes('度')) {
+            // ---- 耐力 ----
+            else if (combinedContext.includes('耐') && combinedContext.includes('力') && !combinedContext.includes('久') && !combinedContext.includes('度')) {
                 matchedAttr = '耐力';
-                console.log(`🔍 逻辑判定: 耐力 (有"耐"+"力"且无"久/度")`);
+                console.log(`🔍 逻辑判定: 耐力 (有"耐"+"力")`);
             }
-            // ---- 判断是不是 "魔力" ----
-            // 规则：数字前面有 "魔" / "放" / "谭" / "摩" / "大"
-            else if (contextBefore.includes('魔') || contextBefore.includes('放') || contextBefore.includes('谭') || contextBefore.includes('摩') || contextBefore.includes('大')) {
+            // ---- 魔力 ----
+            else if (combinedContext.includes('魔') || combinedContext.includes('放') || combinedContext.includes('谭') || combinedContext.includes('摩') || combinedContext.includes('大')) {
                 matchedAttr = '魔力';
                 console.log(`🔍 逻辑判定: 魔力 (有"魔/放/谭/摩/大")`);
             }
-            // ---- 判断是不是 "力量" ----
-            // 规则：数字前面有 "量"，或"力"前面没有其他修饰
-            else if (contextBefore.includes('量') || (contextBefore.includes('力') && !contextBefore.includes('魔') && !contextBefore.includes('耐') && !contextBefore.includes('体') && !contextBefore.includes('敏') && !contextBefore.includes('灵'))) {
+            // ---- 力量 ----
+            else if (combinedContext.includes('量') || (combinedContext.includes('力') && !combinedContext.includes('魔') && !combinedContext.includes('耐') && !combinedContext.includes('体') && !combinedContext.includes('敏') && !combinedContext.includes('灵'))) {
                 matchedAttr = '力量';
                 console.log(`🔍 逻辑判定: 力量 (有"量"或无修饰的"力")`);
             }
-            // ---- 判断是不是 "防御" ----
-            // 规则：数字前面有 "防" 或 "御"
-            else if (contextBefore.includes('防') || contextBefore.includes('御')) {
+            // ---- 防御 ----
+            else if (combinedContext.includes('防') || combinedContext.includes('御')) {
                 matchedAttr = '防御';
                 console.log(`🔍 逻辑判定: 防御 (有"防/御")`);
             }
-            // ---- 判断是不是 "命中" ----
-            // 规则：数字前面有 "中" 或 "合"
-            else if (contextBefore.includes('中') || contextBefore.includes('合')) {
+            // ---- 伤害 ----
+            else if (combinedContext.includes('伤') || combinedContext.includes('害') || combinedContext.includes('者')) {
+                matchedAttr = '伤害';
+                console.log(`🔍 逻辑判定: 伤害 (有"伤/害/者")`);
+            }
+            // ---- 命中 ----
+            else if (combinedContext.includes('中') || combinedContext.includes('合')) {
                 matchedAttr = '命中';
                 console.log(`🔍 逻辑判定: 命中 (有"中/合")`);
             }
-            // ---- 判断是不是 "气血" ----
-            // 规则：数字前面有 "血"
-            else if (contextBefore.includes('血')) {
+            // ---- 气血 ----
+            else if (combinedContext.includes('血')) {
                 matchedAttr = '气血';
                 console.log(`🔍 逻辑判定: 气血 (有"血")`);
             }
-            // ---- 判断是不是 "伤害" ----
-            // 规则：数字前面有 "伤" 或 "害"
-            else if (contextBefore.includes('伤') || contextBefore.includes('害')) {
-                matchedAttr = '伤害';
-                console.log(`🔍 逻辑判定: 伤害 (有"伤/害")`);
-            }
-            // ---- 判断是不是 "体质" ----
-            // 规则：数字前面有 "体" 或 "质"
-            else if (contextBefore.includes('体') || contextBefore.includes('质')) {
+            // ---- 体质 ----
+            else if (combinedContext.includes('体') || combinedContext.includes('质')) {
                 matchedAttr = '体质';
                 console.log(`🔍 逻辑判定: 体质 (有"体/质")`);
             }
-            // ---- 判断是不是 "敏捷" ----
-            // 规则：数字前面有 "敏" 或 "捷"
-            else if (contextBefore.includes('敏') || contextBefore.includes('捷')) {
+            // ---- 敏捷 ----
+            else if (combinedContext.includes('敏') || combinedContext.includes('捷')) {
                 matchedAttr = '敏捷';
                 console.log(`🔍 逻辑判定: 敏捷 (有"敏/捷")`);
             }
-            // ---- 判断是不是 "灵力" ----
-            // 规则：数字前面有 "灵"
-            else if (contextBefore.includes('灵')) {
+            // ---- 灵力 ----
+            else if (combinedContext.includes('灵')) {
                 matchedAttr = '灵力';
                 console.log(`🔍 逻辑判定: 灵力 (有"灵")`);
             }
-        }
-
-        // ============================================================
-        // 第三优先级：兜底正则
-        // ============================================================
-        if (!matchedAttr) {
-            const fallbackPatterns = {
-                '伤害': /伤\s*害?\s*[+：:]\s*(\d+)/,
-                '命中': /命?\s*中\s*[+：:]\s*(\d+)/,
-                '防御': /防\s*御?\s*[+：:]\s*(\d+)/,
-                '气血': /气?\s*血\s*[+：:]\s*(\d+)/,
-                '灵力': /灵\s*力\s*[+：:]\s*(\d+)/,
-                '魔法': /魔\s*法\s*[+：:]\s*(\d+)/,
-                '敏捷': /敏\s*捷\s*[+：:]\s*(\d+)/,
-                '体质': /体\s*质\s*[+：:]\s*(\d+)/,
-                '魔力': /[魔放谭摩大]\s*力?\s*[+-]?\s*(\d+)/,
-                '力量': /力\s*量?\s*[+-]?\s*(\d+)/,
-                '耐力': /[耐奈人]\s*力?\s*[+-]?\s*(\d+)/,
-                '耐久': /耐\s*久\s*度?\s*(\d+)/
-            };
-            for (let [attr, pattern] of Object.entries(fallbackPatterns)) {
-                const match = fullText.match(pattern);
-                if (match) {
-                    let val = parseInt(match[1]);
-                    if (!isNaN(val) && val !== 0) {
-                        const fullMatch = match[0];
-                        if (fullMatch.includes('-') && val > 0) {
-                            val = -val;
-                        }
-                        matchedAttr = attr;
-                        if (!result[matchedAttr] || Math.abs(val) > Math.abs(result[matchedAttr])) {
-                            result[matchedAttr] = val;
-                        }
-                        console.log(`✅ 兜底提取到 ${attr}: ${val}`);
-                        break;
-                    }
-                }
+            // ---- 魔法 ----
+            else if (combinedContext.includes('魔') && combinedContext.includes('法')) {
+                matchedAttr = '魔法';
+                console.log(`🔍 逻辑判定: 魔法 (有"魔"+"法")`);
             }
         }
 
         // ============================================================
-        // 如果匹配到了属性，进一步区分"力"字属性
+        // 赋值
         // ============================================================
         if (matchedAttr) {
-            // 特殊处理：如果匹配到的是"力"，需要进一步区分
+            // 区分"力"字属性
             if (matchedAttr === "力量" || matchedAttr === "魔力" || matchedAttr === "耐力") {
-                // 检查上下文中的其他关键字
                 if (contextBefore.includes('魔') || contextBefore.includes('放') || contextBefore.includes('谭') || contextBefore.includes('摩') || contextBefore.includes('大')) {
                     matchedAttr = '魔力';
                 } else if (contextBefore.includes('耐') || contextBefore.includes('奈') || contextBefore.includes('人')) {
@@ -1790,25 +1759,58 @@ extractAllAttributes(text) {
                 }
             }
 
-            // 特殊处理：耐久
+            // 耐久修正
             if (matchedAttr === '耐久' && value < 0) {
                 const fixedVal = Math.abs(value);
-                if (!result[matchedAttr] || fixedVal > Math.abs(result[matchedAttr])) {
-                    result[matchedAttr] = fixedVal;
+                if (!result.attrs[matchedAttr] || fixedVal > Math.abs(result.attrs[matchedAttr])) {
+                    result.attrs[matchedAttr] = fixedVal;
                     console.log(`🔄 修正耐久负值: ${value} → ${fixedVal}`);
                 }
                 continue;
             }
 
-            // 赋值
-            if (!result[matchedAttr] || Math.abs(value) > Math.abs(result[matchedAttr])) {
-                result[matchedAttr] = value;
+            if (!result.attrs[matchedAttr] || Math.abs(value) > Math.abs(result.attrs[matchedAttr])) {
+                result.attrs[matchedAttr] = value;
                 console.log(`✅ 提取到 ${matchedAttr}: ${value} (上下文: "${combinedContext}")`);
             }
         }
     }
 
-    console.log('📦 智能提取完成:', result);
+    // ============================================================
+    // 部位提取（基于上下文）
+    // ============================================================
+    const partKeywords = {
+        '武器': ['武器', '剑', '刀', '枪', '锤', '斧', '扇', '鞭', '爪', '刺', '杖', '棒', '弓', '弩', '双剑', '巨剑', '双环', '飘带', '魔棒'],
+        '衣服': ['衣服', '衣', '袍', '裙', '甲', '铠', '衫', '服', '披风', '羽衣', '法袍'],
+        '项链': ['项链', '链', '坠', '佩', '环', '珠', '璎珞', '项圈'],
+        '帽子': ['帽子', '帽', '冠', '盔', '头冠', '发冠', '头盔'],
+        '腰带': ['腰带', '带', '腰', '束', '绦', '玉带'],
+        '鞋子': ['鞋子', '鞋', '靴', '履', '踏', '云履', '战靴']
+    };
+
+    for (let [part, keywords] of Object.entries(partKeywords)) {
+        for (let kw of keywords) {
+            if (fullText.includes(kw)) {
+                result.part = part;
+                console.log(`🔍 部位判定: ${part} (匹配关键词: "${kw}")`);
+                break;
+            }
+        }
+        if (result.part) break;
+    }
+
+    // ============================================================
+    // 打造方式提取
+    // ============================================================
+    if (fullText.includes('强化') || fullText.includes('强')) {
+        result.craftType = '强化';
+        console.log(`🔍 打造方式判定: 强化`);
+    } else if (fullText.includes('普通') || fullText.includes('普')) {
+        result.craftType = '普通';
+        console.log(`🔍 打造方式判定: 普通`);
+    }
+
+    console.log('📦 智能上下文提取完成:', result);
     return result;
 },
     // ============================================================
@@ -1875,10 +1877,34 @@ parseEquipmentText(text) {
         result.craftType = '普通';
     }
 
-// 5. ✅ 统一属性提取（旧方法，稳定版）
+// 5. ✅ 组合提取（新方法 + 旧方法 + 所有单独处理）
 const allAttrs = {};
 
-// 方法一：直接匹配 "属性名+数字" 格式
+// ============================================================
+// 第一步：用新方法（智能上下文提取）
+// ============================================================
+const extracted = this.extractAllByContext(fullText);
+console.log('📦 新方法提取结果:', extracted);
+
+// 合并新方法的结果
+if (extracted.level) {
+    result.level = extracted.level;
+}
+if (extracted.part) {
+    result.part = extracted.part;
+}
+if (extracted.craftType) {
+    result.craftType = extracted.craftType;
+}
+for (let [key, val] of Object.entries(extracted.attrs)) {
+    if (val !== 0) {
+        allAttrs[key] = val;
+    }
+}
+
+// ============================================================
+// 第二步：旧方法补漏（正则精准匹配）
+// ============================================================
 const attrNames = ['防御', '气血', '伤害', '命中', '灵力', '魔法', '敏捷', '体质', '魔力', '力量', '耐力', '耐久'];
 const attrRegex = new RegExp(`(${attrNames.join('|')})\\s*([+-]?\\s*\\d+)`, 'g');
 let match;
@@ -1892,37 +1918,18 @@ while ((match = attrRegex.exec(fullText)) !== null) {
         } else {
             val = Math.abs(val);
         }
-        allAttrs[name] = val;
-        console.log(`✅ 提取到 ${name}: ${val}`);
-    }
-}
-
-// 方法二：如果方法一没提取到任何属性，用更宽松的方式
-if (Object.keys(allAttrs).length === 0) {
-    const looseRegex = /(防御|气血|伤害|命中|灵力|魔法|敏捷|体质|魔力|力量|耐力|耐久)[^+\-]*?([+-]?\d+)/g;
-    while ((match = looseRegex.exec(fullText)) !== null) {
-        let name = match[1];
-        let val = parseInt(match[2]);
-        if (!isNaN(val) && val !== 0) {
+        if (!allAttrs[name] || Math.abs(val) > Math.abs(allAttrs[name])) {
             allAttrs[name] = val;
-            console.log(`✅ 宽松提取到 ${name}: ${val}`);
+            console.log(`✅ 旧方法补漏提取到 ${name}: ${val}`);
         }
     }
 }
 
-// 方法三：专门处理耐久（格式特殊）
-if (!allAttrs['耐久']) {
-    const durMatch = fullText.match(/耐久\s*度?\s*(\d+)/);
-    if (durMatch) {
-        const val = parseInt(durMatch[1]);
-        if (val > 0) {
-            allAttrs['耐久'] = val;
-            console.log(`✅ 提取到 耐久: ${val}`);
-        }
-    }
-}
+// ============================================================
+// 第三步：所有单独处理（兜底）
+// ============================================================
 
-// ✅ 单独提取防御（兜底）
+// 防御
 if (!allAttrs['防御']) {
     const defMatch = fullText.match(/防\s*御\s*[+：:]\s*(\d+)/);
     if (defMatch) {
@@ -1931,27 +1938,111 @@ if (!allAttrs['防御']) {
     }
 }
 
-// ✅ 单独提取魔力（OCR 可能识别成 "大力" 或 "大 力"）
+// 气血
+if (!allAttrs['气血']) {
+    const hpMatch = fullText.match(/气\s*血\s*[+：:]\s*(\d+)/);
+    if (hpMatch) {
+        allAttrs['气血'] = parseInt(hpMatch[1]);
+        console.log(`✅ 单独提取到 气血: ${allAttrs['气血']}`);
+    }
+}
+
+// 伤害
+if (!allAttrs['伤害']) {
+    const dmgMatch = fullText.match(/伤\s*害?\s*[+：:]\s*(\d+)/);
+    if (dmgMatch) {
+        allAttrs['伤害'] = parseInt(dmgMatch[1]);
+        console.log(`✅ 单独提取到 伤害: ${allAttrs['伤害']}`);
+    }
+}
+
+// 命中
+if (!allAttrs['命中']) {
+    const hitMatch = fullText.match(/命?\s*中\s*[+：:]\s*(\d+)/);
+    if (hitMatch) {
+        allAttrs['命中'] = parseInt(hitMatch[1]);
+        console.log(`✅ 单独提取到 命中: ${allAttrs['命中']}`);
+    }
+}
+
+// 灵力
+if (!allAttrs['灵力']) {
+    const spiritMatch = fullText.match(/灵\s*力\s*[+：:]\s*(\d+)/);
+    if (spiritMatch) {
+        allAttrs['灵力'] = parseInt(spiritMatch[1]);
+        console.log(`✅ 单独提取到 灵力: ${allAttrs['灵力']}`);
+    }
+}
+
+// 魔法
+if (!allAttrs['魔法']) {
+    const manaMatch = fullText.match(/魔\s*法\s*[+：:]\s*(\d+)/);
+    if (manaMatch) {
+        allAttrs['魔法'] = parseInt(manaMatch[1]);
+        console.log(`✅ 单独提取到 魔法: ${allAttrs['魔法']}`);
+    }
+}
+
+// 敏捷
+if (!allAttrs['敏捷']) {
+    const agiMatch = fullText.match(/敏\s*捷\s*[+：:]\s*(\d+)/);
+    if (agiMatch) {
+        allAttrs['敏捷'] = parseInt(agiMatch[1]);
+        console.log(`✅ 单独提取到 敏捷: ${allAttrs['敏捷']}`);
+    }
+}
+
+// 体质
+if (!allAttrs['体质']) {
+    const conMatch = fullText.match(/体\s*质\s*[+：:]\s*(\d+)/);
+    if (conMatch) {
+        allAttrs['体质'] = parseInt(conMatch[1]);
+        console.log(`✅ 单独提取到 体质: ${allAttrs['体质']}`);
+    }
+}
+
+// 魔力（OCR可能识别成"大力"或"放力"等）
 if (!allAttrs['魔力']) {
-    const match = fullText.match(/[大魔]\s*力\s*([+-])\s*(\d+)/);
-    if (match) {
-        const val = parseInt(match[2]);
-        allAttrs['魔力'] = match[1] === '-' ? -val : val;
+    const mpMatch = fullText.match(/[大魔放谭摩]\s*力\s*([+-])\s*(\d+)/);
+    if (mpMatch) {
+        const val = parseInt(mpMatch[2]);
+        allAttrs['魔力'] = mpMatch[1] === '-' ? -val : val;
         console.log(`✅ 单独提取到 魔力: ${allAttrs['魔力']}`);
     }
 }
 
-// ✅ 单独提取力量
+// 力量
 if (!allAttrs['力量']) {
-    const match = fullText.match(/力量\s*([+-])\s*(\d+)/);
-    if (match) {
-        const val = parseInt(match[2]);
-        allAttrs['力量'] = match[1] === '-' ? -val : val;
+    const strMatch = fullText.match(/力量\s*([+-])\s*(\d+)/);
+    if (strMatch) {
+        const val = parseInt(strMatch[2]);
+        allAttrs['力量'] = strMatch[1] === '-' ? -val : val;
         console.log(`✅ 单独提取到 力量: ${allAttrs['力量']}`);
     }
 }
 
+// 耐力
+if (!allAttrs['耐力']) {
+    const endMatch = fullText.match(/耐\s*力\s*([+-])\s*(\d+)/);
+    if (endMatch) {
+        const val = parseInt(endMatch[2]);
+        allAttrs['耐力'] = endMatch[1] === '-' ? -val : val;
+        console.log(`✅ 单独提取到 耐力: ${allAttrs['耐力']}`);
+    }
+}
+
+// 耐久
+if (!allAttrs['耐久']) {
+    const durMatch = fullText.match(/耐\s*久\s*度?\s*(\d+)/);
+    if (durMatch) {
+        allAttrs['耐久'] = parseInt(durMatch[1]);
+        console.log(`✅ 单独提取到 耐久: ${allAttrs['耐久']}`);
+    }
+}
+
+// ============================================================
 // 合并到结果
+// ============================================================
 for (let [key, val] of Object.entries(allAttrs)) {
     if (val !== 0) {
         result.attrs[key] = val;
