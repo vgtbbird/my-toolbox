@@ -1872,9 +1872,82 @@ parseEquipmentText(text) {
         result.craftType = '普通';
     }
 
-// 5. ✅ 智能属性提取（调用新方法）
-const allAttrs = this.extractAllAttributes(fullText);
-console.log('📦 智能提取结果:', allAttrs);
+// 5. ✅ 组合属性提取（新方法 + 旧方法互补）
+const allAttrs = {};
+
+// 第一步：用新方法提取
+const newAttrs = this.extractAllAttributes(fullText);
+console.log('📦 新方法提取结果:', newAttrs);
+
+// 合并新方法的结果
+for (let [key, val] of Object.entries(newAttrs)) {
+    if (val !== 0) {
+        allAttrs[key] = val;
+    }
+}
+
+// 第二步：用旧方法补漏（提取新方法遗漏的属性）
+const attrNames = ['防御', '气血', '伤害', '命中', '灵力', '魔法', '敏捷', '体质', '魔力', '力量', '耐力', '耐久'];
+const attrRegex = new RegExp(`(${attrNames.join('|')})\\s*([+-]?\\s*\\d+)`, 'g');
+let match;
+while ((match = attrRegex.exec(fullText)) !== null) {
+    let name = match[1];
+    let valStr = match[2].trim();
+    let val = parseInt(valStr);
+    if (!isNaN(val) && val !== 0) {
+        if (valStr.startsWith('-') || valStr.includes('-')) {
+            val = -Math.abs(val);
+        } else {
+            val = Math.abs(val);
+        }
+        // 如果新方法没提取到，或者新方法的值更小（取绝对值更大的）
+        if (!allAttrs[name] || Math.abs(val) > Math.abs(allAttrs[name])) {
+            allAttrs[name] = val;
+            console.log(`✅ 旧方法补漏提取到 ${name}: ${val}`);
+        }
+    }
+}
+
+// 第三步：单独提取耐久（如果还没有）
+if (!allAttrs['耐久']) {
+    const durMatch = fullText.match(/耐久\s*度?\s*(\d+)/);
+    if (durMatch) {
+        const val = parseInt(durMatch[1]);
+        if (val > 0) {
+            allAttrs['耐久'] = val;
+            console.log(`✅ 单独提取到 耐久: ${val}`);
+        }
+    }
+}
+
+// ✅ 单独提取防御（如果还没有）
+if (!allAttrs['防御']) {
+    const defMatch = fullText.match(/防\s*御\s*[+：:]\s*(\d+)/);
+    if (defMatch) {
+        allAttrs['防御'] = parseInt(defMatch[1]);
+        console.log(`✅ 单独提取到 防御: ${allAttrs['防御']}`);
+    }
+}
+
+// ✅ 单独提取魔力（如果还没有）
+if (!allAttrs['魔力']) {
+    const match = fullText.match(/[大魔]\s*力\s*([+-])\s*(\d+)/);
+    if (match) {
+        const val = parseInt(match[2]);
+        allAttrs['魔力'] = match[1] === '-' ? -val : val;
+        console.log(`✅ 单独提取到 魔力: ${allAttrs['魔力']}`);
+    }
+}
+
+// ✅ 单独提取力量（如果还没有）
+if (!allAttrs['力量']) {
+    const match = fullText.match(/力量\s*([+-])\s*(\d+)/);
+    if (match) {
+        const val = parseInt(match[2]);
+        allAttrs['力量'] = match[1] === '-' ? -val : val;
+        console.log(`✅ 单独提取到 力量: ${allAttrs['力量']}`);
+    }
+}
 
 // 合并到结果
 for (let [key, val] of Object.entries(allAttrs)) {
