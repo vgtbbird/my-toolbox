@@ -557,6 +557,10 @@ extractPart(ocrText) {
         '魔 法': '魔法',
         '魔 法 ': '魔法',
         '魔法': '魔法',
+        '方法': '魔法',
+        '方 法': '魔法',
+        '魔 法': '魔法',
+        '法': '魔法',
         // ===== 绿字属性修正 =====
         // 魔力
         '魔 力': '魔力',
@@ -1712,10 +1716,13 @@ while ((match = numberPattern.exec(fullText)) !== null) {
         }
 
         // 魔法
-        if (cleanBefore.includes('魔') && cleanBefore.includes('法')) {
-            result.attrs['魔法'] = Math.abs(finalValue);
-            console.log(`✅ 魔法: ${finalValue}`);
-            continue;
+        if (cleanBefore.includes('魔') || cleanBefore.includes('法') || cleanBefore.includes('方')) {
+            // 但排除魔力（"魔"+"力"）和防御（"方"可能是"防"的误识别）
+            if (!cleanBefore.includes('力') && !cleanBefore.includes('御')) {
+                result.attrs['魔法'] = Math.abs(finalValue);
+                console.log(`✅ 魔法: ${finalValue}`);
+                continue;
+            }
         }
 
         // 敏捷
