@@ -1666,10 +1666,21 @@ while ((match = numberPattern.exec(fullText)) !== null) {
 
         // 等级
         if (cleanBefore.includes('等') || cleanBefore.includes('级')) {
-            if (!cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度')) {
-                result.level = Math.abs(finalValue);
-                console.log(`✅ 等级: ${result.level}`);
+            // ✅ 排除锻炼等级
+            if (cleanBefore.includes('锻炼') || cleanBefore.includes('锻') || cleanBefore.includes('炼')) {
+                console.log(`⏭️ 跳过锻炼等级: ${finalValue}（前文="${cleanBefore}"）`);
                 continue;
+            }
+            if (!cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度')) {
+                // ✅ 过滤不合理等级：装备等级 >= 60
+                if (Math.abs(finalValue) >= 60 && Math.abs(finalValue) <= 200) {
+                    result.level = Math.abs(finalValue);
+                    console.log(`✅ 等级: ${result.level}`);
+                    continue;
+                } else {
+                    console.log(`⏭️ 过滤不合理等级: ${finalValue}（<60 或 >200）`);
+                    continue;
+                }
             }
         }
 
@@ -1798,13 +1809,21 @@ parseEquipmentText(text) {
         const match = fullText.match(pattern);
         if (match) {
             const level = parseInt(match[1]);
-            if (level >= 10 && level <= 200) {
-                result.level = level;
-                console.log(`✅ 全文匹配等级: ${level}`);
-                break;
+           // ✅ 过滤：装备等级 60-160，且排除锻炼等级
+        if (level >= 60 && level <= 200) {
+            // 检查是否真的是装备等级（不是锻炼等级）
+            const fullMatch = match[0];
+            const contextBefore = fullText.substring(Math.max(0, match.index - 20), match.index);
+            if (contextBefore.includes('锻炼') || contextBefore.includes('锻') || contextBefore.includes('炼')) {
+                console.log(`⏭️ 全文匹配跳过锻炼等级: ${level}`);
+                continue;
             }
+            result.level = level;
+            console.log(`✅ 全文匹配等级: ${level}`);
+            break;
         }
     }
+}
 
     // 2. 提取部位
     result.part = this.extractPart(fullText);
