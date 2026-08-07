@@ -2034,6 +2034,29 @@ console.log('📦 最终合并到 result.attrs:', result.attrs);
         }
     }
 
+    // 7. ✅ 根据部位过滤和修正属性
+if (result.part) {
+    // 各部位允许的属性
+    const partAllowedAttrs = {
+        '武器': ['伤害', '命中', '体质', '魔力', '力量', '耐力', '敏捷', '耐久'],
+        '衣服': ['防御', '体质', '魔力', '力量', '耐力', '敏捷', '耐久'],
+        '项链': ['灵力', '耐久'],
+        '帽子': ['防御', '魔法', '耐久'],
+        '腰带': ['防御', '气血', '耐久'],
+        '鞋子': ['防御', '敏捷', '耐久']
+    };
+    
+    const allowed = partAllowedAttrs[result.part] || [];
+    const keys = Object.keys(result.attrs);
+    for (let key of keys) {
+        if (!allowed.includes(key)) {
+            // 如果这个属性不在允许列表中，删掉它
+            console.log(`🧹 根据部位过滤: 删除 ${key}（${result.part} 不应有此属性）`);
+            delete result.attrs[key];
+        }
+    }
+}
+
     console.log('📦 解析结果:', result);
     return result;
 },
