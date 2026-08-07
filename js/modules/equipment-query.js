@@ -983,9 +983,7 @@ parsePetEquipmentText(text) {
     const result = {
         level: null,
         part: null,
-        attrs: {},
-        _isPet: true  // ✅ 加这行：标记这是宠装
-
+        attrs: {}
     };
 
     // 1. 提取等级（全文匹配 + 锻炼等级过滤）
@@ -1110,7 +1108,21 @@ if (!part) {
 
 result.part = part;
 
-   const petAttrMap = this.petAttrMap;
+     // 修改 petAttrMap 的顺序，命中率放在命中前面
+        const petAttrMap = {
+            '命中率': /命中率?\s*[+：:]\s*(\d+)%?/,  // 护腕主属性
+            '伤害': /伤害\s*[+：:]\s*(\d+)/,
+            '灵力': /灵力\s*[+：:]\s*(\d+)/,
+            '气血': /气血\s*[+：:]\s*(\d+)/,
+            '体质': /体质\s*[+：:]\s*(\d+)/,
+            '耐力': /耐力\s*[+：:]\s*(\d+)/,
+            '魔力': /魔力\s*[+：:]\s*(\d+)/,
+            '力量': /力量\s*[+：:]\s*(\d+)/,
+            '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
+            '速度': /速度\s*[+：:]\s*(\d+)/,
+            '防御': /防御\s*[+：:]\s*(\d+)/,
+        };
+        // ❌ 没有 '命中'
 
     for (let [attr, pattern] of Object.entries(petAttrMap)) {
         const match = fullText.match(pattern);
@@ -2334,15 +2346,12 @@ parseEquipmentText(text) {
         console.log(`   - 部位匹配: ${best.matchDetails.partMatch ? '✅' : '❌'}`);
     }
 
-// 4. 提取打造方式（宠装跳过）
-if (!result._isPet) {
+    // 4. 提取打造方式
     if (fullText.includes('强化') || fullText.includes('强')) {
         result.craftType = '强化';
     } else if (fullText.includes('普通') || fullText.includes('普')) {
         result.craftType = '普通';
     }
-}
-// 如果是宠装，跳过打造方式识别
 
 // 5. ✅ 组合提取（新方法 + 旧方法 + 所有单独处理）
 const allAttrs = {};
@@ -2543,11 +2552,7 @@ console.log('📦 最终合并到 result.attrs:', result.attrs);
             }
         }
     }
-
-// ✅ 如果是宠装，跳过人物装备的部位校准
-if (result._isPet) {
-    console.log('⏭️ 跳过人物装备部位校准（宠装）');
-} else {
+    
 // 7. ✅ 根据属性组合校准部位（反向校准）
 if (Object.keys(result.attrs).length > 0) {
     const attrs = result.attrs;
