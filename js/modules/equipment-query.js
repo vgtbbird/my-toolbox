@@ -1110,21 +1110,7 @@ if (!part) {
 
 result.part = part;
 
-     // 修改 petAttrMap 的顺序，命中率放在命中前面
-        const petAttrMap = {
-            '命中率': /命中率?\s*[+：:]\s*(\d+)%?/,  // 护腕主属性
-            '伤害': /伤害\s*[+：:]\s*(\d+)/,
-            '灵力': /灵力\s*[+：:]\s*(\d+)/,
-            '气血': /气血\s*[+：:]\s*(\d+)/,
-            '体质': /体质\s*[+：:]\s*(\d+)/,
-            '耐力': /耐力\s*[+：:]\s*(\d+)/,
-            '魔力': /魔力\s*[+：:]\s*(\d+)/,
-            '力量': /力量\s*[+：:]\s*(\d+)/,
-            '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
-            '速度': /速度\s*[+：:]\s*(\d+)/,
-            '防御': /防御\s*[+：:]\s*(\d+)/,
-        };
-        // ❌ 没有 '命中'
+   const petAttrMap = this.petAttrMap;
 
     for (let [attr, pattern] of Object.entries(petAttrMap)) {
         const match = fullText.match(pattern);
