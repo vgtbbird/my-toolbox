@@ -983,7 +983,7 @@ parsePetEquipmentText(text) {
     const result = {
         level: null,
         part: null,
-        attrs: },
+        attrs: {},
         _isPet: true  // ✅ 加这行：标记这是宠装
 
     };
