@@ -823,6 +823,44 @@ extractPart(ocrText) {
     petAttrList: ['伤害', '灵力', '气血', '体质', '耐力', '魔力', '力量', '敏捷', '速度', '防御', '命中率'],
 
     // ============================================================
+//  🐾 宠装名称映射表（75-155级）
+// ============================================================
+petNameMap: {
+    // ===== 项圈 =====
+    '九曲环': { level: 75, part: '项圈' },
+    '笼玉环': { level: 85, part: '项圈' },
+    '嵌宝金环': { level: 95, part: '项圈' },
+    '玳瑁环': { level: 105, part: '项圈' },
+    '七星宝环': { level: 115, part: '项圈' },
+    '缚龙圈': { level: 125, part: '项圈' },
+    '鸾尾环': { level: 135, part: '项圈' },
+    '织锦颈圈': { level: 145, part: '项圈' },
+    '冰蚕丝圈': { level: 155, part: '项圈' },
+
+    // ===== 铠甲 =====
+    '连环铠': { level: 75, part: '铠甲' },
+    '笼玉甲': { level: 85, part: '铠甲' },
+    '嵌宝金甲': { level: 95, part: '铠甲' },
+    '玳瑁衣': { level: 105, part: '铠甲' },
+    '七星宝甲': { level: 115, part: '铠甲' },
+    '缚龙甲': { level: 125, part: '铠甲' },
+    '凤凰彩衣': { level: 135, part: '铠甲' },
+    '织锦软褡': { level: 145, part: '铠甲' },
+    '冰蚕织甲': { level: 155, part: '铠甲' },
+
+    // ===== 护腕 =====
+    '镂空银镯': { level: 75, part: '护腕' },
+    '笼玉镯': { level: 85, part: '护腕' },
+    '嵌宝金腕': { level: 95, part: '护腕' },
+    '琥珀护腕': { level: 105, part: '护腕' },
+    '七星宝腕': { level: 115, part: '护腕' },
+    '缚龙筋': { level: 125, part: '护腕' },
+    '凤翎护腕': { level: 135, part: '护腕' },
+    '织锦彩带': { level: 145, part: '护腕' },
+    '冰蚕丝带': { level: 155, part: '护腕' },
+},
+
+    // ============================================================
 //  🐾 宠装识别（独立模块，不影响人物装备）
 // ============================================================
 
@@ -990,6 +1028,22 @@ parsePetEquipmentText(text) {
     if (level) {
         result.level = level;
     }
+
+    // 1.5 ✅ 匹配装备名（先查名称映射表）
+let nameMatch = null;
+for (let [name, info] of Object.entries(this.petNameMap)) {
+    if (fullText.includes(name)) {
+        nameMatch = { name, info };
+        console.log(`✅ 宠装名称匹配: ${name} → ${info.level}级 ${info.part}`);
+        break;
+    }
+}
+
+// 如果匹配到了，直接用映射表的数据
+if (nameMatch) {
+    result.level = nameMatch.info.level;
+    result.part = nameMatch.info.part;
+}
 
     // 2. 判断部位（从装备名或主属性）
     const petNameKeywords = {
