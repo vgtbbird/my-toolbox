@@ -1159,6 +1159,32 @@ if (!result.attrs['命中率']) {
         }
     }
 
+    // ✅ 部位校准：根据主属性反推部位
+if (result.attrs['防御']) {
+    // 有防御 → 铠甲
+    if (result.part !== '铠甲') {
+        console.log(`🔧 部位校准: 有防御属性 → 铠甲（原: ${result.part || '无'}）`);
+        result.part = '铠甲';
+    }
+} else if (result.attrs['速度']) {
+    // 有速度 → 项圈
+    if (result.part !== '项圈') {
+        console.log(`🔧 部位校准: 有速度属性 → 项圈（原: ${result.part || '无'}）`);
+        result.part = '项圈';
+    }
+} else if (result.attrs['命中率']) {
+    // 有命中率 → 护腕
+    if (result.part !== '护腕') {
+        console.log(`🔧 部位校准: 有命中率属性 → 护腕（原: ${result.part || '无'}）`);
+        result.part = '护腕';
+    }
+}
+
+// 如果还没有部位，但装备名匹配到了
+if (!result.part && nameMatch) {
+    result.part = nameMatch.info.part;
+}
+
     console.log('📦 宠装解析结果:', result);
     return result;
 },
