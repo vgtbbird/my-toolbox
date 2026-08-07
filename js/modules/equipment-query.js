@@ -983,7 +983,9 @@ parsePetEquipmentText(text) {
     const result = {
         level: null,
         part: null,
-        attrs: {}
+        attrs: },
+        _isPet: true  // ✅ 加这行：标记这是宠装
+
     };
 
     // 1. 提取等级（全文匹配 + 锻炼等级过滤）
@@ -2346,12 +2348,15 @@ parseEquipmentText(text) {
         console.log(`   - 部位匹配: ${best.matchDetails.partMatch ? '✅' : '❌'}`);
     }
 
-    // 4. 提取打造方式
+// 4. 提取打造方式（宠装跳过）
+if (!result._isPet) {
     if (fullText.includes('强化') || fullText.includes('强')) {
         result.craftType = '强化';
     } else if (fullText.includes('普通') || fullText.includes('普')) {
         result.craftType = '普通';
     }
+}
+// 如果是宠装，跳过打造方式识别
 
 // 5. ✅ 组合提取（新方法 + 旧方法 + 所有单独处理）
 const allAttrs = {};
@@ -2552,7 +2557,11 @@ console.log('📦 最终合并到 result.attrs:', result.attrs);
             }
         }
     }
-    
+
+// ✅ 如果是宠装，跳过人物装备的部位校准
+if (result._isPet) {
+    console.log('⏭️ 跳过人物装备部位校准（宠装）');
+} else {
 // 7. ✅ 根据属性组合校准部位（反向校准）
 if (Object.keys(result.attrs).length > 0) {
     const attrs = result.attrs;
