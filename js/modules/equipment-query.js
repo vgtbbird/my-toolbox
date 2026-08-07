@@ -1872,89 +1872,17 @@ parseEquipmentText(text) {
         result.craftType = '普通';
     }
 
-    // 5. ✅ 统一属性提取（修复版）
-    const allAttrs = {};
+// 5. ✅ 智能属性提取（调用新方法）
+const allAttrs = this.extractAllAttributes(fullText);
+console.log('📦 智能提取结果:', allAttrs);
 
-    // 方法一：直接匹配 "属性名+数字" 格式
-    const attrNames = ['防御', '气血', '伤害', '命中', '灵力', '魔法', '敏捷', '体质', '魔力', '力量', '耐力', '耐久'];
-    const attrRegex = new RegExp(`(${attrNames.join('|')})\\s*([+-]?\\s*\\d+)`, 'g');
-    let match;
-    while ((match = attrRegex.exec(fullText)) !== null) {
-        let name = match[1];
-        let valStr = match[2].trim();
-        let val = parseInt(valStr);
-        if (!isNaN(val) && val !== 0) {
-            // 检查是否带负号
-            if (valStr.startsWith('-') || valStr.includes('-')) {
-                val = -Math.abs(val);
-            } else {
-                val = Math.abs(val);
-            }
-            allAttrs[name] = val;
-            console.log(`✅ 提取到 ${name}: ${val}`);
-        }
-    }
-    
-    // ✅ 单独提取防御
-if (!allAttrs['防御']) {
-    const defMatch = fullText.match(/防\s*御\s*[+：:]\s*(\d+)/);
-    if (defMatch) {
-        allAttrs['防御'] = parseInt(defMatch[1]);
-        console.log(`✅ 单独提取到 防御: ${allAttrs['防御']}`);
+// 合并到结果
+for (let [key, val] of Object.entries(allAttrs)) {
+    if (val !== 0) {
+        result.attrs[key] = val;
     }
 }
-    // ✅ 单独提取魔力（OCR 可能识别成 "大力" 或 "大 力"）
-if (!allAttrs['魔力']) {
-    const match = fullText.match(/[大魔]\s*力\s*([+-])\s*(\d+)/);
-    if (match) {
-        const val = parseInt(match[2]);
-        allAttrs['魔力'] = match[1] === '-' ? -val : val;
-        console.log(`✅ 单独提取到 魔力: ${allAttrs['魔力']}`);
-    }
-}
-
-// ✅ 单独提取力量
-if (!allAttrs['力量']) {
-    const match = fullText.match(/力量\s*([+-])\s*(\d+)/);
-    if (match) {
-        const val = parseInt(match[2]);
-        allAttrs['力量'] = match[1] === '-' ? -val : val;
-        console.log(`✅ 单独提取到 力量: ${allAttrs['力量']}`);
-    }
-}
-
-    // 方法二：如果方法一没提取到任何属性，用更宽松的方式
-    if (Object.keys(allAttrs).length === 0) {
-        const looseRegex = /(防御|气血|伤害|命中|灵力|魔法|敏捷|体质|魔力|力量|耐力|耐久)[^+\-]*?([+-]?\d+)/g;
-        while ((match = looseRegex.exec(fullText)) !== null) {
-            let name = match[1];
-            let val = parseInt(match[2]);
-            if (!isNaN(val) && val !== 0) {
-                allAttrs[name] = val;
-                console.log(`✅ 宽松提取到 ${name}: ${val}`);
-            }
-        }
-    }
-
-    // 方法三：专门处理耐久（格式特殊）
-    if (!allAttrs['耐久']) {
-        const durMatch = fullText.match(/耐久\s*度?\s*(\d+)/);
-        if (durMatch) {
-            const val = parseInt(durMatch[1]);
-            if (val > 0) {
-                allAttrs['耐久'] = val;
-                console.log(`✅ 提取到 耐久: ${val}`);
-            }
-        }
-    }
-
-    // 合并到结果
-    for (let [key, val] of Object.entries(allAttrs)) {
-        if (val !== 0) {
-            result.attrs[key] = val;
-        }
-    }
-    console.log('📦 最终合并到 result.attrs:', result.attrs);
+console.log('📦 最终合并到 result.attrs:', result.attrs);
 
     // 6. 组合查找（等级+部位）
     if (!result.name && result.level && result.part) {
