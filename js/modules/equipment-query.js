@@ -3405,7 +3405,7 @@ calculateMelt() {
             </div>
         `;
 
-        const magicLimit = (limits['法力'] || 0) + (limits['灵力'] || 0);
+        const magicLimit = (limits['魔力'] || 0) + (limits['灵力'] || 0);
         let magicRating = '', magicColor = '#5a7a94';
         if (magicValue >= magicLimit * 0.9) { magicRating = '🌟 超极品！'; magicColor = '#dbbd7c'; }
         else if (magicValue >= magicLimit * 0.7) { magicRating = '🔥 极品'; magicColor = '#2d6b2d'; }
