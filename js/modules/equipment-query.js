@@ -2034,7 +2034,7 @@ console.log('📦 最终合并到 result.attrs:', result.attrs);
         }
     }
 
- // 7. ✅ 根据属性组合校准部位（反向校准）
+// 7. ✅ 根据属性组合校准部位（反向校准）
 if (Object.keys(result.attrs).length > 0) {
     const attrs = result.attrs;
     let calibratedPart = null;
@@ -2044,10 +2044,17 @@ if (Object.keys(result.attrs).length > 0) {
         calibratedPart = '武器';
         console.log(`🔧 属性组合校准: 伤害+命中 → 武器`);
     }
-    // 规则2：有防御+气血 → 腰带
+    // 规则2：有防御+气血+绿字 → 衣服（优先于腰带）
     else if (attrs['防御'] && attrs['气血']) {
-        calibratedPart = '腰带';
-        console.log(`🔧 属性组合校准: 防御+气血 → 腰带`);
+        const greenAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
+        const hasGreen = greenAttrs.some(a => attrs[a] !== undefined);
+        if (hasGreen) {
+            calibratedPart = '衣服';
+            console.log(`🔧 属性组合校准: 防御+气血+绿字 → 衣服`);
+        } else {
+            calibratedPart = '腰带';
+            console.log(`🔧 属性组合校准: 防御+气血 → 腰带`);
+        }
     }
     // 规则3：有防御+魔法 → 帽子
     else if (attrs['防御'] && attrs['魔法']) {
@@ -2064,7 +2071,7 @@ if (Object.keys(result.attrs).length > 0) {
         calibratedPart = '项链';
         console.log(`🔧 属性组合校准: 只有灵力 → 项链`);
     }
-    // 规则6：有防御+绿字（体魔力量耐敏） → 衣服
+    // 规则6：有防御+绿字（无气血） → 衣服
     else if (attrs['防御']) {
         const greenAttrs = ['体质', '魔力', '力量', '耐力', '敏捷'];
         const hasGreen = greenAttrs.some(a => attrs[a] !== undefined);
