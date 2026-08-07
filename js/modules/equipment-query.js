@@ -637,6 +637,14 @@ extractPart(ocrText) {
         '五 行': '五行',
         '五 行 ': '五行',
         '五行': '五行',
+     // 宠装属性修正
+        '命中襟': '命中率',
+        '命 中 襟': '命中率',
+        '岳力': '耐力',
+        '岳 力': '耐力',
+        '展': '度',           // 耐久展 → 耐久度
+        '#': '+',            // 体质#7 → 体质+7
+        '%6': '%',           // 14%6 → 14%
     };
         let corrected = text;
         for (let [wrong, right] of Object.entries(corrections)) {
@@ -1026,7 +1034,7 @@ parsePetEquipmentText(text) {
         '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
         '速度': /速度\s*[+：:]\s*(\d+)/,
         '防御': /防御\s*[+：:]\s*(\d+)/,
-        '命中率': /命中率\s*[+：:]\s*(\d+)%?/
+        '命中率': /命中[襟率]?\s*[+：:]\s*(\d+)%?/
     };
 
     for (let [attr, pattern] of Object.entries(petAttrMap)) {
