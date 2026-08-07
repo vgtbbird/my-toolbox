@@ -864,6 +864,21 @@ recognizePetEquipment(imageSource) {
         return;
     }
 
+    // ✅ 自动重置：清空上次识别的数据
+    this.petInputValues = {};
+    this.petCurrentLevel = 115;
+    this.petCurrentPart = '护腕';
+    
+    document.querySelectorAll('.pe-attr-input').forEach(input => {
+        input.value = '';
+    });
+    
+    document.querySelectorAll('.pe-btn-level, .pe-btn-part').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('.pe-btn-level[data-value="115"]')?.classList.add('active');
+    document.querySelector('.pe-btn-part[data-value="护腕"]')?.classList.add('active');
+
     if (typeof Tesseract === 'undefined') {
         resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
         resultEl.style.color = '#e06060';
@@ -917,6 +932,129 @@ parsePetEquipmentText(text) {
         part: null,
         attrs: {}
     };
+
+    // 1. 提取等级（全文匹配 + 锻炼等级过滤）
+    let level = null;
+
+    // 方法一：全文匹配 "等级 xxx"
+    const levelMatch = fullText.match(/等级\s*[:：]?\s*(\d+)/);
+    if (levelMatch) {
+        const lv = parseInt(levelMatch[1]);
+        const contextBefore = fullText.substring(Math.max(0, levelMatch.index - 20), levelMatch.index);
+        if (!contextBefore.includes('锻炼') && !contextBefore.includes('锻') && !contextBefore.includes('炼')) {
+            if (lv >= 65 && lv <= 145) {
+                level = lv;
+                console.log(`✅ 宠装等级(全文匹配): ${level}`);
+            }
+        }
+    }
+
+    // 方法二：找 "级"
+    if (!level) {
+        const lvMatch = fullText.match(/(\d+)\s*级/);
+        if (lvMatch) {
+            const lv = parseInt(lvMatch[1]);
+            if (lv >= 65 && lv <= 145) {
+                level = lv;
+                console.log(`✅ 宠装等级(级匹配): ${level}`);
+            }
+        }
+    }
+
+    // 方法三：数字+上下文
+    if (!level) {
+        const numberPattern = /(\d+)/g;
+        let match;
+        while ((match = numberPattern.exec(fullText)) !== null) {
+            const lv = parseInt(match[1]);
+            if (lv >= 65 && lv <= 145) {
+                const startPos = match.index;
+                const contextBefore = fullText.substring(Math.max(0, startPos - 15), startPos);
+                if (contextBefore.includes('等级') && !contextBefore.includes('锻炼') && !contextBefore.includes('锻') && !contextBefore.includes('炼')) {
+                    level = lv;
+                    console.log(`✅ 宠装等级(上下文提取): ${level}`);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (level) {
+        result.level = level;
+    }
+
+    // 2. 判断部位（从装备名或主属性）
+    const petNameKeywords = {
+        '护腕': ['护腕', '腕'],
+        '项圈': ['环', '项圈', '圈'],
+        '铠甲': ['甲', '铠']
+    };
+
+    for (let [part, keywords] of Object.entries(petNameKeywords)) {
+        for (let kw of keywords) {
+            if (fullText.includes(kw)) {
+                result.part = part;
+                console.log(`✅ 宠装部位(装备名): ${part}`);
+                break;
+            }
+        }
+        if (result.part) break;
+    }
+
+    if (!result.part) {
+        if (fullText.includes('速度')) {
+            result.part = '项圈';
+            console.log(`✅ 宠装部位(主属性速度): 项圈`);
+        } else if (fullText.includes('防御')) {
+            result.part = '铠甲';
+            console.log(`✅ 宠装部位(主属性防御): 铠甲`);
+        } else if (fullText.includes('命中率')) {
+            result.part = '护腕';
+            console.log(`✅ 宠装部位(主属性命中率): 护腕`);
+        }
+    }
+
+    // 3. 提取所有属性值
+    const petAttrMap = {
+        '伤害': /伤害\s*[+：:]\s*(\d+)/,
+        '灵力': /灵力\s*[+：:]\s*(\d+)/,
+        '气血': /气血\s*[+：:]\s*(\d+)/,
+        '体质': /体质\s*[+：:]\s*(\d+)/,
+        '耐力': /耐力\s*[+：:]\s*(\d+)/,
+        '魔力': /魔力\s*[+：:]\s*(\d+)/,
+        '力量': /力量\s*[+：:]\s*(\d+)/,
+        '敏捷': /敏捷\s*[+：:]\s*(\d+)/,
+        '速度': /速度\s*[+：:]\s*(\d+)/,
+        '防御': /防御\s*[+：:]\s*(\d+)/,
+        '命中率': /命中率\s*[+：:]\s*(\d+)%?/
+    };
+
+    for (let [attr, pattern] of Object.entries(petAttrMap)) {
+        const match = fullText.match(pattern);
+        if (match) {
+            const val = parseInt(match[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs[attr] = val;
+                console.log(`✅ 宠装属性 ${attr}: ${val}`);
+            }
+        }
+    }
+
+    // 4. 处理OCR识别错误（命中率）
+    if (!result.attrs['命中率']) {
+        const hitMatch = fullText.match(/命\s*中\s*率?\s*[+：:]\s*(\d+)%?/);
+        if (hitMatch) {
+            const val = parseInt(hitMatch[1]);
+            if (!isNaN(val) && val > 0) {
+                result.attrs['命中率'] = val;
+                console.log(`✅ 宠装属性 命中率(修正): ${val}`);
+            }
+        }
+    }
+
+    console.log('📦 宠装解析结果:', result);
+    return result;
+},
 
     // 1. 提取等级
     const levelMatch = fullText.match(/等级\s*[:：]?\s*(\d+)/);
