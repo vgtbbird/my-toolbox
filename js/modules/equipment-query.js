@@ -3417,7 +3417,7 @@ calculateMelt() {
             <div style="background:${scoreBg};border-radius:12px;padding:8px 12px;border:1px solid rgba(255,255,255,0.08);">
                 <div style="font-weight:600;color:#e0e8f0;">🔮 法宠价值</div>
                 <div style="font-size:1.2rem;font-weight:700;color:${magicColor};">${magicValue.toFixed(1)}</div>
-                <div style="font-size:0.7rem;color:#8ab0c8;">法力+灵力 = ${mana.toFixed(1)} + ${spirit.toFixed(1)} | 极限 ${magicLimit}</div>
+                <div style="font-size:0.7rem;color:#8ab0c8;">魔力+灵力 = ${magic.toFixed(1)} + ${spirit.toFixed(1)}| 极限 ${magicLimit}</div>
                 <div style="font-weight:600;color:${magicColor};">${magicRating}</div>
             </div>
         `;
