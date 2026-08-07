@@ -1652,8 +1652,8 @@ extractAllByContext(text) {
                 if (combinedContext.includes(kw)) {
                     const score = kw.length * 2;
                     const kwPos = combinedContext.indexOf(kw);
-                    const distance = Math.abs(kwPos - 30);
-                    const distanceScore = Math.max(0, 30 - distance) / 30;
+                    const distance = Math.abs(kwPos - 15);
+                    const distanceScore = Math.max(0, 15 - distance) / 15;
                     const totalScore = score * 0.6 + distanceScore * 0.4;
                     
                     if (totalScore > bestMatchScore) {
@@ -1678,9 +1678,9 @@ extractAllByContext(text) {
                 continue;
             }
             // ---- 耐久 ----
-            else if (cleanBefore.includes('耐') && (cleanBefore.includes('久') || cleanBefore.includes('度'))) {
+            else if (cleanBefore.includes('度') || cleanBefore.includes('久') || (cleanBefore.includes('耐') && (cleanBefore.includes('久') || cleanBefore.includes('度')))) {
                 matchedAttr = '耐久';
-                console.log(`🔍 上下文判定: 耐久 (有"耐"+"久/度")`);
+                console.log(`🔍 上下文判定: 耐久 (有"度/久/耐"+"久/度")`);
             }
             // ---- 防御 ----
             else if (cleanBefore.includes('防') || cleanBefore.includes('御') || cleanBefore.includes('卸')) {
