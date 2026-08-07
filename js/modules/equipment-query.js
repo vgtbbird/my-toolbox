@@ -1516,8 +1516,26 @@ preprocessImage(imageSource) {
     //  📷 截图识别核心
     // ============================================================
   async recognizeEquipment(imageSource) {
-    const resultEl = document.getElementById('eqOcrResult');
+    const resultEl = document.getElementById('eqOcrResult');  
     if (!resultEl) return;
+
+     // ✅ 第5步：重置所有输入和选择
+    this.inputValues = {};
+    this.currentLevel = 60;
+    this.currentPart = '武器';
+    this.currentType = '普通';
+    
+    document.querySelectorAll('.eq-attr-input').forEach(input => {
+        input.value = '';
+    });
+    
+    document.querySelectorAll('.eq-btn-level, .eq-btn-part, .eq-btn-type').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('.eq-btn-level[data-value="60"]')?.classList.add('active');
+    document.querySelector('.eq-btn-part[data-value="武器"]')?.classList.add('active');
+    document.querySelector('.eq-btn-type[data-value="普通"]')?.classList.add('active');
+
 
     if (typeof Tesseract === 'undefined') {
         resultEl.textContent = '❌ OCR库未加载，请刷新页面重试';
@@ -1592,22 +1610,26 @@ extractAllByContext(text) {
     
     console.log('🔍 开始数字+前文上下文提取');
 
-    // 1. 找到所有数字及其位置
-    const numberPattern = /([+-]?\s*\d+)/g;
-    let match;
-    const numberMatches = [];
-    while ((match = numberPattern.exec(fullText)) !== null) {
-        const numStr = match[1].trim();
-        const numValue = parseInt(numStr);
-        if (isNaN(numValue) || numValue === 0) continue;
-        
-        numberMatches.push({
-            value: numValue,
-            startPos: match.index,
-            endPos: match.index + match[0].length,
-            raw: match[0]
-        });
-    }
+    // 1. 找到所有数字及其位置（支持负号）
+const numberPattern = /([+-]\s*\d+|\d+)/g;
+let match;
+const numberMatches = [];
+while ((match = numberPattern.exec(fullText)) !== null) {
+    const numStr = match[1].trim();
+    const numValue = parseInt(numStr);
+    if (isNaN(numValue) || numValue === 0) continue;
+    
+    // 检查数字本身是否带负号
+    const hasNegativeSign = numStr.includes('-') || numStr.includes('－') || numStr.includes('—');
+    
+    numberMatches.push({
+        value: numValue,
+        startPos: match.index,
+        endPos: match.index + match[0].length,
+        raw: match[0],
+        hasNegativeSign: hasNegativeSign
+    });
+}
 
     console.log(`📊 找到 ${numberMatches.length} 个数字`);
 
@@ -1627,8 +1649,9 @@ extractAllByContext(text) {
         const cleanBefore = contextBefore.replace(/\s/g, '');
         const value = current.value;
         
-        // 检查负号
-        const isNegative = contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
+       
+        // 检查负号（数字本身带负号 或 前文有负号）
+        const isNegative = current.hasNegativeSign || contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
         const finalValue = isNegative ? -Math.abs(value) : Math.abs(value);
         
         console.log(`🔍 数字 ${finalValue}: 前文="${cleanBefore}"`);
@@ -1757,11 +1780,12 @@ parseEquipmentText(text) {
         attrs: {}
     };
 
-    // 1. 提取等级
+   // 1. 提取等级（全文匹配 + 数字截取兜底）
     const levelPatterns = [
         /等级\s*[:：]?\s*(\d+)/,
         /(\d+)\s*级/,
-        /(\d+)[\s\n]*级/,
+        /〔(\d+)〕/,
+        /【(\d+)】/
     ];
     for (let pattern of levelPatterns) {
         const match = fullText.match(pattern);
@@ -1769,6 +1793,7 @@ parseEquipmentText(text) {
             const level = parseInt(match[1]);
             if (level >= 10 && level <= 200) {
                 result.level = level;
+                console.log(`✅ 全文匹配等级: ${level}`);
                 break;
             }
         }
