@@ -657,6 +657,24 @@ extractPart(ocrText) {
         '1a': '+',
         'a': '+',
         '兽 p': '',
+       // ===== 🆕 新增规则：修复宠装+人物装备共用的“属性+数字紧贴” =====
+            // 这些规则不会破坏原有逻辑，只是把紧贴的数字断开，让后续正则更容易匹配
+            '伤害+': '伤害 +',
+            '命中+': '命中 +',
+            '速度+': '速度 +',
+            '防御+': '防御 +',
+            '力量+': '力量 +',
+            '敏捷+': '敏捷 +',
+            '耐力+': '耐力 +',
+            '魔力+': '魔力 +',
+            '体质+': '体质 +',
+            '灵力+': '灵力 +',
+            '气血+': '气血 +',
+
+            // ===== 🆕 新增规则：宠装专有错别字修正（加在原来后面，不冲突） =====
+            '每捷': '敏捷',
+            '每 捷': '敏捷',
+            '奈 力': '耐力',
     };
         let corrected = text;
         for (let [wrong, right] of Object.entries(corrections)) {
@@ -1189,6 +1207,54 @@ if (result.attrs['防御']) {
 if (!result.part && nameMatch) {
     result.part = nameMatch.info.part;
 }
+
+
+     // ============================================================
+    //  🆕 宠装专用补充提取（放在最后，只对宠装生效，不破坏原数据）
+    // ============================================================
+    // 只有明确识别到宠装部位（护腕/项圈/铠甲）时才触发
+    const isPetPart = result.part === '护腕' || result.part === '项圈' || result.part === '铠甲';
+    
+    if (isPetPart) {
+        console.log('🔍 识别到宠装部位，执行按行拆解补充提取...');
+        
+        // 按换行符拆分成行
+        const lines = correctedText.split('\n').filter(line => line.trim().length > 0);
+        
+        // 宠装属性关键词正则
+        const petAttrRegex = /(伤害|命中率|速度|防御|力量|敏捷|耐力|魔力|体质|灵力|气血)\s*([+-]?\s*\d+%?)/g;
+        
+        let match;
+        for (let line of lines) {
+            // 跳过干扰行（制造者、套装、装备条件、耐久度）
+            if (line.includes('制造者') || line.includes('套装') || line.includes('装备条件') || line.includes('耐久度')) {
+                continue;
+            }
+            
+            while ((match = petAttrRegex.exec(line)) !== null) {
+                const attr = match[1].trim();
+                let valStr = match[2].trim();
+                let val = parseInt(valStr);
+                
+                // 处理百分号
+                if (valStr.includes('%')) {
+                    val = parseInt(valStr.replace('%', ''));
+                }
+                
+                // 如果数值有效且还没提取过，就补进去
+                if (!isNaN(val) && val !== 0 && !result.attrs[attr]) {
+                    if (valStr.startsWith('-')) {
+                        val = -Math.abs(val);
+                    } else {
+                        val = Math.abs(val);
+                    }
+                    result.attrs[attr] = val;
+                    console.log(`✅ 宠装补充提取到 ${attr}: ${val}`);
+                }
+            }
+        }
+    }
+    // ============================================================
 
     console.log('📦 宠装解析结果:', result);
     return result;
