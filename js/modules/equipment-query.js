@@ -1579,7 +1579,6 @@ preprocessImage(imageSource) {
         resultEl.style.color = '#e06060';
     }
 },
-
 // ===== 数字 + 前文上下文提取 =====
 extractAllByContext(text) {
     const result = {
@@ -1748,7 +1747,6 @@ extractAllByContext(text) {
 
     console.log('📦 提取完成:', result);
     return result;
-},
 },
     // ============================================================
     //  📝 解析装备文本
