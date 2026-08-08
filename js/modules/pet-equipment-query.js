@@ -261,10 +261,14 @@ const PetEquipmentQueryModule = {
             const finalValue = isNegative ? -Math.abs(value) : Math.abs(value);
             console.log(`🔍 数字 ${finalValue}: 前文="${cleanBefore}"`);
 
-             // 防御（铠甲主属性）
+                        // 2. 🟢 防御专属提取（铠甲）
+            // 校验：宠装防御最高不超过 150（145级极限是138）
             if (cleanBefore.includes('防') || cleanBefore.includes('御')) {
+                if (Math.abs(finalValue) > 150) {
+                    console.log(`⏭️ 跳过疑似防御: ${finalValue}（超出极限150）`);
+                    continue;
+                }
                 result.attrs['防御'] = Math.abs(finalValue);
-                // ✅ 重点：如果还没锁定，才进行部位锁定
                 if (!partLocked) {
                     result.part = '铠甲';
                     partLocked = true;
@@ -275,8 +279,13 @@ const PetEquipmentQueryModule = {
                 continue;
             }
 
-                        // 速度（项圈主属性）
-            if (cleanBefore.includes('速') || cleanBefore.includes('度')) {
+            // 4. 速度（项圈主属性）
+            // 校验：宠装速度最高不超过 60（145级极限是51）
+            if (cleanBefore.includes('速') && !cleanBefore.includes('耐')) {
+                if (Math.abs(finalValue) > 60) {
+                    console.log(`⏭️ 跳过疑似速度: ${finalValue}（超出极限60，可能是耐久度误读）`);
+                    continue;
+                }
                 result.attrs['速度'] = Math.abs(finalValue);
                 if (!partLocked) {
                     result.part = '项圈';
@@ -288,8 +297,13 @@ const PetEquipmentQueryModule = {
                 continue;
             }
 
-                        // 命中率（护腕主属性）
+                        // 5. 命中率（护腕主属性）
+            // 校验：宠装命中率上限永远是 19%（不论等级）
             if (cleanBefore.includes('命') || cleanBefore.includes('中')) {
+                if (Math.abs(finalValue) > 19) {
+                    console.log(`⏭️ 跳过疑似命中率: ${finalValue}（超出极限19%）`);
+                    continue;
+                }
                 result.attrs['命中率'] = Math.abs(finalValue);
                 if (!partLocked) {
                     result.part = '护腕';
