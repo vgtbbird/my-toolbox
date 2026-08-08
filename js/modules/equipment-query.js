@@ -1,4 +1,4 @@
-// ===========================================================
+// ============================================================
 //  ⚔️ 人物装备打造 & 熔炼查询模块 - 独立完整版
 //  功能：打造属性范围查询 + 熔炼上限计算 + 装备评分 + 武器总伤
 // ============================================================
@@ -451,92 +451,18 @@ const EquipmentQueryModule = {
         });
     },
 
-          // ============================================================
-    //  📷 终极放大锐化版图片预处理（适用于低分辨率游戏截图）
+    // ============================================================
+    //  📷 人物装备截图识别核心
     // ============================================================
     preprocessImage(imageSource) {
         return new Promise((resolve) => {
             const img = new Image();
             img.onload = function() {
-                // 1. 设置放大倍数（推荐 2 倍，让 100x100 的截图变成 200x200）
-                const scale = 2.0; 
-                const width = img.width * scale;
-                const height = img.height * scale;
-
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                
-                // 2. 开启抗锯齿，让放大后的字边缘平滑
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                
-                // 3. 绘制放大后的原始图
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // 4. 获取放大后的像素数据
-                const imageData = ctx.getImageData(0, 0, width, height);
-                const data = imageData.data;
-                
-                // 5. 高亮分离（沿用之前的 RGB 阈值逻辑）
-                // 梦幻的黄字/白字，只要 R 或 G 通道超过 160 就能保留
-                for (let i = 0; i < data.length; i += 4) {
-                    let r = data[i];
-                    let g = data[i + 1];
-                    let b = data[i + 2];
-                    
-                    // 稍微放宽一点阈值到 160，防止高亮黄色变暗丢失
-                    if (r > 160 || g > 160 || b > 160) {
-                        data[i] = 255;     // 白
-                        data[i + 1] = 255;
-                        data[i + 2] = 255;
-                    } else {
-                        data[i] = 0;       // 黑
-                        data[i + 1] = 0;
-                        data[i + 2] = 0;
-                    }
-                }
-                
-                ctx.putImageData(imageData, 0, 0);
-
-                // 6. 额外加一道边缘锐化（让“＋”和数字连在一起，让“灵”和“力”不分开）
-                // 这是一个简单的 3x3 锐化卷积核
-                const sharpenData = ctx.getImageData(0, 0, width, height);
-                const sData = sharpenData.data;
-                const kernel = [
-                    [0, -1, 0],
-                    [-1, 5, -1],
-                    [0, -1, 0]
-                ];
-                
-                // 为了节约算力，我们只对边缘像素做锐化（跳过纯黑和纯白块）
-                for (let y = 1; y < height - 1; y++) {
-                    for (let x = 1; x < width - 1; x++) {
-                        const idx = (y * width + x) * 4;
-                        let rSum = 0, gSum = 0, bSum = 0;
-                        
-                        // 只有当前像素不是纯黑或纯白时才做锐化
-                        if (sData[idx] !== 0 && sData[idx] !== 255) {
-                            for (let ky = -1; ky <= 1; ky++) {
-                                for (let kx = -1; kx <= 1; kx++) {
-                                    const nIdx = ((y + ky) * width + (x + kx)) * 4;
-                                    const weight = kernel[ky + 1][kx + 1];
-                                    rSum += sData[nIdx] * weight;
-                                    gSum += sData[nIdx + 1] * weight;
-                                    bSum += sData[nIdx + 2] * weight;
-                                }
-                            }
-                            // 钳制数值在 0-255 之间
-                            data[idx] = Math.min(255, Math.max(0, rSum));
-                            data[idx + 1] = Math.min(255, Math.max(0, gSum));
-                            data[idx + 2] = Math.min(255, Math.max(0, bSum));
-                        }
-                    }
-                }
-                ctx.putImageData(imageData, 0, 0);
-                
-                resolve(canvas.toDataURL('image/png'));
+                const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) { const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]; data[i] = gray; data[i + 1] = gray; data[i + 2] = gray; }
+                ctx.putImageData(imageData, 0, 0); resolve(canvas.toDataURL('image/png'));
             };
             img.src = imageSource;
         });
@@ -548,13 +474,13 @@ const EquipmentQueryModule = {
             '气 血': '气血', '气 血 ': '气血',
             '伤 害': '伤害', '伤 害 ': '伤害',
             '命 中': '命中', '命 中 ': '命中', '合中': '命中', '合 中': '命中',
-            '灵 力': '灵力', '灵 力 ': '灵力', '赤力': '灵力','录力': '灵力',
+            '灵 力': '灵力', '灵 力 ': '灵力',
             '魔 法': '魔法', '方法': '魔法', '方 法': '魔法',
             '魔 力': '魔力', '大 力': '魔力', '大力': '魔力', '放力': '魔力', '放 力': '魔力', '谭力': '魔力', '谭 力': '魔力', '摩力': '魔力', '摩 力': '魔力',
             '力 量': '力量',
             '耐 力': '耐力', '奈力': '耐力', '奈 力': '耐力', '人而力': '耐力', '人 而 力': '耐力', '人 力': '耐力',
             '体 质': '体质', '休质': '体质', '休 质': '体质',
-            '敏 捷': '敏捷','每捷': '敏捷',
+            '敏 捷': '敏捷',
             '耐 久': '耐久', '耐久度': '耐久度', '耐 久 度': '耐久度',
             '等 级': '等级', '五 行': '五行',
             '＋': '+', '－': '-', '—': '-', '＝': '=', '十': '+', '一': '-',
@@ -674,94 +600,61 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  🔢 增强版智能上下文提取（支持 +、-、% 符号）
+    //  🔢 智能上下文提取（只保留人物装备使用）
     // ============================================================
     extractAllByContext(text) {
         const result = { level: null, part: null, craftType: null, attrs: {} };
         const fullText = text.replace(/\s+/g, ' ').trim();
-        console.log('🔍 开始数字+前文上下文提取（增强版，支持符号）');
+        console.log('🔍 开始数字+前文上下文提取');
 
-        // 核心改动：正则支持可选的 + 或 - 符号，以及可选的 % 后缀
-        const numberPattern = /([+-]?\s*\d+%?)/g;
-        let match; 
-        const numberMatches = [];
-        
+        const numberPattern = /([+-]\s*\d+|\d+)/g;
+        let match; const numberMatches = [];
         while ((match = numberPattern.exec(fullText)) !== null) {
-            let rawStr = match[1].trim();
-            let numValue = parseInt(rawStr);
-            
-            // 过滤掉 0，以及纯符号（比如只有一个 + 或 -）
+            const numStr = match[1].trim();
+            const numValue = parseInt(numStr);
             if (isNaN(numValue) || numValue === 0) continue;
-            if (rawStr === '+' || rawStr === '-' || rawStr === '') continue;
-            
-            // 判断有没有负号（不管是 `-2` 还是 `- 2`）
-            const hasNegativeSign = rawStr.includes('-') || rawStr.includes('－') || rawStr.includes('—');
-            // 判断有没有百分号（后续可以用于标记）
-            const hasPercent = rawStr.includes('%');
-            
-            numberMatches.push({
-                value: numValue,
-                startPos: match.index,
-                endPos: match.index + match[0].length,
-                raw: rawStr,
-                hasNegativeSign: hasNegativeSign,
-                hasPercent: hasPercent
-            });
+            const hasNegativeSign = numStr.includes('-') || numStr.includes('－') || numStr.includes('—');
+            numberMatches.push({ value: numValue, startPos: match.index, endPos: match.index + match[0].length, raw: match[0], hasNegativeSign });
         }
-        console.log(`📊 找到 ${numberMatches.length} 个数字（含符号）`);
+        console.log(`📊 找到 ${numberMatches.length} 个数字`);
 
         for (let i = 0; i < numberMatches.length; i++) {
             const current = numberMatches[i];
             const startPos = current.startPos;
             let prevEndPos = 0;
             if (i > 0) prevEndPos = numberMatches[i - 1].endPos;
-            
-            // 截取从上一个数字结束到当前数字开始之间的文本
             const contextBefore = fullText.substring(prevEndPos, startPos);
             const cleanBefore = contextBefore.replace(/\s/g, '');
             const value = current.value;
-            
-            // 负号判定（不仅看数字本身，还看它前面紧跟的符号）
             const isNegative = current.hasNegativeSign || contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
             const finalValue = isNegative ? -Math.abs(value) : Math.abs(value);
-            
             console.log(`🔍 数字 ${finalValue}: 前文="${cleanBefore}"`);
 
-            // ===== 判断逻辑（沿用你原来的规则，加了一些容错） =====
-            
-            // 等级
             if (cleanBefore.includes('等') || cleanBefore.includes('级')) {
                 if (!cleanBefore.includes('锻炼') && !cleanBefore.includes('锻') && !cleanBefore.includes('炼')) {
                     if (!cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度')) {
                         if (Math.abs(finalValue) >= 60 && Math.abs(finalValue) <= 200) {
-                            result.level = Math.abs(finalValue); 
-                            console.log(`✅ 等级: ${result.level}`); 
-                            continue;
+                            result.level = Math.abs(finalValue); console.log(`✅ 等级: ${result.level}`); continue;
                         }
                     }
                 }
             }
-            
-            // 耐久（排除速度、伤害等干扰）
-            if ((cleanBefore.includes('久') || cleanBefore.includes('度')) || (cleanBefore.includes('耐') && !cleanBefore.includes('敏') && !cleanBefore.includes('属'))) {
-                // 防止把“速度”的“度”误认为耐久度
-                if (!cleanBefore.includes('速')) { 
-                    result.attrs['耐久'] = Math.abs(finalValue); 
-                    console.log(`✅ 耐久: ${result.attrs['耐久']}`); 
-                    continue; 
-                }
+            if (cleanBefore.includes('久') || cleanBefore.includes('度') || (cleanBefore.includes('耐') && (cleanBefore.includes('久') || cleanBefore.includes('度')))) {
+                if (!cleanBefore.includes('速')) { result.attrs['耐久'] = Math.abs(finalValue); console.log(`✅ 耐久: ${result.attrs['耐久']}`); continue; }
             }
             if (cleanBefore.includes('防') || cleanBefore.includes('御')) { result.attrs['防御'] = finalValue; console.log(`✅ 防御: ${finalValue}`); continue; }
-            if (cleanBefore.includes('血') || cleanBefore.includes('气') && !cleanBefore.includes('敏') && !cleanBefore.includes('速')) { result.attrs['气血'] = Math.abs(finalValue); console.log(`✅ 气血: ${finalValue}`); continue; }
+            if (cleanBefore.includes('血') || cleanBefore.includes('气')) { result.attrs['气血'] = Math.abs(finalValue); console.log(`✅ 气血: ${finalValue}`); continue; }
             if (cleanBefore.includes('伤') || cleanBefore.includes('害')) { result.attrs['伤害'] = Math.abs(finalValue); console.log(`✅ 伤害: ${finalValue}`); continue; }
-            if (cleanBefore.includes('中') || cleanBefore.includes('命')) { result.attrs['命中'] = Math.abs(finalValue); console.log(`✅ 命中: ${finalValue}`); continue; }
-            if (cleanBefore.includes('灵') && !cleanBefore.includes('敏') && !cleanBefore.includes('耐')) { result.attrs['灵力'] = finalValue; console.log(`✅ 灵力: ${finalValue}`); continue; }
-            if (cleanBefore.includes('魔') && !cleanBefore.includes('法')) { result.attrs['魔力'] = finalValue; console.log(`✅ 魔力: ${finalValue}`); continue; }
-            if (cleanBefore.includes('敏') || cleanBefore.includes('捷') && !cleanBefore.includes('耐')) { result.attrs['敏捷'] = finalValue; console.log(`✅ 敏捷: ${finalValue}`); continue; }
+            if (cleanBefore.includes('中') || cleanBefore.includes('合') || cleanBefore.includes('命')) { result.attrs['命中'] = Math.abs(finalValue); console.log(`✅ 命中: ${finalValue}`); continue; }
+            if (cleanBefore.includes('灵')) { result.attrs['灵力'] = finalValue; console.log(`✅ 灵力: ${finalValue}`); continue; }
+            if (cleanBefore.includes('魔') || cleanBefore.includes('法') || cleanBefore.includes('方')) {
+                if (!cleanBefore.includes('力') && !cleanBefore.includes('御')) { result.attrs['魔法'] = Math.abs(finalValue); console.log(`✅ 魔法: ${finalValue}`); continue; }
+            }
+            if (cleanBefore.includes('敏') || cleanBefore.includes('捷')) { result.attrs['敏捷'] = finalValue; console.log(`✅ 敏捷: ${finalValue}`); continue; }
             if (cleanBefore.includes('体') || cleanBefore.includes('质')) { result.attrs['体质'] = finalValue; console.log(`✅ 体质: ${finalValue}`); continue; }
-            if (cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度') && !cleanBefore.includes('属')) { result.attrs['耐力'] = finalValue; console.log(`✅ 耐力: ${finalValue}`); continue; }
+            if (cleanBefore.includes('魔') || cleanBefore.includes('放') || cleanBefore.includes('谭') || cleanBefore.includes('摩')) { result.attrs['魔力'] = finalValue; console.log(`✅ 魔力: ${finalValue}`); continue; }
             if (cleanBefore.includes('量') || (cleanBefore.includes('力') && !cleanBefore.includes('魔') && !cleanBefore.includes('耐') && !cleanBefore.includes('体') && !cleanBefore.includes('敏') && !cleanBefore.includes('灵'))) { result.attrs['力量'] = finalValue; console.log(`✅ 力量: ${finalValue}`); continue; }
-
+            if ((cleanBefore.includes('耐') || cleanBefore.includes('奈') || cleanBefore.includes('人')) && !cleanBefore.includes('久') && !cleanBefore.includes('度')) { result.attrs['耐力'] = finalValue; console.log(`✅ 耐力: ${finalValue}`); continue; }
             console.log(`⏭️ 未识别: ${finalValue}，前文="${cleanBefore}"`);
         }
         console.log('📦 提取完成:', result);
