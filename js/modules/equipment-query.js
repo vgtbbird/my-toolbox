@@ -451,18 +451,52 @@ const EquipmentQueryModule = {
         });
     },
 
-    // ============================================================
-    //  📷 人物装备截图识别核心
+       // ============================================================
+    //  📷 终极增强版图片预处理（高亮黄/白字 + 复杂背景分离）
     // ============================================================
     preprocessImage(imageSource) {
         return new Promise((resolve) => {
             const img = new Image();
             img.onload = function() {
-                const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
-                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); const data = imageData.data;
-                for (let i = 0; i < data.length; i += 4) { const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]; data[i] = gray; data[i + 1] = gray; data[i + 2] = gray; }
-                ctx.putImageData(imageData, 0, 0); resolve(canvas.toDataURL('image/png'));
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                
+                // 绘制原始图像
+                ctx.drawImage(img, 0, 0);
+                
+                // 获取像素数据
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i];
+                    let g = data[i + 1];
+                    let b = data[i + 2];
+                    
+                    // 核心魔法：红绿蓝通道中，只要任意一个通道特别亮（> 180），就视为文字
+                    // 梦幻的高亮黄 (R高, G高, B中) 会被捕获
+                    // 白色的字 (R高, G高, B高) 也会被捕获
+                    // 暗色背景（R低, G低, B低）或格子（R低, G低, B低）会被剔除
+                    if (r > 180 || g > 180 || b > 180) {
+                        // 是文字像素：涂纯白
+                        data[i] = 255;
+                        data[i + 1] = 255;
+                        data[i + 2] = 255;
+                    } else {
+                        // 是背景像素：涂纯黑
+                        data[i] = 0;
+                        data[i + 1] = 0;
+                        data[i + 2] = 0;
+                    }
+                }
+                
+                // 写回处理后的数据
+                ctx.putImageData(imageData, 0, 0);
+                
+                // 把 canvas 转成 base64 图片给 OCR 用
+                resolve(canvas.toDataURL('image/png'));
             };
             img.src = imageSource;
         });
