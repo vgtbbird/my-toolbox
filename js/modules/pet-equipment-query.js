@@ -232,6 +232,8 @@ const PetEquipmentQueryModule = {
     // ============================================================
     extractPetContext(text) {
         const result = { level: null, part: null, attrs: {} };
+        // 🆕 新增：锁定标记。一旦通过主属性识别出部位，就不再变更
+        let partLocked = false; 
         const fullText = text.replace(/\s+/g, ' ').trim();
         console.log('🔍 宠装开始数字+前文上下文提取');
 
@@ -259,6 +261,46 @@ const PetEquipmentQueryModule = {
             const finalValue = isNegative ? -Math.abs(value) : Math.abs(value);
             console.log(`🔍 数字 ${finalValue}: 前文="${cleanBefore}"`);
 
+             // 防御（铠甲主属性）
+            if (cleanBefore.includes('防') || cleanBefore.includes('御')) {
+                result.attrs['防御'] = Math.abs(finalValue);
+                // ✅ 重点：如果还没锁定，才进行部位锁定
+                if (!partLocked) {
+                    result.part = '铠甲';
+                    partLocked = true;
+                    console.log(`✅ 宠装防御: ${finalValue} (锁定为铠甲)`);
+                } else {
+                    console.log(`✅ 宠装防御: ${finalValue} (已锁定，不做部位变更)`);
+                }
+                continue;
+            }
+
+                        // 速度（项圈主属性）
+            if (cleanBefore.includes('速') || cleanBefore.includes('度')) {
+                result.attrs['速度'] = Math.abs(finalValue);
+                if (!partLocked) {
+                    result.part = '项圈';
+                    partLocked = true;
+                    console.log(`✅ 宠装速度: ${finalValue} (锁定为项圈)`);
+                } else {
+                    console.log(`✅ 宠装速度: ${finalValue} (已锁定，不做部位变更)`);
+                }
+                continue;
+            }
+
+                        // 命中率（护腕主属性）
+            if (cleanBefore.includes('命') || cleanBefore.includes('中')) {
+                result.attrs['命中率'] = Math.abs(finalValue);
+                if (!partLocked) {
+                    result.part = '护腕';
+                    partLocked = true;
+                    console.log(`✅ 宠装命中率: ${finalValue} (锁定为护腕)`);
+                } else {
+                    console.log(`✅ 宠装命中率: ${finalValue} (已锁定，不做部位变更)`);
+                }
+                continue;
+            }
+
             // 1. 等级提取
             if (cleanBefore.includes('等') || cleanBefore.includes('级')) {
                 if (Math.abs(finalValue) >= 65 && Math.abs(finalValue) <= 145) {
@@ -271,7 +313,18 @@ const PetEquipmentQueryModule = {
             // 2. 宠装属性提取
             if (cleanBefore.includes('伤') || cleanBefore.includes('害')) { result.attrs['伤害'] = Math.abs(finalValue); console.log(`✅ 宠装伤害: ${finalValue}`); continue; }
             if (cleanBefore.includes('命') || cleanBefore.includes('中')) { result.attrs['命中率'] = Math.abs(finalValue); console.log(`✅ 宠装命中率: ${finalValue}`); continue; }
-            if (cleanBefore.includes('速') || cleanBefore.includes('度')) { result.attrs['速度'] = Math.abs(finalValue); console.log(`✅ 宠装速度: ${finalValue}`); continue; }
+             // 🟢 优化1：耐久度必须优先拦截（带“耐”字绝对不能误判为速度）
+            if (cleanBefore.includes('耐')) {
+                result.attrs['耐久'] = Math.abs(finalValue);
+                console.log(`✅ 宠装耐久: ${finalValue}`);
+                continue;
+            }
+            // 🔵 优化2：只有当没有“耐”字，且包含“速”或“度”时，才判定为速度
+            if (cleanBefore.includes('速') || cleanBefore.includes('度')) {
+                result.attrs['速度'] = Math.abs(finalValue);
+                console.log(`✅ 宠装速度: ${finalValue}`);
+                continue;
+            }
             if (cleanBefore.includes('防') || cleanBefore.includes('御')) { result.attrs['防御'] = Math.abs(finalValue); console.log(`✅ 宠装防御: ${finalValue}`); continue; }
             if (cleanBefore.includes('灵')) { result.attrs['灵力'] = Math.abs(finalValue); console.log(`✅ 宠装灵力: ${finalValue}`); continue; }
             if (cleanBefore.includes('血') || cleanBefore.includes('气')) { result.attrs['气血'] = Math.abs(finalValue); console.log(`✅ 宠装气血: ${finalValue}`); continue; }
