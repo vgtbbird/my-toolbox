@@ -528,11 +528,24 @@ const EquipmentQueryModule = {
             if (Object.keys(parsed.attrs || {}).length > 0) previewText += ` | ${Object.keys(parsed.attrs).length}项属性`;
             resultEl.textContent = previewText; resultEl.style.color = '#60d080';
 
-               // 1. 先将识别数据存入内存
-                this.fillRecognizedData(parsed);
-                
-                // 2. 无论属性多少，统一执行一次完整渲染（让输入框根据内存数据刷新出数值）
-                this.render();
+                 // 1. 先将识别数据存入内存 (这一步会更新 inputValues)
+        this.fillRecognizedData(parsed);
+
+        // 2. 无论如何，重新渲染一次 UI (确保输入框重建)
+        this.render();
+
+        // 3. 🚨 核弹级后备方案：如果上面的步骤没生效，这步强制把值塞进 DOM
+        if (parsed.attrs) {
+            for (let [attr, val] of Object.entries(parsed.attrs)) {
+                const input = document.getElementById(`eqAttr_${attr}`);
+                if (input) {
+                    input.value = val;
+                    // 手动触发 input 事件，告诉页面值已经更改
+                    const evt = new Event('input', { bubbles: true });
+                    input.dispatchEvent(evt);
+                }
+            }
+        }
         } catch (err) { console.error('OCR识别失败:', err); resultEl.textContent = '❌ 识别失败：' + err.message; resultEl.style.color = '#e06060'; }
     },
 
