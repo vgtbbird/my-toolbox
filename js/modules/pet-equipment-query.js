@@ -195,97 +195,34 @@ const PetEquipmentQueryModule = {
             }
         });
     },
-       // ============================================================
-    //  📷 终极放大锐化版图片预处理（适用于低分辨率游戏截图）
+
+    // ============================================================
+    //  📷 宠装截图识别
     // ============================================================
     preprocessImage(imageSource) {
         return new Promise((resolve) => {
             const img = new Image();
             img.onload = function() {
-                // 1. 设置放大倍数（推荐 2 倍，让 100x100 的截图变成 200x200）
-                const scale = 2.0; 
-                const width = img.width * scale;
-                const height = img.height * scale;
-
                 const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = img.width;
+                canvas.height = img.height;
                 const ctx = canvas.getContext('2d');
-                
-                // 2. 开启抗锯齿，让放大后的字边缘平滑
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                
-                // 3. 绘制放大后的原始图
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // 4. 获取放大后的像素数据
-                const imageData = ctx.getImageData(0, 0, width, height);
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imageData.data;
-                
-                // 5. 高亮分离（沿用之前的 RGB 阈值逻辑）
-                // 梦幻的黄字/白字，只要 R 或 G 通道超过 160 就能保留
                 for (let i = 0; i < data.length; i += 4) {
-                    let r = data[i];
-                    let g = data[i + 1];
-                    let b = data[i + 2];
-                    
-                    // 稍微放宽一点阈值到 160，防止高亮黄色变暗丢失
-                    if (r > 160 || g > 160 || b > 160) {
-                        data[i] = 255;     // 白
-                        data[i + 1] = 255;
-                        data[i + 2] = 255;
-                    } else {
-                        data[i] = 0;       // 黑
-                        data[i + 1] = 0;
-                        data[i + 2] = 0;
-                    }
-                }
-                
-                ctx.putImageData(imageData, 0, 0);
-
-                // 6. 额外加一道边缘锐化（让“＋”和数字连在一起，让“灵”和“力”不分开）
-                // 这是一个简单的 3x3 锐化卷积核
-                const sharpenData = ctx.getImageData(0, 0, width, height);
-                const sData = sharpenData.data;
-                const kernel = [
-                    [0, -1, 0],
-                    [-1, 5, -1],
-                    [0, -1, 0]
-                ];
-                
-                // 为了节约算力，我们只对边缘像素做锐化（跳过纯黑和纯白块）
-                for (let y = 1; y < height - 1; y++) {
-                    for (let x = 1; x < width - 1; x++) {
-                        const idx = (y * width + x) * 4;
-                        let rSum = 0, gSum = 0, bSum = 0;
-                        
-                        // 只有当前像素不是纯黑或纯白时才做锐化
-                        if (sData[idx] !== 0 && sData[idx] !== 255) {
-                            for (let ky = -1; ky <= 1; ky++) {
-                                for (let kx = -1; kx <= 1; kx++) {
-                                    const nIdx = ((y + ky) * width + (x + kx)) * 4;
-                                    const weight = kernel[ky + 1][kx + 1];
-                                    rSum += sData[nIdx] * weight;
-                                    gSum += sData[nIdx + 1] * weight;
-                                    bSum += sData[nIdx + 2] * weight;
-                                }
-                            }
-                            // 钳制数值在 0-255 之间
-                            data[idx] = Math.min(255, Math.max(0, rSum));
-                            data[idx + 1] = Math.min(255, Math.max(0, gSum));
-                            data[idx + 2] = Math.min(255, Math.max(0, bSum));
-                        }
-                    }
+                    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    data[i] = gray;
+                    data[i + 1] = gray;
+                    data[i + 2] = gray;
                 }
                 ctx.putImageData(imageData, 0, 0);
-                
                 resolve(canvas.toDataURL('image/png'));
             };
             img.src = imageSource;
         });
     },
-    
+
     correctOcrErrors(text) {
         const corrections = {
             '防 御': '防御', '防 御 ': '防御', '防卸': '防御',
@@ -401,52 +338,31 @@ const PetEquipmentQueryModule = {
             }
         }
 
-         // ============================================================
-        //  宠装专用属性提取（按行扫描，支持一行一属性或一行双属性）
         // ============================================================
-        // 1. 提取整个清洗后的文本，按照换行符切分成数组
+        //  宠装专用属性提取
+        // ============================================================
         const lines = correctedText.split('\n').filter(line => line.trim().length > 0);
-        
-        // 2. 定义宠装专用的匹配正则（支持 +、-、% 符号）
-        // 完美匹配：速度 +38、伤害 +35、命中率 +13%、防御 -5
         const petAttrRegex = /(伤害|命中率|速度|防御|力量|敏捷|耐力|魔力|体质|灵力|气血)\s*([+-]?\s*\d+%?)/g;
-        
+
         let match;
-        // 3. 逐行扫描，一次性把这一行里的所有属性抓出来
         for (let line of lines) {
-            // 排除纯干扰行
             if (line.includes('制造者') || line.includes('套装') || line.includes('装备条件') || line.includes('耐久度')) {
                 continue;
             }
-            
-            // 重置正则状态，防止行与行之间互相影响
-            petAttrRegex.lastIndex = 0;
-            
-            // 在同一行里不断匹配，直到抓完为止
             while ((match = petAttrRegex.exec(line)) !== null) {
                 const attr = match[1].trim();
                 let valStr = match[2].trim();
                 let val = parseInt(valStr);
-                
-                // 处理百分号（命中率去掉%）
-                if (valStr.includes('%')) {
-                    val = parseInt(valStr.replace('%', ''));
-                }
-                
-                // 如果成功解析出数字，且之前还没抓到过这个属性，就记录下来
+                if (valStr.includes('%')) val = parseInt(valStr.replace('%', ''));
                 if (!isNaN(val) && val !== 0 && !result.attrs[attr]) {
-                    // 处理减号
-                    if (valStr.startsWith('-')) {
-                        val = -Math.abs(val);
-                    } else {
-                        val = Math.abs(val);
-                    }
-                    result.attrs[attr] = val;
-                    console.log(`✅ 宠装按行扫描抓取到 ${attr}: ${val}`);
+                    result.attrs[attr] = valStr.startsWith('-') ? -Math.abs(val) : Math.abs(val);
                 }
             }
         }
-        // ============================================================
+
+        console.log('📦 宠装解析结果:', result);
+        return result;
+    },
 
     fillPetRecognizedData(parsed) {
         if (!parsed) return;
