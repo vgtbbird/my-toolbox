@@ -401,31 +401,52 @@ const PetEquipmentQueryModule = {
             }
         }
 
+         // ============================================================
+        //  宠装专用属性提取（按行扫描，支持一行一属性或一行双属性）
         // ============================================================
-        //  宠装专用属性提取
-        // ============================================================
+        // 1. 提取整个清洗后的文本，按照换行符切分成数组
         const lines = correctedText.split('\n').filter(line => line.trim().length > 0);
+        
+        // 2. 定义宠装专用的匹配正则（支持 +、-、% 符号）
+        // 完美匹配：速度 +38、伤害 +35、命中率 +13%、防御 -5
         const petAttrRegex = /(伤害|命中率|速度|防御|力量|敏捷|耐力|魔力|体质|灵力|气血)\s*([+-]?\s*\d+%?)/g;
-
+        
         let match;
+        // 3. 逐行扫描，一次性把这一行里的所有属性抓出来
         for (let line of lines) {
+            // 排除纯干扰行
             if (line.includes('制造者') || line.includes('套装') || line.includes('装备条件') || line.includes('耐久度')) {
                 continue;
             }
+            
+            // 重置正则状态，防止行与行之间互相影响
+            petAttrRegex.lastIndex = 0;
+            
+            // 在同一行里不断匹配，直到抓完为止
             while ((match = petAttrRegex.exec(line)) !== null) {
                 const attr = match[1].trim();
                 let valStr = match[2].trim();
                 let val = parseInt(valStr);
-                if (valStr.includes('%')) val = parseInt(valStr.replace('%', ''));
+                
+                // 处理百分号（命中率去掉%）
+                if (valStr.includes('%')) {
+                    val = parseInt(valStr.replace('%', ''));
+                }
+                
+                // 如果成功解析出数字，且之前还没抓到过这个属性，就记录下来
                 if (!isNaN(val) && val !== 0 && !result.attrs[attr]) {
-                    result.attrs[attr] = valStr.startsWith('-') ? -Math.abs(val) : Math.abs(val);
+                    // 处理减号
+                    if (valStr.startsWith('-')) {
+                        val = -Math.abs(val);
+                    } else {
+                        val = Math.abs(val);
+                    }
+                    result.attrs[attr] = val;
+                    console.log(`✅ 宠装按行扫描抓取到 ${attr}: ${val}`);
                 }
             }
         }
-
-        console.log('📦 宠装解析结果:', result);
-        return result;
-    },
+        // ============================================================
 
     fillPetRecognizedData(parsed) {
         if (!parsed) return;
