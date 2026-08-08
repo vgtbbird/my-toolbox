@@ -1,5 +1,5 @@
 // ============================================================
-//  🐾 召唤兽装备查询模块 - 纯净拆分版 (采用数字+前文提取)
+//  🐾 召唤兽装备查询模块 - 纯净拆分版 (含名称映射库)
 // ============================================================
 const PetEquipmentQueryModule = {
     id: 'petEquipmentQuery',
@@ -18,6 +18,41 @@ const PetEquipmentQueryModule = {
     petCurrentLevel: 115,
     petCurrentPart: '护腕',
     petInputValues: {},
+
+    // ============================================================
+    //  🐾 宠装名称映射表（用于识别装备名）
+    // ============================================================
+    petNameMap: {
+        '九曲环': { level: 75, part: '项圈' },
+        '笼玉环': { level: 85, part: '项圈' },
+        '嵌宝金环': { level: 95, part: '项圈' },
+        '玳瑁环': { level: 105, part: '项圈' },
+        '七星宝环': { level: 115, part: '项圈' },
+        '缚龙圈': { level: 125, part: '项圈' },
+        '鸾尾环': { level: 135, part: '项圈' },
+        '织锦颈圈': { level: 145, part: '项圈' },
+        '冰蚕丝圈': { level: 155, part: '项圈' },
+
+        '连环铠': { level: 75, part: '铠甲' },
+        '笼玉甲': { level: 85, part: '铠甲' },
+        '嵌宝金甲': { level: 95, part: '铠甲' },
+        '玳瑁衣': { level: 105, part: '铠甲' },
+        '七星宝甲': { level: 115, part: '铠甲' },
+        '缚龙甲': { level: 125, part: '铠甲' },
+        '凤凰彩衣': { level: 135, part: '铠甲' },
+        '织锦软褡': { level: 145, part: '铠甲' },
+        '冰蚕织甲': { level: 155, part: '铠甲' },
+
+        '镂空银镯': { level: 75, part: '护腕' },
+        '笼玉镯': { level: 85, part: '护腕' },
+        '嵌宝金腕': { level: 95, part: '护腕' },
+        '琥珀护腕': { level: 105, part: '护腕' },
+        '七星宝腕': { level: 115, part: '护腕' },
+        '缚龙筋': { level: 125, part: '护腕' },
+        '凤翎护腕': { level: 135, part: '护腕' },
+        '织锦彩带': { level: 145, part: '护腕' },
+        '冰蚕丝带': { level: 155, part: '护腕' },
+    },
 
     // ============================================================
     //  ✅ 宠装 - 各等级极限属性表
@@ -121,10 +156,8 @@ const PetEquipmentQueryModule = {
         });
     },
 
-    // ⭐ 宠装专用错别字修正
     correctOcrErrors(text) {
         const corrections = {
-            // 基础属性修正（与人物共用）
             '防 御': '防御', '防 御 ': '防御', '防卸': '防御',
             '气 血': '气血', '气 血 ': '气血',
             '伤 害': '伤害', '伤 害 ': '伤害',
@@ -138,12 +171,10 @@ const PetEquipmentQueryModule = {
             '等 级': '等级', '五 行': '五行',
             '＋': '+', '－': '-', '—': '-', '＝': '=', '十': '+', '一': '-',
             
-            // 宠装专用：打通“属性+数字紧贴”的断句
             '伤害+': '伤害 +', '命中+': '命中 +', '速度+': '速度 +', '防御+': '防御 +',
             '力量+': '力量 +', '敏捷+': '敏捷 +', '耐力+': '耐力 +', '魔力+': '魔力 +',
             '体质+': '体质 +', '灵力+': '灵力 +', '气血+': '气血 +',
             
-            // 宠装常见OCR误读修正
             '每捷': '敏捷', '每 捷': '敏捷',
             '命中率': '命中率', '命 中 率': '命中率',
             '中率': '命中率',
@@ -178,7 +209,6 @@ const PetEquipmentQueryModule = {
             await worker.terminate();
             console.log('📷 宠装OCR原始结果:', text);
 
-            // 执行核心解析
             const parsed = this.parsePetEquipmentText(text);
             
             if (!parsed || Object.keys(parsed.attrs).length === 0) {
@@ -263,22 +293,43 @@ const PetEquipmentQueryModule = {
     // ============================================================
     parsePetEquipmentText(text) {
         const correctedText = this.correctOcrErrors(text);
-        console.log('📝 宠装修正后文本:', correctedText);
         const fullText = correctedText.replace(/\s+/g, ' ').trim();
-        const result = { level: null, part: null, attrs: {} };
+        const result = { name: null, level: null, part: null, attrs: {} };
 
-        // 1. 使用“以数字为中心，向前查找上下文”的算法提取所有数据
+        console.log('📝 宠装修正后文本:', correctedText);
+
+        // 1. 提取装备名称（优先匹配名称库）
+        const cleanFullText = fullText.replace(/\s/g, '');
+        let nameMatch = null;
+        for (let [name, info] of Object.entries(this.petNameMap)) {
+            const cleanName = name.replace(/\s/g, '');
+            if (cleanFullText.includes(cleanName)) {
+                nameMatch = { name, info };
+                break;
+            }
+        }
+        if (nameMatch) {
+            result.name = nameMatch.name;
+            result.level = nameMatch.info.level;
+            result.part = nameMatch.info.part;
+            console.log(`✅ 宠装名称匹配: ${result.name} (${result.level}级${result.part})`);
+        }
+
+        // 2. 使用“以数字为中心，向前查找上下文”的算法提取所有数据
         const extracted = this.extractPetContext(fullText);
-        if (extracted.level) result.level = extracted.level;
-        if (extracted.part) result.part = extracted.part;
+        // 如果名称匹配没有提取到等级，用数字提取的等级补全
+        if (!result.level && extracted.level) {
+            result.level = extracted.level;
+        }
+        
+        // 3. 属性提取（只取数字提取中的属性）
         for (let [key, val] of Object.entries(extracted.attrs)) {
             if (val !== 0) result.attrs[key] = val;
         }
 
-        // 2. 兜底：如果没提取出部位，根据属性组合反向推断（宠装逻辑）
+        // 4. 兜底：如果名称匹配和数字提取都没找到部位，根据属性组合反向推断
         if (!result.part && Object.keys(result.attrs).length > 0) {
             const attrs = result.attrs;
-            // 护腕必须有命中率；项圈一定有速度；铠甲一定有防御
             if (attrs['命中率'] !== undefined) { result.part = '护腕'; console.log(`🔧 宠装属性校准: 有命中率 → 护腕`); }
             else if (attrs['速度'] !== undefined) { result.part = '项圈'; console.log(`🔧 宠装属性校准: 有速度 → 项圈`); }
             else if (attrs['防御'] !== undefined) { result.part = '铠甲'; console.log(`🔧 宠装属性校准: 有防御 → 铠甲`); }
