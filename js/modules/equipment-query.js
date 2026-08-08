@@ -601,13 +601,26 @@ const EquipmentQueryModule = {
         if (fullText.includes('强化') || fullText.includes('强')) { result.craftType = '强化'; }
         else if (fullText.includes('普通') || fullText.includes('普')) { result.craftType = '普通'; }
 
-        // 5. 提取属性（使用 extractAllByContext）
+                // 5. 提取属性（使用 extractAllByContext）
         const extracted = this.extractAllByContext(fullText);
-        console.log('📦 extractAllByContext 提取结果:', extracted);
+        console.log('📦 新方法提取结果:', extracted);
+
         if (extracted.level) result.level = extracted.level;
         if (extracted.part) result.part = extracted.part;
         if (extracted.craftType) result.craftType = extracted.craftType;
-        for (let [key, val] of Object.entries(extracted.attrs)) { if (val !== 0) result.attrs[key] = val; }
+
+        // 🛡️ 新增：确保 extracted.attrs 存在且为对象，避免引用断裂
+        const targetAttrs = extracted.attrs || {};
+        
+        // 🛡️ 新增：如果 result.attrs 还没初始化，先给它赋个空对象
+        if (!result.attrs || typeof result.attrs !== 'object') {
+            result.attrs = {};
+        }
+
+        // 把你原本的合并代码放在这里
+        for (let [key, val] of Object.entries(targetAttrs)) {
+            if (val !== 0) result.attrs[key] = val;
+        }
 
         console.log('📦 最终解析结果:', result);
         return result;
