@@ -528,10 +528,11 @@ const EquipmentQueryModule = {
             if (Object.keys(parsed.attrs || {}).length > 0) previewText += ` | ${Object.keys(parsed.attrs).length}项属性`;
             resultEl.textContent = previewText; resultEl.style.color = '#60d080';
 
-            this.fillRecognizedData(parsed);
-            if (Object.keys(parsed.attrs || {}).length > 0) {
-                this.render(); this.fillRecognizedData(parsed);
-            }
+               // 1. 先将识别数据存入内存
+                this.fillRecognizedData(parsed);
+                
+                // 2. 无论属性多少，统一执行一次完整渲染（让输入框根据内存数据刷新出数值）
+                this.render();
         } catch (err) { console.error('OCR识别失败:', err); resultEl.textContent = '❌ 识别失败：' + err.message; resultEl.style.color = '#e06060'; }
     },
 
