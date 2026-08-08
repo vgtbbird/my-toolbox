@@ -548,13 +548,13 @@ const EquipmentQueryModule = {
             '气 血': '气血', '气 血 ': '气血',
             '伤 害': '伤害', '伤 害 ': '伤害',
             '命 中': '命中', '命 中 ': '命中', '合中': '命中', '合 中': '命中',
-            '灵 力': '灵力', '灵 力 ': '灵力',
+            '灵 力': '灵力', '灵 力 ': '灵力', '赤力': '灵力','录力': '灵力',
             '魔 法': '魔法', '方法': '魔法', '方 法': '魔法',
             '魔 力': '魔力', '大 力': '魔力', '大力': '魔力', '放力': '魔力', '放 力': '魔力', '谭力': '魔力', '谭 力': '魔力', '摩力': '魔力', '摩 力': '魔力',
             '力 量': '力量',
             '耐 力': '耐力', '奈力': '耐力', '奈 力': '耐力', '人而力': '耐力', '人 而 力': '耐力', '人 力': '耐力',
             '体 质': '体质', '休质': '体质', '休 质': '体质',
-            '敏 捷': '敏捷',
+            '敏 捷': '敏捷','每捷': '敏捷',
             '耐 久': '耐久', '耐久度': '耐久度', '耐 久 度': '耐久度',
             '等 级': '等级', '五 行': '五行',
             '＋': '+', '－': '-', '—': '-', '＝': '=', '十': '+', '一': '-',
@@ -674,61 +674,94 @@ const EquipmentQueryModule = {
     },
 
     // ============================================================
-    //  🔢 智能上下文提取（只保留人物装备使用）
+    //  🔢 增强版智能上下文提取（支持 +、-、% 符号）
     // ============================================================
     extractAllByContext(text) {
         const result = { level: null, part: null, craftType: null, attrs: {} };
         const fullText = text.replace(/\s+/g, ' ').trim();
-        console.log('🔍 开始数字+前文上下文提取');
+        console.log('🔍 开始数字+前文上下文提取（增强版，支持符号）');
 
-        const numberPattern = /([+-]\s*\d+|\d+)/g;
-        let match; const numberMatches = [];
+        // 核心改动：正则支持可选的 + 或 - 符号，以及可选的 % 后缀
+        const numberPattern = /([+-]?\s*\d+%?)/g;
+        let match; 
+        const numberMatches = [];
+        
         while ((match = numberPattern.exec(fullText)) !== null) {
-            const numStr = match[1].trim();
-            const numValue = parseInt(numStr);
+            let rawStr = match[1].trim();
+            let numValue = parseInt(rawStr);
+            
+            // 过滤掉 0，以及纯符号（比如只有一个 + 或 -）
             if (isNaN(numValue) || numValue === 0) continue;
-            const hasNegativeSign = numStr.includes('-') || numStr.includes('－') || numStr.includes('—');
-            numberMatches.push({ value: numValue, startPos: match.index, endPos: match.index + match[0].length, raw: match[0], hasNegativeSign });
+            if (rawStr === '+' || rawStr === '-' || rawStr === '') continue;
+            
+            // 判断有没有负号（不管是 `-2` 还是 `- 2`）
+            const hasNegativeSign = rawStr.includes('-') || rawStr.includes('－') || rawStr.includes('—');
+            // 判断有没有百分号（后续可以用于标记）
+            const hasPercent = rawStr.includes('%');
+            
+            numberMatches.push({
+                value: numValue,
+                startPos: match.index,
+                endPos: match.index + match[0].length,
+                raw: rawStr,
+                hasNegativeSign: hasNegativeSign,
+                hasPercent: hasPercent
+            });
         }
-        console.log(`📊 找到 ${numberMatches.length} 个数字`);
+        console.log(`📊 找到 ${numberMatches.length} 个数字（含符号）`);
 
         for (let i = 0; i < numberMatches.length; i++) {
             const current = numberMatches[i];
             const startPos = current.startPos;
             let prevEndPos = 0;
             if (i > 0) prevEndPos = numberMatches[i - 1].endPos;
+            
+            // 截取从上一个数字结束到当前数字开始之间的文本
             const contextBefore = fullText.substring(prevEndPos, startPos);
             const cleanBefore = contextBefore.replace(/\s/g, '');
             const value = current.value;
+            
+            // 负号判定（不仅看数字本身，还看它前面紧跟的符号）
             const isNegative = current.hasNegativeSign || contextBefore.includes('-') || contextBefore.includes('－') || contextBefore.includes('—');
             const finalValue = isNegative ? -Math.abs(value) : Math.abs(value);
+            
             console.log(`🔍 数字 ${finalValue}: 前文="${cleanBefore}"`);
 
+            // ===== 判断逻辑（沿用你原来的规则，加了一些容错） =====
+            
+            // 等级
             if (cleanBefore.includes('等') || cleanBefore.includes('级')) {
                 if (!cleanBefore.includes('锻炼') && !cleanBefore.includes('锻') && !cleanBefore.includes('炼')) {
                     if (!cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度')) {
                         if (Math.abs(finalValue) >= 60 && Math.abs(finalValue) <= 200) {
-                            result.level = Math.abs(finalValue); console.log(`✅ 等级: ${result.level}`); continue;
+                            result.level = Math.abs(finalValue); 
+                            console.log(`✅ 等级: ${result.level}`); 
+                            continue;
                         }
                     }
                 }
             }
-            if (cleanBefore.includes('久') || cleanBefore.includes('度') || (cleanBefore.includes('耐') && (cleanBefore.includes('久') || cleanBefore.includes('度')))) {
-                if (!cleanBefore.includes('速')) { result.attrs['耐久'] = Math.abs(finalValue); console.log(`✅ 耐久: ${result.attrs['耐久']}`); continue; }
+            
+            // 耐久（排除速度、伤害等干扰）
+            if ((cleanBefore.includes('久') || cleanBefore.includes('度')) || (cleanBefore.includes('耐') && !cleanBefore.includes('敏') && !cleanBefore.includes('属'))) {
+                // 防止把“速度”的“度”误认为耐久度
+                if (!cleanBefore.includes('速')) { 
+                    result.attrs['耐久'] = Math.abs(finalValue); 
+                    console.log(`✅ 耐久: ${result.attrs['耐久']}`); 
+                    continue; 
+                }
             }
             if (cleanBefore.includes('防') || cleanBefore.includes('御')) { result.attrs['防御'] = finalValue; console.log(`✅ 防御: ${finalValue}`); continue; }
-            if (cleanBefore.includes('血') || cleanBefore.includes('气')) { result.attrs['气血'] = Math.abs(finalValue); console.log(`✅ 气血: ${finalValue}`); continue; }
+            if (cleanBefore.includes('血') || cleanBefore.includes('气') && !cleanBefore.includes('敏') && !cleanBefore.includes('速')) { result.attrs['气血'] = Math.abs(finalValue); console.log(`✅ 气血: ${finalValue}`); continue; }
             if (cleanBefore.includes('伤') || cleanBefore.includes('害')) { result.attrs['伤害'] = Math.abs(finalValue); console.log(`✅ 伤害: ${finalValue}`); continue; }
-            if (cleanBefore.includes('中') || cleanBefore.includes('合') || cleanBefore.includes('命')) { result.attrs['命中'] = Math.abs(finalValue); console.log(`✅ 命中: ${finalValue}`); continue; }
-            if (cleanBefore.includes('灵')) { result.attrs['灵力'] = finalValue; console.log(`✅ 灵力: ${finalValue}`); continue; }
-            if (cleanBefore.includes('魔') || cleanBefore.includes('法') || cleanBefore.includes('方')) {
-                if (!cleanBefore.includes('力') && !cleanBefore.includes('御')) { result.attrs['魔法'] = Math.abs(finalValue); console.log(`✅ 魔法: ${finalValue}`); continue; }
-            }
-            if (cleanBefore.includes('敏') || cleanBefore.includes('捷')) { result.attrs['敏捷'] = finalValue; console.log(`✅ 敏捷: ${finalValue}`); continue; }
+            if (cleanBefore.includes('中') || cleanBefore.includes('命')) { result.attrs['命中'] = Math.abs(finalValue); console.log(`✅ 命中: ${finalValue}`); continue; }
+            if (cleanBefore.includes('灵') && !cleanBefore.includes('敏') && !cleanBefore.includes('耐')) { result.attrs['灵力'] = finalValue; console.log(`✅ 灵力: ${finalValue}`); continue; }
+            if (cleanBefore.includes('魔') && !cleanBefore.includes('法')) { result.attrs['魔力'] = finalValue; console.log(`✅ 魔力: ${finalValue}`); continue; }
+            if (cleanBefore.includes('敏') || cleanBefore.includes('捷') && !cleanBefore.includes('耐')) { result.attrs['敏捷'] = finalValue; console.log(`✅ 敏捷: ${finalValue}`); continue; }
             if (cleanBefore.includes('体') || cleanBefore.includes('质')) { result.attrs['体质'] = finalValue; console.log(`✅ 体质: ${finalValue}`); continue; }
-            if (cleanBefore.includes('魔') || cleanBefore.includes('放') || cleanBefore.includes('谭') || cleanBefore.includes('摩')) { result.attrs['魔力'] = finalValue; console.log(`✅ 魔力: ${finalValue}`); continue; }
+            if (cleanBefore.includes('耐') && !cleanBefore.includes('久') && !cleanBefore.includes('度') && !cleanBefore.includes('属')) { result.attrs['耐力'] = finalValue; console.log(`✅ 耐力: ${finalValue}`); continue; }
             if (cleanBefore.includes('量') || (cleanBefore.includes('力') && !cleanBefore.includes('魔') && !cleanBefore.includes('耐') && !cleanBefore.includes('体') && !cleanBefore.includes('敏') && !cleanBefore.includes('灵'))) { result.attrs['力量'] = finalValue; console.log(`✅ 力量: ${finalValue}`); continue; }
-            if ((cleanBefore.includes('耐') || cleanBefore.includes('奈') || cleanBefore.includes('人')) && !cleanBefore.includes('久') && !cleanBefore.includes('度')) { result.attrs['耐力'] = finalValue; console.log(`✅ 耐力: ${finalValue}`); continue; }
+
             console.log(`⏭️ 未识别: ${finalValue}，前文="${cleanBefore}"`);
         }
         console.log('📦 提取完成:', result);
