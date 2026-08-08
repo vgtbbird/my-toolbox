@@ -451,51 +451,91 @@ const EquipmentQueryModule = {
         });
     },
 
-       // ============================================================
-    //  📷 终极增强版图片预处理（高亮黄/白字 + 复杂背景分离）
+          // ============================================================
+    //  📷 终极放大锐化版图片预处理（适用于低分辨率游戏截图）
     // ============================================================
     preprocessImage(imageSource) {
         return new Promise((resolve) => {
             const img = new Image();
             img.onload = function() {
+                // 1. 设置放大倍数（推荐 2 倍，让 100x100 的截图变成 200x200）
+                const scale = 2.0; 
+                const width = img.width * scale;
+                const height = img.height * scale;
+
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 
-                // 绘制原始图像
-                ctx.drawImage(img, 0, 0);
+                // 2. 开启抗锯齿，让放大后的字边缘平滑
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
                 
-                // 获取像素数据
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                // 3. 绘制放大后的原始图
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 4. 获取放大后的像素数据
+                const imageData = ctx.getImageData(0, 0, width, height);
                 const data = imageData.data;
                 
+                // 5. 高亮分离（沿用之前的 RGB 阈值逻辑）
+                // 梦幻的黄字/白字，只要 R 或 G 通道超过 160 就能保留
                 for (let i = 0; i < data.length; i += 4) {
                     let r = data[i];
                     let g = data[i + 1];
                     let b = data[i + 2];
                     
-                    // 核心魔法：红绿蓝通道中，只要任意一个通道特别亮（> 180），就视为文字
-                    // 梦幻的高亮黄 (R高, G高, B中) 会被捕获
-                    // 白色的字 (R高, G高, B高) 也会被捕获
-                    // 暗色背景（R低, G低, B低）或格子（R低, G低, B低）会被剔除
-                    if (r > 180 || g > 180 || b > 180) {
-                        // 是文字像素：涂纯白
-                        data[i] = 255;
+                    // 稍微放宽一点阈值到 160，防止高亮黄色变暗丢失
+                    if (r > 160 || g > 160 || b > 160) {
+                        data[i] = 255;     // 白
                         data[i + 1] = 255;
                         data[i + 2] = 255;
                     } else {
-                        // 是背景像素：涂纯黑
-                        data[i] = 0;
+                        data[i] = 0;       // 黑
                         data[i + 1] = 0;
                         data[i + 2] = 0;
                     }
                 }
                 
-                // 写回处理后的数据
+                ctx.putImageData(imageData, 0, 0);
+
+                // 6. 额外加一道边缘锐化（让“＋”和数字连在一起，让“灵”和“力”不分开）
+                // 这是一个简单的 3x3 锐化卷积核
+                const sharpenData = ctx.getImageData(0, 0, width, height);
+                const sData = sharpenData.data;
+                const kernel = [
+                    [0, -1, 0],
+                    [-1, 5, -1],
+                    [0, -1, 0]
+                ];
+                
+                // 为了节约算力，我们只对边缘像素做锐化（跳过纯黑和纯白块）
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = (y * width + x) * 4;
+                        let rSum = 0, gSum = 0, bSum = 0;
+                        
+                        // 只有当前像素不是纯黑或纯白时才做锐化
+                        if (sData[idx] !== 0 && sData[idx] !== 255) {
+                            for (let ky = -1; ky <= 1; ky++) {
+                                for (let kx = -1; kx <= 1; kx++) {
+                                    const nIdx = ((y + ky) * width + (x + kx)) * 4;
+                                    const weight = kernel[ky + 1][kx + 1];
+                                    rSum += sData[nIdx] * weight;
+                                    gSum += sData[nIdx + 1] * weight;
+                                    bSum += sData[nIdx + 2] * weight;
+                                }
+                            }
+                            // 钳制数值在 0-255 之间
+                            data[idx] = Math.min(255, Math.max(0, rSum));
+                            data[idx + 1] = Math.min(255, Math.max(0, gSum));
+                            data[idx + 2] = Math.min(255, Math.max(0, bSum));
+                        }
+                    }
+                }
                 ctx.putImageData(imageData, 0, 0);
                 
-                // 把 canvas 转成 base64 图片给 OCR 用
                 resolve(canvas.toDataURL('image/png'));
             };
             img.src = imageSource;
