@@ -44,6 +44,7 @@ const DigTreasureModule = {
         this.updateStats();
         this.updateTypeStatsLabels();
         this.refreshPresetButtons();
+        this.renderHistoryTable(); 
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
     },
@@ -105,7 +106,7 @@ const DigTreasureModule = {
         });
     },
 
-    buildUI() {
+       buildUI() {
         const container = document.getElementById('digTreasureContainer');
         if (!container) return;
 
@@ -118,6 +119,7 @@ const DigTreasureModule = {
                 <div class="stat-item" id="dtProfitStat"><div class="num" id="dtTodayProfit">0</div><div class="label">📈 今日利润</div></div>
             </div>
 
+            <!-- 核心录入区 -->
             <div class="module" style="background:#f8faff;border-radius:16px;border:1px solid #dce5ef;">
                 <div class="module-header">
                     <div class="title">⛏️ 今日挖图</div>
@@ -159,10 +161,42 @@ const DigTreasureModule = {
                     </div>
                 </div>
             </div>
+
+            <!-- 👇 补回来：历史每日汇总模块 👇 -->
+            <div class="module" style="margin-top:16px;">
+                <div class="module-header">
+                    <div class="title">📜 历史每日汇总</div>
+                    <button class="toggle-btn" id="dtToggleHistory" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
+                </div>
+                <div class="module-body" id="dtHistoryBody">
+                    <div class="table-wrap" style="width:100%;overflow-x:auto;max-height:320px;overflow-y:auto;border-radius:16px;border:1px solid #d0dce8;background:white;">
+                        <table style="width:100%;min-width:700px;border-collapse:collapse;font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th style="width:36px;min-width:36px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">#</th>
+                                    <th style="min-width:80px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📅 日期</th>
+                                    <th style="min-width:70px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">🗺️ 普通</th>
+                                    <th style="min-width:70px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">🔥 高级</th>
+                                    <th style="min-width:70px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">💎 超级</th>
+                                    <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">💰 总成本</th>
+                                    <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📊 总产出</th>
+                                    <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📈 利润</th>
+                                    <th style="min-width:50px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">⚙️</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dtHistoryBodyTable">
+                                <tr><td colspan="9" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无历史汇总</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- 👆 补回来了 👆 -->
         `;
         
         this.refreshMapTabs();
         this.refreshPresetButtons();
+        this.renderHistoryTable(); // 立即渲染历史表格
     },
 
     refreshMapTabs() {
@@ -310,6 +344,62 @@ const DigTreasureModule = {
         document.getElementById('dtTodayProfit').textContent = profit.toFixed(1);
         const ps = document.getElementById('dtProfitStat');
         ps.className = 'stat-item' + (profit > 0 ? ' profit' : profit < 0 ? ' loss' : '');
+    },
+
+        // ============================================================
+    //  📜 渲染历史每日汇总表格
+    // ============================================================
+    renderHistoryTable() {
+        const tbody = document.getElementById('dtHistoryBodyTable');
+        if (!tbody) return;
+
+        const list = this.records.slice().reverse(); // 最新在前
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无历史汇总</td></tr>';
+            return;
+        }
+
+        let html = '';
+        for (let i = 0; i < list.length; i++) {
+            const r = list[i];
+            const row = i + 1;
+            const pc = r.profit >= 0 ? 'profit-positive' : 'profit-negative';
+            // 处理当年的数据格式
+            const normalCount = r.normal?.count || 0;
+            const advCount = r.advanced?.count || 0;
+            const supCount = r.super?.count || 0;
+            const cost = r.totalCost || 0;
+            const income = r.totalIncome || 0;
+            const profit = r.profit || 0;
+
+            html += `<tr>
+                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;text-align:center;padding:6px 4px;">${row}</td>
+                <td style="padding:6px 4px;text-align:center;">${r.date || '未知'}</td>
+                <td style="padding:6px 4px;text-align:center;">${normalCount}次</td>
+                <td style="padding:6px 4px;text-align:center;">${advCount}次</td>
+                <td style="padding:6px 4px;text-align:center;">${supCount}次</td>
+                <td style="padding:6px 4px;text-align:center;">${cost.toFixed(1)}万</td>
+                <td style="padding:6px 4px;text-align:center;">${income.toFixed(1)}万</td>
+                <td style="padding:6px 4px;text-align:center;font-weight:700;" class="${pc}">${profit >= 0 ? '+' : ''}${profit.toFixed(1)}万</td>
+                <td style="padding:6px 4px;text-align:center;">
+                    <button class="dt-del-history" data-idx="${i}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
+                </td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+
+        // 绑定删除事件
+        tbody.querySelectorAll('.dt-del-history').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.idx);
+                if (confirm('确定要删除这条历史记录吗？')) {
+                    DigTreasureModule.records.splice(idx, 1);
+                    DigTreasureModule.saveData();
+                    DigTreasureModule.renderHistoryTable();
+                    DigTreasureModule.updateStats();
+                }
+            });
+        });
     },
 
     saveDay() {
