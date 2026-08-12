@@ -1,5 +1,5 @@
 // ============================================================
-//  ⛏️ 挖图统计模块 - 最终交互版（对标种树 UI）
+//  ⛏️ 挖图统计模块 - 修复DOM刷新丢失Bug版
 // ============================================================
 const DigTreasureModule = {
     id: 'digTreasure',
@@ -19,21 +19,18 @@ const DigTreasureModule = {
     records: [],
     currentMapType: 'normal', // normal(普通) | advanced(高级) | super(超级)
     
-    // 今日记录分类型存储
     todayRecords: {
         normal: { count: 0, cost: 0, items: [] },
         advanced: { count: 0, cost: 0, items: [] },
         super: { count: 0, cost: 0, items: [] }
     },
 
-    // ========== 宝图类型预设 ==========
     mapTypes: [
         { key: 'normal', label: '普通藏宝图', icon: '🗺️', defaultCost: 2.5 },
         { key: 'advanced', label: '高级藏宝图', icon: '🔥', defaultCost: 50 },
         { key: 'super', label: '超级藏宝图', icon: '💎', defaultCost: 200 }
     ],
 
-    // 产出物品预设库（动态可增删改）
     presetItems: [],
 
     // ============================================================
@@ -41,17 +38,18 @@ const DigTreasureModule = {
     // ============================================================
     init() {
         this.loadData();
-        this.buildUI();
-        this.bindEvents();
+        this.buildUI();      // 仅第一次构建
+        this.bindEvents();   // 仅绑定一次，永久生效
         App.register(this);
-        this.render();
+        this.render();       // 初始渲染数据
         setTimeout(() => this.applyUISettings(), 150);
     },
 
     render() {
+        // 仅更新数据、数字和按钮区，绝不重新构建整个 DOM
         this.updateStats();
-        this.renderPresetButtons();
-        this.updateTypeStatsLabels(); // 强制刷新分类统计
+        this.updateTypeStatsLabels();
+        this.refreshPresetButtons(); // 只刷新小按钮部分
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
     },
@@ -70,7 +68,6 @@ const DigTreasureModule = {
         };
         this.currentMapType = data.currentMapType || 'normal';
         
-        // 产出预设库（初始化可改）
         this.presetItems = data.presetItems || [
             { name: '金刚石', price: 18, icon: '💎' },
             { name: '定魂珠', price: 18, icon: '🔮' },
@@ -83,7 +80,6 @@ const DigTreasureModule = {
             { name: '制造书', price: 10, icon: '📚' },
             { name: '环装', price: 5, icon: '🔴' },
             { name: '高图金钱', price: 60, icon: '💰' },
-            // 事件（挖图特有）
             { name: '妖王', price: 0, icon: '🌪️', isEvent: true },
             { name: '幼儿园', price: 0, icon: '🏫', isEvent: true },
             { name: '放妖', price: 0, icon: '👻', isEvent: true }
@@ -116,22 +112,11 @@ const DigTreasureModule = {
     },
 
     // ============================================================
-    //  🏗️ 构建UI（完全对标种树）
+    //  🏗️ 构建UI（仅构建一次）
     // ============================================================
     buildUI() {
         const container = document.getElementById('digTreasureContainer');
         if (!container) return;
-
-        // 生成宝图类型Tab按钮（带绿色切换效果）
-        const mapTabsHtml = this.mapTypes.map(t => {
-            const isActive = this.currentMapType === t.key;
-            return `<button class="dt-map-tab ${isActive ? 'active' : ''}" data-key="${t.key}" style="padding:4px 14px;border-radius:30px;border:2px solid ${isActive ? '#4CAF50' : '#bccad9'};background:${isActive ? '#4CAF50' : '#f0f4f8'};color:${isActive ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;font-weight:600;margin:2px;transition:0.15s;">${t.icon} ${t.label}</button>`;
-        }).join('');
-
-        // 宝图类型统计文字（普通/高级/超级 分别显示）
-        const normal = this.todayRecords.normal;
-        const advanced = this.todayRecords.advanced;
-        const superRec = this.todayRecords.super;
 
         container.innerHTML = `
             <!-- 统计卡片 -->
@@ -155,18 +140,18 @@ const DigTreasureModule = {
                     
                     <!-- 第一行：宝图类型 + 分类统计 -->
                     <div style="background:#f0f5fb;border-radius:12px;padding:6px 12px;border:1px solid #d0dce8;margin-bottom:8px;">
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;">${mapTabsHtml}</div>
+                        <div id="dtMapTabsContainer" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
                         <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;font-size:0.65rem;color:#5a7a94;border-top:1px solid #dce5ef;padding-top:4px;">
-                            <span id="dtNormalStats">🗺️ 普通: ${normal.count}次 (${normal.cost.toFixed(1)}万)</span>
-                            <span id="dtAdvancedStats">🔥 高级: ${advanced.count}次 (${advanced.cost.toFixed(1)}万)</span>
-                            <span id="dtSuperStats">💎 超级: ${superRec.count}次 (${superRec.cost.toFixed(1)}万)</span>
+                            <span id="dtNormalStats">🗺️ 普通: 0次 (0.0万)</span>
+                            <span id="dtAdvancedStats">🔥 高级: 0次 (0.0万)</span>
+                            <span id="dtSuperStats">💎 超级: 0次 (0.0万)</span>
                         </div>
                     </div>
 
                     <!-- 第二行：单张成本设置 -->
                     <div style="display:flex;align-items:center;gap:8px;padding:4px 10px;background:#f8faff;border-radius:12px;border:1px solid #dce5ef;margin-bottom:8px;">
                         <span style="font-size:0.7rem;font-weight:600;color:#1f3b53;">💰 单张成本</span>
-                        <input type="number" id="dtCostInput" step="0.1" min="0" value="${this.mapTypes.find(m => m.key === this.currentMapType).defaultCost}" style="width:60px;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                        <input type="number" id="dtCostInput" step="0.1" min="0" value="2.5" style="width:60px;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
                         <span style="font-size:0.55rem;color:#5a7a94;">(万)</span>
                         <span style="font-size:0.55rem;color:#5a7a94;margin-left:4px;">点击按钮直接挖图 次数+1</span>
                     </div>
@@ -175,7 +160,7 @@ const DigTreasureModule = {
                     <div style="margin-top:2px;">
                         <div id="dtPresetBtns" style="display:flex;flex-wrap:wrap;gap:4px;min-height:30px;"></div>
                         
-                        <!-- 第四行：自定义添加入库（仿种树输入） -->
+                        <!-- 第四行：自定义添加入库 -->
                         <div style="display:flex;gap:6px;margin-top:6px;padding-top:6px;border-top:1px dashed #d0dce8;">
                             <input type="text" id="dtCustomItem" placeholder="自定义物品" style="flex:1;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;">
                             <input type="number" id="dtCustomPrice" placeholder="价格" style="width:60px;padding:2px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
@@ -186,20 +171,31 @@ const DigTreasureModule = {
             </div>
         `;
         
-        this.renderPresetButtons();
+        this.refreshMapTabs();
+        this.refreshPresetButtons();
     },
 
     // ============================================================
-    //  🎨 渲染预设按钮（包含事件标记）
+    //  🎨 单独刷新宝图Tab按钮（解决切换消失的Bug）
     // ============================================================
-    renderPresetButtons() {
+    refreshMapTabs() {
+        const container = document.getElementById('dtMapTabsContainer');
+        if (!container) return;
+        const html = this.mapTypes.map(t => {
+            const isActive = this.currentMapType === t.key;
+            return `<button class="dt-map-tab ${isActive ? 'active' : ''}" data-key="${t.key}" style="padding:4px 14px;border-radius:30px;border:2px solid ${isActive ? '#4CAF50' : '#bccad9'};background:${isActive ? '#4CAF50' : '#f0f4f8'};color:${isActive ? '#fff' : '#1f3b53'};cursor:pointer;font-size:0.7rem;font-weight:600;margin:2px;transition:0.15s;">${t.icon} ${t.label}</button>`;
+        }).join('');
+        container.innerHTML = html;
+    },
+
+    // ============================================================
+    //  🎨 单独刷新产出按钮（解决事件丢失的Bug）
+    // ============================================================
+    refreshPresetButtons() {
         const container = document.getElementById('dtPresetBtns');
         if (!container) return;
 
-        let html = '';
         let list = this.presetItems;
-
-        // 根据当前宝图类型过滤展示
         if (this.currentMapType === 'normal') {
             list = this.presetItems.filter(i => !i.name.includes('高级') && !i.name.includes('超级'));
         } else if (this.currentMapType === 'advanced') {
@@ -207,37 +203,38 @@ const DigTreasureModule = {
         } else if (this.currentMapType === 'super') {
             list = this.presetItems.filter(i => i.name.includes('超级') || i.name === '神兽' || i.name === '巨额');
         }
-        // 保证事件按钮永远可见
         const events = this.presetItems.filter(i => i.isEvent === true);
         list = [...events, ...list.filter(i => !i.isEvent)];
 
+        let html = '';
         for (let item of list) {
             const icon = item.icon || '📦';
             const isEvent = item.isEvent === true;
-            // 事件按钮用特殊边框
             const border = isEvent ? '2px solid #dbbd7c' : '1px solid #bccad9';
             const bg = isEvent ? '#fdf8ee' : '#f8faff';
             const label = isEvent ? `${icon} ${item.name}` : `${icon} ${item.name} (${item.price}万)`;
-            
             html += `<button class="dt-preset-btn" data-name="${item.name}" data-price="${item.price}" data-event="${isEvent}" style="padding:2px 12px;border-radius:20px;border:${border};background:${bg};cursor:pointer;font-size:0.7rem;font-weight:600;color:#1f3b53;margin:2px;transition:0.1s;">${label}</button>`;
         }
         container.innerHTML = html;
     },
 
     // ============================================================
-    //  🔗 绑定事件
+    //  🔗 绑定事件（绑定一次，永不丢失）
     // ============================================================
     bindEvents() {
-        // 切换宝图类型
-        document.querySelectorAll('.dt-map-tab').forEach(btn => {
-            btn.addEventListener('click', function() {
-                DigTreasureModule.currentMapType = this.dataset.key;
-                DigTreasureModule.render(); // render 会自动刷新 UI 和分类统计
-                DigTreasureModule.updateCostInput();
-            });
+        // 使用事件委托监听动态生成的Tab按钮
+        document.getElementById('dtMapTabsContainer').addEventListener('click', function(e) {
+            const btn = e.target.closest('.dt-map-tab');
+            if (!btn) return;
+            DigTreasureModule.currentMapType = btn.dataset.key;
+            DigTreasureModule.refreshMapTabs();
+            DigTreasureModule.refreshPresetButtons();
+            DigTreasureModule.updateCostInput();
+            DigTreasureModule.updateStats();
+            DigTreasureModule.updateTypeStatsLabels();
         });
 
-        // 点击按钮挖图（含事件处理）
+        // 使用事件委托监听动态生成的产出按钮
         document.getElementById('dtPresetBtns').addEventListener('click', function(e) {
             const btn = e.target.closest('.dt-preset-btn');
             if (!btn) return;
@@ -248,23 +245,20 @@ const DigTreasureModule = {
             const type = DigTreasureModule.currentMapType;
             const cost = DigTreasureModule.mapTypes.find(m => m.key === type).defaultCost;
             
-            // 记录次数和成本
             DigTreasureModule.todayRecords[type].count += 1;
             DigTreasureModule.todayRecords[type].cost += cost;
 
-            // 如果是事件，不需要写入产出物；如果是物品，写入产出物
             if (!isEvent) {
-                const icon = btn.textContent.trim().charAt(0) === '📦' ? '📦' : btn.textContent.trim().charAt(0);
-                DigTreasureModule.todayRecords[type].items.push({ name, price, icon });
+                DigTreasureModule.todayRecords[type].items.push({ name, price });
             }
 
             DigTreasureModule.saveData();
-            DigTreasureModule.render(); // 立刻刷新所有统计和分类
+            DigTreasureModule.updateStats();
+            DigTreasureModule.updateTypeStatsLabels();
             btn.style.transform = 'scale(0.92)';
             setTimeout(() => btn.style.transform = 'scale(1)', 150);
         });
 
-        // 自定义物品入库
         document.getElementById('dtAddCustomBtn').addEventListener('click', () => {
             const name = document.getElementById('dtCustomItem').value.trim();
             const price = parseFloat(document.getElementById('dtCustomPrice').value) || 0;
@@ -273,12 +267,12 @@ const DigTreasureModule = {
             const exists = DigTreasureModule.presetItems.some(item => item.name === name);
             if (!exists) {
                 DigTreasureModule.presetItems.push({ name, price, icon: '📦' });
-                DigTreasureModule.renderPresetButtons();
+                DigTreasureModule.refreshPresetButtons();
             } else {
                 const item = DigTreasureModule.presetItems.find(i => i.name === name);
                 if (confirm(`"${name}" 已存在 (现价${item.price}万)，更新为 ${price}万？`)) {
                     item.price = price;
-                    DigTreasureModule.renderPresetButtons();
+                    DigTreasureModule.refreshPresetButtons();
                 } else {
                     document.getElementById('dtCustomItem').value = '';
                     document.getElementById('dtCustomPrice').value = '';
@@ -290,14 +284,13 @@ const DigTreasureModule = {
             DigTreasureModule.saveData();
         });
 
-        // 结算今日
         document.getElementById('dtSaveDayBtn').addEventListener('click', () => this.saveDay());
-        // 重置
         document.getElementById('dtResetDayBtn').addEventListener('click', () => {
             if (confirm('确定清空今日所有记录？')) {
                 this.todayRecords = { normal: { count: 0, cost: 0, items: [] }, advanced: { count: 0, cost: 0, items: [] }, super: { count: 0, cost: 0, items: [] } };
                 this.saveData();
-                this.render();
+                this.updateStats();
+                this.updateTypeStatsLabels();
             }
         });
     },
@@ -309,9 +302,12 @@ const DigTreasureModule = {
         const normal = this.todayRecords.normal;
         const advanced = this.todayRecords.advanced;
         const superRec = this.todayRecords.super;
-        document.getElementById('dtNormalStats').textContent = `🗺️ 普通: ${normal.count}次 (${normal.cost.toFixed(1)}万)`;
-        document.getElementById('dtAdvancedStats').textContent = `🔥 高级: ${advanced.count}次 (${advanced.cost.toFixed(1)}万)`;
-        document.getElementById('dtSuperStats').textContent = `💎 超级: ${superRec.count}次 (${superRec.cost.toFixed(1)}万)`;
+        const nEl = document.getElementById('dtNormalStats');
+        const aEl = document.getElementById('dtAdvancedStats');
+        const sEl = document.getElementById('dtSuperStats');
+        if (nEl) nEl.textContent = `🗺️ 普通: ${normal.count}次 (${normal.cost.toFixed(1)}万)`;
+        if (aEl) aEl.textContent = `🔥 高级: ${advanced.count}次 (${advanced.cost.toFixed(1)}万)`;
+        if (sEl) sEl.textContent = `💎 超级: ${superRec.count}次 (${superRec.cost.toFixed(1)}万)`;
     },
 
     updateCostInput() {
@@ -354,7 +350,8 @@ const DigTreasureModule = {
         this.records.push(summary);
         this.todayRecords = { normal: { count: 0, cost: 0, items: [] }, advanced: { count: 0, cost: 0, items: [] }, super: { count: 0, cost: 0, items: [] } };
         this.saveData();
-        this.render();
+        this.updateStats();
+        this.updateTypeStatsLabels();
         alert('✅ 今日已结算！');
     }
 };
