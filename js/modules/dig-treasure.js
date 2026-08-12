@@ -1,11 +1,10 @@
 // ============================================================
-//  ⛏️ 挖图统计模块 - 修复DOM刷新丢失Bug版
+//  ⛏️ 挖图统计模块 - 修复NaN与自定义录入
 // ============================================================
 const DigTreasureModule = {
     id: 'digTreasure',
     storageKey: 'digTreasure',
 
-    // ========== UI设置 ==========
     uiSettings: {
         bgColor: '#eef2f7',
         btnColor: '#4CAF50',
@@ -15,9 +14,8 @@ const DigTreasureModule = {
         fontSize: 14
     },
 
-    // ========== 数据 ==========
     records: [],
-    currentMapType: 'normal', // normal(普通) | advanced(高级) | super(超级)
+    currentMapType: 'normal',
     
     todayRecords: {
         normal: { count: 0, cost: 0, items: [] },
@@ -33,23 +31,19 @@ const DigTreasureModule = {
 
     presetItems: [],
 
-    // ============================================================
-    //  生命周期
-    // ============================================================
     init() {
         this.loadData();
-        this.buildUI();      // 仅第一次构建
-        this.bindEvents();   // 仅绑定一次，永久生效
+        this.buildUI();
+        this.bindEvents();
         App.register(this);
-        this.render();       // 初始渲染数据
+        this.render();
         setTimeout(() => this.applyUISettings(), 150);
     },
 
     render() {
-        // 仅更新数据、数字和按钮区，绝不重新构建整个 DOM
         this.updateStats();
         this.updateTypeStatsLabels();
-        this.refreshPresetButtons(); // 只刷新小按钮部分
+        this.refreshPresetButtons();
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
     },
@@ -111,9 +105,6 @@ const DigTreasureModule = {
         });
     },
 
-    // ============================================================
-    //  🏗️ 构建UI（仅构建一次）
-    // ============================================================
     buildUI() {
         const container = document.getElementById('digTreasureContainer');
         if (!container) return;
@@ -127,7 +118,6 @@ const DigTreasureModule = {
                 <div class="stat-item" id="dtProfitStat"><div class="num" id="dtTodayProfit">0</div><div class="label">📈 今日利润</div></div>
             </div>
 
-            <!-- 核心录入区 -->
             <div class="module" style="background:#f8faff;border-radius:16px;border:1px solid #dce5ef;">
                 <div class="module-header">
                     <div class="title">⛏️ 今日挖图</div>
@@ -138,7 +128,7 @@ const DigTreasureModule = {
                 </div>
                 <div class="module-body">
                     
-                    <!-- 第一行：宝图类型 + 分类统计 -->
+                    <!-- 宝图类型 + 统计 -->
                     <div style="background:#f0f5fb;border-radius:12px;padding:6px 12px;border:1px solid #d0dce8;margin-bottom:8px;">
                         <div id="dtMapTabsContainer" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
                         <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;font-size:0.65rem;color:#5a7a94;border-top:1px solid #dce5ef;padding-top:4px;">
@@ -148,7 +138,7 @@ const DigTreasureModule = {
                         </div>
                     </div>
 
-                    <!-- 第二行：单张成本设置 -->
+                    <!-- 单张成本设置 -->
                     <div style="display:flex;align-items:center;gap:8px;padding:4px 10px;background:#f8faff;border-radius:12px;border:1px solid #dce5ef;margin-bottom:8px;">
                         <span style="font-size:0.7rem;font-weight:600;color:#1f3b53;">💰 单张成本</span>
                         <input type="number" id="dtCostInput" step="0.1" min="0" value="2.5" style="width:60px;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
@@ -156,15 +146,15 @@ const DigTreasureModule = {
                         <span style="font-size:0.55rem;color:#5a7a94;margin-left:4px;">点击按钮直接挖图 次数+1</span>
                     </div>
 
-                    <!-- 第三行：产出及事件按钮区 -->
+                    <!-- 产出及事件按钮 -->
                     <div style="margin-top:2px;">
                         <div id="dtPresetBtns" style="display:flex;flex-wrap:wrap;gap:4px;min-height:30px;"></div>
                         
-                        <!-- 第四行：自定义添加入库 -->
+                        <!-- 自定义添加入库 -->
                         <div style="display:flex;gap:6px;margin-top:6px;padding-top:6px;border-top:1px dashed #d0dce8;">
-                            <input type="text" id="dtCustomItem" placeholder="自定义物品" style="flex:1;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;">
-                            <input type="number" id="dtCustomPrice" placeholder="价格" style="width:60px;padding:2px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
-                            <button class="btn-small" id="dtAddCustomBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-weight:600;font-size:0.65rem;">➕ 添加</button>
+                            <input type="text" id="dtCustomItem" placeholder="自定义物品 (自动入库)" style="flex:1;padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;">
+                            <input type="number" id="dtCustomPrice" placeholder="价格(万)" style="width:60px;padding:2px 4px;border:1px solid #bccad9;border-radius:12px;font-size:0.7rem;text-align:center;">
+                            <button class="btn-small" id="dtAddCustomBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-weight:600;font-size:0.65rem;">➕ 添加入库</button>
                         </div>
                     </div>
                 </div>
@@ -175,9 +165,6 @@ const DigTreasureModule = {
         this.refreshPresetButtons();
     },
 
-    // ============================================================
-    //  🎨 单独刷新宝图Tab按钮（解决切换消失的Bug）
-    // ============================================================
     refreshMapTabs() {
         const container = document.getElementById('dtMapTabsContainer');
         if (!container) return;
@@ -188,9 +175,6 @@ const DigTreasureModule = {
         container.innerHTML = html;
     },
 
-    // ============================================================
-    //  🎨 单独刷新产出按钮（解决事件丢失的Bug）
-    // ============================================================
     refreshPresetButtons() {
         const container = document.getElementById('dtPresetBtns');
         if (!container) return;
@@ -218,11 +202,8 @@ const DigTreasureModule = {
         container.innerHTML = html;
     },
 
-    // ============================================================
-    //  🔗 绑定事件（绑定一次，永不丢失）
-    // ============================================================
     bindEvents() {
-        // 使用事件委托监听动态生成的Tab按钮
+        // 宝图 Tab 切换
         document.getElementById('dtMapTabsContainer').addEventListener('click', function(e) {
             const btn = e.target.closest('.dt-map-tab');
             if (!btn) return;
@@ -234,16 +215,17 @@ const DigTreasureModule = {
             DigTreasureModule.updateTypeStatsLabels();
         });
 
-        // 使用事件委托监听动态生成的产出按钮
+        // 点击产出按钮挖图
         document.getElementById('dtPresetBtns').addEventListener('click', function(e) {
             const btn = e.target.closest('.dt-preset-btn');
             if (!btn) return;
             
             const name = btn.dataset.name;
-            const price = parseFloat(btn.dataset.price) || 0;
+            const price = Number(btn.dataset.price) || 0;
             const isEvent = btn.dataset.event === 'true';
             const type = DigTreasureModule.currentMapType;
-            const cost = DigTreasureModule.mapTypes.find(m => m.key === type).defaultCost;
+            // ✅ 强制转数字，防止 NaN
+            const cost = Number(DigTreasureModule.mapTypes.find(m => m.key === type).defaultCost);
             
             DigTreasureModule.todayRecords[type].count += 1;
             DigTreasureModule.todayRecords[type].cost += cost;
@@ -259,10 +241,12 @@ const DigTreasureModule = {
             setTimeout(() => btn.style.transform = 'scale(1)', 150);
         });
 
+        // ✅ 修复：自定义添加并入库
         document.getElementById('dtAddCustomBtn').addEventListener('click', () => {
             const name = document.getElementById('dtCustomItem').value.trim();
-            const price = parseFloat(document.getElementById('dtCustomPrice').value) || 0;
+            const price = Number(document.getElementById('dtCustomPrice').value) || 0;
             if (!name) { alert('请输入物品名称'); return; }
+            if (price <= 0) { alert('请输入大于 0 的价格'); return; }
             
             const exists = DigTreasureModule.presetItems.some(item => item.name === name);
             if (!exists) {
@@ -282,6 +266,7 @@ const DigTreasureModule = {
             document.getElementById('dtCustomItem').value = '';
             document.getElementById('dtCustomPrice').value = '';
             DigTreasureModule.saveData();
+            alert(`✅ "${name}" 已入库，可直接点击使用！`);
         });
 
         document.getElementById('dtSaveDayBtn').addEventListener('click', () => this.saveDay());
@@ -295,19 +280,13 @@ const DigTreasureModule = {
         });
     },
 
-    // ============================================================
-    //  🧮 辅助更新函数
-    // ============================================================
     updateTypeStatsLabels() {
         const normal = this.todayRecords.normal;
         const advanced = this.todayRecords.advanced;
         const superRec = this.todayRecords.super;
-        const nEl = document.getElementById('dtNormalStats');
-        const aEl = document.getElementById('dtAdvancedStats');
-        const sEl = document.getElementById('dtSuperStats');
-        if (nEl) nEl.textContent = `🗺️ 普通: ${normal.count}次 (${normal.cost.toFixed(1)}万)`;
-        if (aEl) aEl.textContent = `🔥 高级: ${advanced.count}次 (${advanced.cost.toFixed(1)}万)`;
-        if (sEl) sEl.textContent = `💎 超级: ${superRec.count}次 (${superRec.cost.toFixed(1)}万)`;
+        document.getElementById('dtNormalStats').textContent = `🗺️ 普通: ${normal.count}次 (${normal.cost.toFixed(1)}万)`;
+        document.getElementById('dtAdvancedStats').textContent = `🔥 高级: ${advanced.count}次 (${advanced.cost.toFixed(1)}万)`;
+        document.getElementById('dtSuperStats').textContent = `💎 超级: ${superRec.count}次 (${superRec.cost.toFixed(1)}万)`;
     },
 
     updateCostInput() {
@@ -333,9 +312,6 @@ const DigTreasureModule = {
         ps.className = 'stat-item' + (profit > 0 ? ' profit' : profit < 0 ? ' loss' : '');
     },
 
-    // ============================================================
-    //  🗓️ 结算今日
-    // ============================================================
     saveDay() {
         const today = new Date().toISOString().slice(0, 10);
         const normal = this.todayRecords.normal, advanced = this.todayRecords.advanced, superRec = this.todayRecords.super;
