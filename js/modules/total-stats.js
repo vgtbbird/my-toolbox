@@ -115,6 +115,64 @@ const TotalStatsModule = {
             }
         }
 
+                // ===== 🧬 炼妖 =====
+        const alchemy = Storage.get('alchemy');
+        if (alchemy && alchemy.records) {
+            for (let r of alchemy.records) {
+                // 炼妖记录结构：{ pet1, pet2, cost, income, profit, resultSkills, resultName, note }
+                const profit = r.profit || 0;
+                const rmb = profit * 0.08;
+                const petInfo = `${r.pet1?.name || '?'} + ${r.pet2?.name || '?'}`;
+                
+                records.push({
+                    date: r.date,
+                    module: '炼妖助手',
+                    icon: '🧬',
+                    type: '炼妖',
+                    detail: `${petInfo} → ${r.resultName || '未知'} (${r.resultSkills || 0}技)`,
+                    income: r.income || 0,
+                    cost: r.cost || 0,
+                    profit: profit,
+                    rmb: rmb,
+                    exchangeRate: 0.08,
+                    raw: r
+                });
+            }
+        }
+
+                // ===== ⛏️ 挖图 =====
+        const digTreasure = Storage.get('digTreasure');
+        if (digTreasure && digTreasure.records) {
+            // 挖图存的是按天汇总的历史记录
+            for (let r of digTreasure.records) {
+                // 兼容不同结构：如果既有单笔也有汇总，统一处理
+                const profit = r.profit !== undefined ? r.profit : (r.totalIncome - r.totalCost || 0);
+                const income = r.totalIncome || r.income || 0;
+                const cost = r.totalCost || r.cost || 0;
+                
+                // 如果记录里包含具体宝图类型的次数，拼接成详情
+                let detailParts = [];
+                if (r.normal) detailParts.push(`普通${r.normal.count}张`);
+                if (r.advanced) detailParts.push(`高级${r.advanced.count}张`);
+                if (r.super) detailParts.push(`超级${r.super.count}张`);
+                const detailStr = detailParts.join('、') || '挖图记录';
+
+                records.push({
+                    date: r.date || new Date().toLocaleString(),
+                    module: '挖图统计',
+                    icon: '⛏️',
+                    type: '挖图',
+                    detail: detailStr,
+                    income: income,
+                    cost: cost,
+                    profit: profit,
+                    rmb: profit * 0.08,
+                    exchangeRate: 0.08,
+                    raw: r
+                });
+            }
+        }
+
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
         console.log('📊 总记录数:', records.length);
         return records;
