@@ -1,5 +1,5 @@
 // ============================================================
-//  ⛏️ 挖图统计模块 - 手动归类产出库
+//  ⛏️ 挖图统计模块 - 多归属分类版
 // ============================================================
 const DigTreasureModule = {
     id: 'digTreasure',
@@ -63,30 +63,30 @@ const DigTreasureModule = {
         };
         this.currentMapType = data.currentMapType || 'normal';
         
-        // 添加归属字段 category: 'normal' | 'advanced' | 'super'
+        // 分类改为数组 categories: ['normal', 'advanced', 'super']
         this.presetItems = data.presetItems || [
-            { name: '金刚石', price: 18, icon: '💎', category: 'normal' },
-            { name: '定魂珠', price: 18, icon: '🔮', category: 'normal' },
-            { name: '夜光珠', price: 12, icon: '🪙', category: 'normal' },
-            { name: '龙鳞', price: 8, icon: '🐉', category: 'normal' },
-            { name: '避水珠', price: 5, icon: '💧', category: 'normal' },
-            { name: '兽决', price: 80, icon: '📜', category: 'normal' },
-            { name: '宝石', price: 8, icon: '💠', category: 'normal' },
-            { name: '精铁', price: 12, icon: '🔧', category: 'normal' },
-            { name: '制造书', price: 10, icon: '📚', category: 'normal' },
-            { name: '环装', price: 5, icon: '🔴', category: 'normal' },
+            { name: '金刚石', price: 18, icon: '💎', categories: ['normal'] },
+            { name: '定魂珠', price: 18, icon: '🔮', categories: ['normal'] },
+            { name: '夜光珠', price: 12, icon: '🪙', categories: ['normal'] },
+            { name: '龙鳞', price: 8, icon: '🐉', categories: ['normal'] },
+            { name: '避水珠', price: 5, icon: '💧', categories: ['normal'] },
+            { name: '兽决', price: 80, icon: '📜', categories: ['normal', 'advanced', 'super'] },
+            { name: '宝石', price: 8, icon: '💠', categories: ['normal'] },
+            { name: '精铁', price: 12, icon: '🔧', categories: ['normal'] },
+            { name: '制造书', price: 10, icon: '📚', categories: ['normal'] },
+            { name: '环装', price: 5, icon: '🔴', categories: ['normal'] },
             
-            { name: '高图金钱', price: 60, icon: '💰', category: 'advanced' },
-            { name: '高级兽决', price: 800, icon: '🔥', category: 'advanced' },
-            { name: '高级内丹', price: 200, icon: '🧪', category: 'advanced' },
+            { name: '高图金钱', price: 60, icon: '💰', categories: ['advanced'] },
+            { name: '高级兽决', price: 800, icon: '🔥', categories: ['advanced'] },
+            { name: '高级内丹', price: 200, icon: '🧪', categories: ['advanced'] },
             
-            { name: '超级兽决', price: 5000, icon: '⭐', category: 'super' },
-            { name: '超级内丹', price: 1200, icon: '💠', category: 'super' },
-            { name: '神兽碎片', price: 800, icon: '🐉', category: 'super' },
+            { name: '超级兽决', price: 5000, icon: '⭐', categories: ['super'] },
+            { name: '超级内丹', price: 1200, icon: '💠', categories: ['super'] },
+            { name: '神兽碎片', price: 800, icon: '🐉', categories: ['super'] },
             
-            { name: '妖王', price: 0, icon: '🌪️', isEvent: true, category: 'normal' },
-            { name: '幼儿园', price: 0, icon: '🏫', isEvent: true, category: 'normal' },
-            { name: '放妖', price: 0, icon: '👻', isEvent: true, category: 'normal' }
+            { name: '妖王', price: 0, icon: '🌪️', isEvent: true, categories: ['normal'] },
+            { name: '幼儿园', price: 0, icon: '🏫', isEvent: true, categories: ['normal'] },
+            { name: '放妖', price: 0, icon: '👻', isEvent: true, categories: ['normal'] }
         ];
     },
 
@@ -204,10 +204,10 @@ const DigTreasureModule = {
 
             <!-- 产出库管理弹窗 -->
             <div class="modal-overlay" id="dtLibModal">
-                <div class="modal-box" style="max-width:560px;">
+                <div class="modal-box" style="max-width:580px;">
                     <h3>⚙️ 管理产出库</h3>
-                    <div class="modal-desc">管理所有挖图产出物品。修改价格、删除、或调整归属分类。</div>
-                    <div id="dtLibList" style="max-height:300px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;padding:4px 0;"></div>
+                    <div class="modal-desc">点击下方 <b>普通/高级/超级</b> 小按钮切换归属，可多选。</div>
+                    <div id="dtLibList" style="max-height:350px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;padding:4px 0;"></div>
                     <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
                         <button class="btn-cancel" id="dtLibClose">关闭</button>
                     </div>
@@ -234,10 +234,10 @@ const DigTreasureModule = {
         const container = document.getElementById('dtPresetBtns');
         if (!container) return;
 
-        // 核心：根据当前选择的宝图类型，匹配预设物品的 category
+        // 核心：根据当前选择的宝图类型，匹配预设物品的 categories 数组
         const mapKey = this.currentMapType;
-        let list = this.presetItems.filter(item => item.category === mapKey);
-        const events = this.presetItems.filter(i => i.isEvent === true && i.category === mapKey);
+        let list = this.presetItems.filter(item => item.categories && item.categories.includes(mapKey));
+        const events = this.presetItems.filter(i => i.isEvent === true && i.categories && i.categories.includes(mapKey));
         list = [...events, ...list.filter(i => !i.isEvent)];
 
         let html = '';
@@ -300,19 +300,22 @@ const DigTreasureModule = {
             const item = this.presetItems[i];
             const icon = item.icon || '📦';
             const isEvent = item.isEvent ? ' (事件)' : '';
-            const currentCat = item.category || 'normal';
-            const catLabel = this.mapTypes.find(m => m.key === currentCat)?.label || '普通藏宝图';
+            const cats = item.categories || [];
+
+            // 三个分类开关按钮的 HTML
+            const btnHtml = this.mapTypes.map(t => {
+                const isActive = cats.includes(t.key);
+                return `<button class="dt-cat-toggle" data-idx="${i}" data-cat="${t.key}" style="padding:2px 12px;border-radius:30px;border:2px solid ${isActive ? '#4CAF50' : '#d0dce8'};background:${isActive ? '#4CAF50' : '#f0f4f8'};color:${isActive ? '#fff' : '#1f3b53'};font-size:0.6rem;font-weight:600;cursor:pointer;margin:0 2px;">${t.icon} ${t.label}</button>`;
+            }).join('');
 
             html += `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f0f4f8;font-size:0.8rem;flex-wrap:wrap;gap:4px;">
                     <span>${icon} ${item.name}${isEvent}</span>
-                    <span style="display:flex;align-items:center;gap:6px;">
-                        <!-- 归属下拉选择 -->
-                        <select class="dt-edit-category" data-idx="${i}" style="padding:2px 6px;border:1px solid #bccad9;border-radius:12px;font-size:0.65rem;background:white;">
-                            ${this.mapTypes.map(t => `<option value="${t.key}" ${currentCat === t.key ? 'selected' : ''}>${t.label}</option>`).join('')}
-                        </select>
-                        <span style="font-weight:600;color:#1f3b53;cursor:pointer;" class="dt-edit-price" data-idx="${i}">${item.price}万</span>
-                        <button class="dt-del-lib" data-idx="${i}" style="background:#f5d0d0;border:none;border-radius:30px;padding:0 10px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;margin-left:2px;">✕</button>
+                    <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <!-- 三个独立切换按钮 -->
+                        <span style="display:flex;gap:2px;">${btnHtml}</span>
+                        <span style="font-weight:600;color:#1f3b53;cursor:pointer;margin-left:4px;" class="dt-edit-price" data-idx="${i}">${item.price}万</span>
+                        <button class="dt-del-lib" data-idx="${i}" style="background:#f5d0d0;border:none;border-radius:30px;padding:0 8px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;">✕</button>
                     </span>
                 </div>
             `;
@@ -348,16 +351,29 @@ const DigTreasureModule = {
             });
         });
 
-        // 修改归属分类（下拉菜单变动时立刻生效）
-        container.querySelectorAll('.dt-edit-category').forEach(el => {
-            el.addEventListener('change', function() {
+        // 多选开关（点击切换分类）
+        container.querySelectorAll('.dt-cat-toggle').forEach(el => {
+            el.addEventListener('click', function() {
                 const idx = parseInt(this.dataset.idx);
-                const newCat = this.value;
-                if (DigTreasureModule.presetItems[idx]) {
-                    DigTreasureModule.presetItems[idx].category = newCat;
-                    DigTreasureModule.saveData();
-                    DigTreasureModule.refreshPresetButtons();
+                const cat = this.dataset.cat;
+                const item = DigTreasureModule.presetItems[idx];
+                if (!item) return;
+                
+                // 初始化 categories 数组
+                if (!item.categories) item.categories = [];
+                
+                const index = item.categories.indexOf(cat);
+                if (index > -1) {
+                    // 如果已存在，则移除（取消勾选）
+                    item.categories.splice(index, 1);
+                } else {
+                    // 如果不存在，则添加（勾选）
+                    item.categories.push(cat);
                 }
+                
+                DigTreasureModule.saveData();
+                DigTreasureModule.renderLibModal();
+                DigTreasureModule.refreshPresetButtons();
             });
         });
     },
@@ -400,24 +416,29 @@ const DigTreasureModule = {
             setTimeout(() => btn.style.transform = 'scale(1)', 150);
         });
 
-        // 自定义添加入库（默认分类为当前选中的宝图类型）
+        // 自定义添加入库（默认归属为当前选中的宝图类型）
         document.getElementById('dtAddCustomBtn').addEventListener('click', () => {
             const name = document.getElementById('dtCustomItem').value.trim();
             const price = Number(document.getElementById('dtCustomPrice').value) || 0;
-            const category = DigTreasureModule.currentMapType; // 自动归属当前类型
+            // 默认只勾选当前宝图类型
+            const categories = [DigTreasureModule.currentMapType];
 
             if (!name) { alert('请输入物品名称'); return; }
             if (price <= 0) { alert('请输入大于 0 的价格'); return; }
             
             const exists = DigTreasureModule.presetItems.some(item => item.name === name);
             if (!exists) {
-                DigTreasureModule.presetItems.push({ name, price, icon: '📦', category });
+                DigTreasureModule.presetItems.push({ name, price, icon: '📦', categories });
                 DigTreasureModule.refreshPresetButtons();
             } else {
                 const item = DigTreasureModule.presetItems.find(i => i.name === name);
                 if (confirm(`"${name}" 已存在 (现价${item.price}万)，更新为 ${price}万？`)) {
                     item.price = price;
-                    item.category = category; // 同时更新归属
+                    // 更新时，追加当前选中类型（不覆盖原先已有）
+                    if (!item.categories) item.categories = [];
+                    if (!item.categories.includes(DigTreasureModule.currentMapType)) {
+                        item.categories.push(DigTreasureModule.currentMapType);
+                    }
                     DigTreasureModule.refreshPresetButtons();
                 } else {
                     document.getElementById('dtCustomItem').value = '';
@@ -428,7 +449,7 @@ const DigTreasureModule = {
             document.getElementById('dtCustomItem').value = '';
             document.getElementById('dtCustomPrice').value = '';
             DigTreasureModule.saveData();
-            alert(`✅ "${name}" 已入库，归属于当前宝图类型！`);
+            alert(`✅ "${name}" 已入库！`);
         });
 
         // 管理产出库弹窗
