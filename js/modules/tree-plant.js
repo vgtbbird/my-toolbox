@@ -1241,10 +1241,10 @@ addEvent(evt) {
         }
 
         let html = '';
-        const list = this.history.slice().reverse();
+        const list = this.history.slice().reverse(); 
         for (let i = 0; i < list.length; i++) {
             const h = list[i];
-            const row = list.length - i;
+            const row = i + 1; 
             const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
             const idx = this.history.indexOf(h);
             const rmb = h.profit * this.exchangeRate;
