@@ -1481,7 +1481,15 @@ const PetRingModule = {
         const type = this.ITEM_TYPES.find(t => t.key === key);
         const score = type ? type.score : 0;
         const idx = this.records.length;
-        this.records.push({ typeKey: key, cost: price, score, ringPoints: this.getRingPoints(idx), isDeduct: false });
+        this.records.push({ 
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), // ✅ 加上这行，生成绝对唯一的ID
+            typeKey: key, 
+            cost: price, 
+            score, 
+            ringPoints: this.getRingPoints(idx), 
+            isDeduct: false,
+            date: new Date().toLocaleString() // ✅ 如果你愿意，这里显式补上日期也可以，但关键是上面那个 id
+        });
         this.render();
     },
 
@@ -1495,12 +1503,14 @@ const PetRingModule = {
         const type = this.DEDUCT_TYPES.find(d => d.key === key);
         const idx = this.records.length;
         this.records.push({
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), // ✅ 加上唯一ID
             typeKey: key,
             cost: s.cost || 0,
             score: -(s.deduct || 0),
             ringPoints: this.getRingPoints(idx),
             isDeduct: true,
-            label: type ? type.label : key
+            label: type ? type.label : key,
+            date: new Date().toLocaleString()
         });
         this.render();
     },
