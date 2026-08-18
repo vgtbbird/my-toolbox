@@ -287,6 +287,7 @@ const GitHubSync = {
 
         const url = this.getApiUrl();
 
+               // ===== 从云端拉取 =====
         try {
             console.log('📥 开始拉取数据...');
             const res = await fetch(url, {
@@ -315,77 +316,59 @@ const GitHubSync = {
             console.log('☁️ treePlant.history:', content.modules?.treePlant?.history?.length || 0, '条');
             console.log('☁️ petRing.history:', content.modules?.petRing?.history?.length || 0, '条');
 
-    if (content.modules) {
-        console.log('☁️ 开始精细化同步数据...');
+            if (content.modules) {
+                console.log('☁️ 开始精细化同步数据...');
 
-        for (let [moduleKey, cloudData] of Object.entries(content.modules)) {
-            // 1. 获取本地当前数据
-            let localData = Storage.get(moduleKey) || {};
+                for (let [moduleKey, cloudData] of Object.entries(content.modules)) {
+                    // 1. 获取本地当前数据
+                    let localData = Storage.get(moduleKey) || {};
 
-            // ==========================================================
-            // ⚠️ 核心修复：当前环次（records）直接覆盖，绝不合并！
-            // ==========================================================
-            if (cloudData.records && Array.isArray(cloudData.records)) {
-                localData.records = JSON.parse(JSON.stringify(cloudData.records));
-                console.log(`✅ 模块 ${moduleKey} 当前环次覆盖 (${cloudData.records.length} 环)`);
-            }
-
-            // ==========================================================
-            // ✅ 历史轮次（history）保留合并去重，完全不影响历史统计
-            // ==========================================================
-            if (cloudData.history && Array.isArray(cloudData.history)) {
-                const combined = [...(localData.history || []), ...cloudData.history];
-                const seen = new Set();
-                const unique = [];
-                for (let item of combined) {
-                    // 如果有 item.id 就用 id，没有就用日期或JSON
-                    const key2 = item.id || item.date || JSON.stringify(item);
-                    if (!seen.has(key2)) {
-                        seen.add(key2);
-                        unique.push(item);
+                    // ⚠️ 核心修复：当前环次（records）直接覆盖，绝不合并！
+                    if (cloudData.records && Array.isArray(cloudData.records)) {
+                        localData.records = JSON.parse(JSON.stringify(cloudData.records));
+                        console.log(`✅ 模块 ${moduleKey} 当前环次覆盖 (${cloudData.records.length} 环)`);
                     }
+
+                    // ✅ 历史轮次（history）保留合并去重
+                    if (cloudData.history && Array.isArray(cloudData.history)) {
+                        const combined = [...(localData.history || []), ...cloudData.history];
+                        const seen = new Set();
+                        const unique = [];
+                        for (let item of combined) {
+                            const key2 = item.id || item.date || JSON.stringify(item);
+                            if (!seen.has(key2)) {
+                                seen.add(key2);
+                                unique.push(item);
+                            }
+                        }
+                        unique.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        localData.history = unique;
+                        console.log(`✅ 模块 ${moduleKey} 历史已合并去重 (${unique.length} 条)`);
+                    }
+
+                    // 2. 合并其他独立配置项
+                    const ignoreKeys = ['records', 'history'];
+                    for (let [key, val] of Object.entries(cloudData)) {
+                        if (!ignoreKeys.includes(key)) {
+                            localData[key] = val;
+                        }
+                    }
+
+                    // 3. 保存当前模块数据回本地
+                    Storage.set(moduleKey, localData);
                 }
-                // 按时间从新到旧排序（目前您表格里的效果）
-                unique.sort((a, b) => new Date(b.date) - new Date(a.date));
-                localData.history = unique;
-                console.log(`✅ 模块 ${moduleKey} 历史已合并去重 (${unique.length} 条)`);
-            }
 
-            // 2. 合并其他独立配置项（如价格、UI设置等），不涉及合并的冲突
-            const ignoreKeys = ['records', 'history'];
-            for (let [key, val] of Object.entries(cloudData)) {
-                if (!ignoreKeys.includes(key)) {
-                    localData[key] = val;
-                }
-            }
+                const afterStats = this.countData(Storage.getAll());
+                console.log('📊 拉取后本地数据:', afterStats.total, '条');
 
-            // 3. 保存当前模块数据回本地
-            Storage.set(moduleKey, localData);
-        }
+                // 强制刷新页面
+                setTimeout(() => {
+                    console.log('🔄 页面刷新...');
+                    location.reload();
+                }, 500);
 
-        // 统计拉取后的数据量
-        const afterStats = this.countData(Storage.getAll());
-        console.log('📊 拉取后本地数据:', afterStats.total, '条');
-
-        // ✅ 强制刷新页面
-        setTimeout(() => {
-            console.log('🔄 页面刷新...');
-            location.reload();
-        }, 500);
-
-        return {
-            success: true,
-            message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${afterStats.total} 条`,
-            cloudTotal: cloudStats.total,
-            localTotal: afterStats.total,
-            details: cloudStats.details
-        };
-    } else {
-        return { success: false, message: '❌ 数据格式不兼容' };
-    }
-                
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: `✅ 拉取成功！云端 ${cloudStats.total} 条数据已合并，本地共 ${afterStats.total} 条`,
                     cloudTotal: cloudStats.total,
                     localTotal: afterStats.total,
