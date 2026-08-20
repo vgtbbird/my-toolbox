@@ -196,19 +196,12 @@ const GitHubSync = {
                                     });
                                     allData[key].history = unique;
                                 }
-                                if (cloudValue.records && allData[key].records) {
-                                    const combined = [...cloudValue.records, ...allData[key].records];
-                                    const seen = new Set();
-                                    const unique = [];
-                                    for (let item of combined) {
-                                        const key2 = item.date || JSON.stringify(item);
-                                        if (!seen.has(key2)) {
-                                            seen.add(key2);
-                                            unique.push(item);
-                                        }
-                                    }
-                                    allData[key].records = unique;
-                                }
+                        if (cloudValue.records && allData[key].records) {
+                            // 🛡️ 修正：当前环数（records）直接合并拼接，不进行去重！
+                            // 保证每一环的具体记录都能完整上传，防止因任务类型相同而被误合并。
+                            const combined = [...cloudValue.records, ...allData[key].records];
+                            allData[key].records = combined;
+                        }
                             }
                         }
                     }
