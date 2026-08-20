@@ -1,7 +1,8 @@
 // ============================================================
-//  🏃 跑商助手模块 - 完整版 v14
-//  一刷固定在第10秒触发（每10分钟一次）
-//  商人标记只在 一刷 和 手动 时清除
+//  🏃 跑商助手模块 - 完整版 v15 (优化版)
+//  一刷固定在第10秒触发（每10分钟一次），支持 +10s 和重置微调
+//  二刷支持帮派维护时间自动计算（取分钟个位数+30秒）
+//  优化了二刷输入框大小
 // ============================================================
 const ShopHelperModule = {
     id: 'shopHelper',
@@ -24,9 +25,10 @@ const ShopHelperModule = {
     },
 
     currentLocation: null,
-    firstOffset: 0,  // 固定为0，不再允许修改
+    firstOffset: 0,          // 默认0秒
     secondMinute: 3,
     secondSecond: 20,
+    guildMaintenanceTime: '', // 存储帮派维护时间
     travelTimes: {},
     shopPrices: {},
     goodsList: {},
@@ -113,14 +115,17 @@ const ShopHelperModule = {
         this.applyUISettings();
     },
 
-    // ===== 一刷检测：每10分钟的第10秒触发 =====
+    // ===== 一刷检测：每10分钟的第(10+偏移)秒触发 =====
     checkFirstRefresh() {
         const now = new Date();
         const currentMinute = now.getMinutes();
         const currentSecond = now.getSeconds();
         
-        // 只有分钟是 10 的倍数（0,10,20,30,40,50）且秒数等于 10 时才触发
-        if (currentMinute % 10 === 0 && currentSecond === 10) {
+        // 计算实际触发秒数
+        const triggerSecond = 10 + (this.firstOffset || 0);
+        
+        // 只有分钟是 10 的倍数且秒数等于 triggerSecond 时才触发
+        if (currentMinute % 10 === 0 && currentSecond === triggerSecond) {
             if (this.lastFirstRefreshMinute !== currentMinute) {
                 this.lastFirstRefreshMinute = currentMinute;
                 this.resetPricesAndShops();
@@ -203,7 +208,6 @@ const ShopHelperModule = {
                 wrap.style.border = '1px solid #e0e8f0';
             }
         }
-        // 更新完状态后恢复商人颜色
         setTimeout(() => {
             this.updateShopColors();
         }, 50);
@@ -212,9 +216,10 @@ const ShopHelperModule = {
     loadData() {
         const data = Storage.get(this.storageKey, {});
         this.currentLocation = data.currentLocation || null;
-        this.firstOffset = 0;  // 固定为0
+        this.firstOffset = data.firstOffset || 0;          // 🆕 读取一刷偏移量
         this.secondMinute = data.secondMinute !== undefined ? data.secondMinute : 3;
         this.secondSecond = data.secondSecond !== undefined ? data.secondSecond : 20;
+        this.guildMaintenanceTime = data.guildMaintenanceTime || ''; // 🆕 读取帮派维护时间
         this.travelTimes = data.travelTimes || { ...this.defaultTravelTimes };
         this.shopPrices = data.shopPrices || {};
         this.goodsList = data.goodsList || JSON.parse(JSON.stringify(this.defaultGoods));
@@ -234,9 +239,10 @@ const ShopHelperModule = {
     saveData() {
         Storage.set(this.storageKey, {
             currentLocation: this.currentLocation,
-            firstOffset: this.firstOffset,
+            firstOffset: this.firstOffset,            // 🆕 保存一刷偏移量
             secondMinute: this.secondMinute,
             secondSecond: this.secondSecond,
+            guildMaintenanceTime: this.guildMaintenanceTime, // 🆕 保存帮派维护时间
             travelTimes: this.travelTimes,
             shopPrices: this.shopPrices,
             goodsList: this.goodsList,
@@ -270,9 +276,9 @@ const ShopHelperModule = {
         const nextMinute = Math.ceil((minute + 1) / 10) * 10;
         const target = new Date(now);
         target.setMinutes(nextMinute, 0, 0);
-        target.setSeconds(10);
+        target.setSeconds(10 + (this.firstOffset || 0)); // 🆕 加上微调偏移量
         if (target < now) target.setMinutes(nextMinute + 10, 0, 0);
-        target.setSeconds(10);
+        target.setSeconds(10 + (this.firstOffset || 0));
         return target;
     },
 
@@ -355,9 +361,6 @@ const ShopHelperModule = {
         el.textContent = `${h}:${m}:${s}`;
     },
 
-    // ============================================================
-    //  🗺️ 渲染地图
-    // ============================================================
     renderMap() {
         const container = document.getElementById('shMapContainer');
         if (!container) return;
@@ -686,31 +689,49 @@ const ShopHelperModule = {
         container.innerHTML = `
             <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:12px;margin-bottom:8px;padding:6px 10px;">
                 <div class="module-header">
-                    <div class="title" style="font-size:0.9rem;">⏰ 刷新时间 <span class="hint" style="font-size:0.65rem;">— 一刷自动重置价格</span></div>
+                    <div class="title" style="font-size:0.9rem;">⏰ 刷新时间 <span class="hint" style="font-size:0.65rem;">— 支持二刷自动计算</span></div>
                     <div>
                         <button class="toggle-btn" id="shToggleTimeBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.55rem;cursor:pointer;">👁️</button>
                     </div>
                 </div>
                 <div class="module-body" id="shTimeBody">
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:2px 0;">
+                        <!-- 一刷盒子 -->
                         <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 一刷</div>
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">⭐ 一刷</div>
                             <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shFirstTimeDisplay">计算中...</div>
-                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 每10分钟的第10秒自动重置价格</div>
+                            <!-- 🆕 一刷的微调按钮 -->
+                            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+                                <button class="btn-small" id="shFirstAdd10Btn" style="padding:1px 10px;font-size:0.6rem;font-weight:700;">+10秒</button>
+                                <button class="btn-small" id="shFirstResetBtn" style="padding:1px 10px;font-size:0.6rem;font-weight:700;background:#b48b5f;color:#fff;">重置</button>
+                            </div>
+                            <div style="font-size:0.5rem;color:#c0392b;margin-top:2px;font-weight:600;">⚠️ 每10分钟的第 (10+偏移) 秒重置</div>
                         </div>
+
+                        <!-- 当前时间盒子 (保持不变) -->
                         <div style="background:#f0f5fb;border-radius:10px;padding:6px 10px;border:2px solid #dbbd7c;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                             <div style="font-size:0.6rem;font-weight:600;color:#5a7a94;">🕐 当前时间</div>
                             <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shCurrentTimeDisplay">--:--:--</div>
                         </div>
+
+                        <!-- 二刷盒子 (大幅优化) -->
                         <div style="background:#f8faff;border-radius:10px;padding:6px 10px;border:1px solid #dce5ef;">
-                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">📌 二刷</div>
+                            <div style="font-size:0.7rem;font-weight:700;color:#0a1a2a;">⭐ 二刷</div>
                             <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
-                            <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
-                                <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">分</span>
-                                <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:30px;padding:1px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.65rem;text-align:center;font-weight:700;color:#0a1a2a;">
-                                <span style="font-size:0.65rem;color:#4a6a8a;line-height:24px;font-weight:600;">秒</span>
-                                <button class="btn-small" id="shSetSecondBtn" style="padding:1px 10px;font-size:0.55rem;font-weight:700;">设置</button>
+                            <!-- 🆕 二刷维护时间自动计算 & 更大的输入框 -->
+                            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;align-items:center;">
+                                <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">维护：</span>
+                                <input type="text" id="shMaintenanceInput" placeholder="如 20:43" value="${this.guildMaintenanceTime || ''}" style="width:70px;padding:3px 4px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:600;">
+                                <button class="btn-small" id="shCalcMaintenanceBtn" style="padding:1px 8px;font-size:0.6rem;font-weight:700;background:#4c7a5c;color:#fff;">计算</button>
+                                
+                                <!-- 二刷微调输入框放大 -->
+                                <div style="display:flex;align-items:center;gap:2px;margin-left:2px;">
+                                    <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:34px;padding:3px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:700;">
+                                    <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">分</span>
+                                    <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:34px;padding:3px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:700;">
+                                    <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">秒</span>
+                                    <button class="btn-small" id="shSetSecondBtn" style="padding:1px 8px;font-size:0.6rem;font-weight:700;">设</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -922,7 +943,59 @@ const ShopHelperModule = {
             }
         });
 
-        // ===== 一刷微调已移除，固定10秒 =====
+        // ===== 🆕 一刷微调 =====
+        document.getElementById('shFirstAdd10Btn').addEventListener('click', function() {
+            // 加上 10 秒偏移
+            ShopHelperModule.firstOffset = (ShopHelperModule.firstOffset || 0) + 10;
+            if (ShopHelperModule.firstOffset >= 60) {
+                ShopHelperModule.firstOffset = ShopHelperModule.firstOffset - 60;
+            }
+            ShopHelperModule.saveData();
+            ShopHelperModule.updateStatusOnly();
+        });
+        
+        document.getElementById('shFirstResetBtn').addEventListener('click', function() {
+            // 重置到 0 偏移（即标准的 10 秒重置）
+            ShopHelperModule.firstOffset = 0;
+            ShopHelperModule.saveData();
+            ShopHelperModule.updateStatusOnly();
+            alert('✅ 一刷已重置为：每10分钟的第10秒刷新');
+        });
+
+        // ===== 🆕 二刷的帮派维护时间自动计算 =====
+        document.getElementById('shCalcMaintenanceBtn').addEventListener('click', function() {
+            const inputVal = document.getElementById('shMaintenanceInput').value.trim();
+            if (!inputVal) { alert('请输入帮派维护时间，例如 20:43'); return; }
+            
+            // 解析时间 (例如 "20:43")
+            const parts = inputVal.split(':');
+            if (parts.length !== 2) { alert('格式错误，请使用 HH:MM 格式'); return; }
+            
+            const hour = parseInt(parts[0]);
+            const minute = parseInt(parts[1]);
+            if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                alert('无效的时间数值！');
+                return;
+            }
+
+            // 核心计算逻辑：取分钟的最后一位 + 30秒
+            const lastDigit = minute % 10;
+            const newSecondMinute = lastDigit;
+            const newSecondSecond = 30;
+
+            // 自动填入二刷输入框
+            document.getElementById('shSecondMinute').value = newSecondMinute;
+            document.getElementById('shSecondSecond').value = newSecondSecond;
+
+            // 保存到内存并更新状态
+            ShopHelperModule.secondMinute = newSecondMinute;
+            ShopHelperModule.secondSecond = newSecondSecond;
+            ShopHelperModule.guildMaintenanceTime = inputVal; // 记录本次维护时间
+            ShopHelperModule.saveData();
+            ShopHelperModule.updateStatusOnly();
+            
+            alert(`✅ 计算完成！二刷已自动设为：${newSecondMinute}分${newSecondSecond}秒。\n(注：每天维护时间会+10秒，届时只需再次输入新维护时间点击计算即可)`);
+        });
 
         // ===== 二刷设置 =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
