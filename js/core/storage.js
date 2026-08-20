@@ -28,15 +28,21 @@ const Storage = {
 
     getAll() {
         const all = {};
+        // 👇 改动1：先把所有的 key 存到一个数组里，防止循环时漏读
+        const keys = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key && key.startsWith('toolbox_')) {
-                const moduleKey = key.replace('toolbox_', '');
-                try {
-                    all[moduleKey] = JSON.parse(localStorage.getItem(key));
-                } catch (e) {
-                    all[moduleKey] = localStorage.getItem(key);
-                }
+                keys.push(key);
+            }
+        }
+        // 👇 改动2：遍历刚刚存好的 key 数组，强制从硬盘里逐条读取，绝对不漏
+        for (let key of keys) {
+            const moduleKey = key.replace('toolbox_', '');
+            try {
+                all[moduleKey] = JSON.parse(localStorage.getItem(key));
+            } catch (e) {
+                all[moduleKey] = localStorage.getItem(key);
             }
         }
         return all;
