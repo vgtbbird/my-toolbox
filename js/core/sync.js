@@ -196,11 +196,23 @@ const GitHubSync = {
                                     });
                                     allData[key].history = unique;
                                 }
-                        if (cloudValue.records && allData[key].records) {
-                            // 🛡️ 修正：当前环数（records）直接合并拼接，不进行去重！
-                            // 保证每一环的具体记录都能完整上传，防止因任务类型相同而被误合并。
-                            const combined = [...cloudValue.records, ...allData[key].records];
-                            allData[key].records = combined;
+                    if (cloudValue.records && allData[key].records) {
+                            // 🟢 新增规则：过滤掉不属于当前轮次的脏数据，避免跨设备环数叠加
+                            const runId = allData[key].currentRunId; 
+                            let validLocalRecords = allData[key].records.filter(r => r.runId === runId);
+                            let validCloudRecords = cloudValue.records.filter(r => r.runId === runId);
+        
+                            const combined = [...validCloudRecords, ...validLocalRecords];
+                            
+                            const seenIds = new Set();
+                            const finalRecords = [];
+                            for (let r of combined) {
+                                if (!seenIds.has(r.id)) {
+                                    seenIds.add(r.id);
+                                    finalRecords.push(r);
+                                }
+                            }
+                            allData[key].records = finalRecords;
                         }
                             }
                         }
