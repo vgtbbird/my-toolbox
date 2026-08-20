@@ -10,6 +10,7 @@ const PetRingModule = {
 
     // ========== 数据 ==========
     storageKey: 'petRing',
+    currentRunId: null, 
     records: [],
     history: [],
     prices: {},
@@ -115,6 +116,10 @@ const PetRingModule = {
     // ========== 数据操作 ==========
     loadData() {
         const data = Storage.get(this.storageKey, {});
+        this.currentRunId = data.currentRunId || null;
+        if (!this.currentRunId) {
+            this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        }
         this.records = data.records || [];
         this.history = data.history || [];
         this.prices = data.prices || {};
@@ -1482,13 +1487,14 @@ const PetRingModule = {
         const score = type ? type.score : 0;
         const idx = this.records.length;
         this.records.push({ 
-            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), // ✅ 加上这行，生成绝对唯一的ID
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
+            runId: this.currentRunId, // 🟢 关键！在这里加上了本轮ID
             typeKey: key, 
             cost: price, 
             score, 
             ringPoints: this.getRingPoints(idx), 
             isDeduct: false,
-            date: new Date().toLocaleString() // ✅ 如果你愿意，这里显式补上日期也可以，但关键是上面那个 id
+            date: new Date().toLocaleString()
         });
         this.render();
     },
