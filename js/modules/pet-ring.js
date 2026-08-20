@@ -1251,17 +1251,21 @@ const PetRingModule = {
             this.quickSettle(stats, income);
         });
 
-        // ===== 重置 =====
-        document.getElementById('prResetBtn').addEventListener('click', () => {
-            if (confirm('重置本轮所有记录？（不会删除已结算的历史）')) {
-                this.records = [];
-                this.bookRewards = [];
-                this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
-                this.pendingSettle = null;
-                this.saveData();
-                this.render();
-            }
-        });
+     // ===== 重置 =====
+            document.getElementById('prResetBtn').addEventListener('click', () => {
+                if (confirm('重置本轮所有记录？（不会删除已结算的历史）')) {
+                    this.records = [];
+                    this.bookRewards = [];
+                    this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
+                    this.pendingSettle = null;
+                    
+                    // 🔥 核心修复：重置时强制生成一个新的本轮ID！
+                    this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                    
+                    this.saveData();
+                    this.render();
+                }
+            });
 
         // ===== 书铁添加 =====
         document.getElementById('prAddBookBtn').addEventListener('click', () => {
