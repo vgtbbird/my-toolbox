@@ -139,6 +139,24 @@ const GitHubSync = {
             return { success: false, message: '❌ 请先设置 Gitee Token' };
         }
 
+        // ==========================================================
+        // 🛡️ 新增：查询云端旧数据，防止其他模块因重置被误覆盖
+        // ==========================================================
+        let cloudBackup = null; // 暂存云端旧数据的备份
+        try {
+            const checkRes = await fetch(this.getApiUrl(), {
+                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+            });
+            if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                if (checkData.content) {
+                    const jsonStr = this.decodeBase64(checkData.content);
+                    const cloudData = JSON.parse(jsonStr);
+                    cloudBackup = cloudData.modules || {}; // 拿到云端的数据备份
+                }
+            }
+        } catch (e) { console.log('⚠️ 读取云端备份失败，将直接覆盖'); }
+        
         let allData = Storage.getAll();
         
         for (let [key, value] of Object.entries(allData)) {
