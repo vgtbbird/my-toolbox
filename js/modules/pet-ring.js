@@ -1480,7 +1480,6 @@ const PetRingModule = {
         });
     },
 
-    // ========== 核心业务 ==========
     addRecord(key) {
         if (this.pendingSettle) {
             alert('本轮已满100环，请先确认结算再继续！');
@@ -1492,7 +1491,8 @@ const PetRingModule = {
         const idx = this.records.length;
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
-            runId: this.currentRunId, // 🟢 关键！在这里加上了本轮ID
+            runId: this.currentRunId, 
+            taskIndex: this.records.length + 1, // 🟢 新增：记录这是本轮的第几环
             typeKey: key, 
             cost: price, 
             score, 
@@ -1513,7 +1513,9 @@ const PetRingModule = {
         const type = this.DEDUCT_TYPES.find(d => d.key === key);
         const idx = this.records.length;
         this.records.push({
-            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), // ✅ 加上唯一ID
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
+            runId: this.currentRunId, 
+            taskIndex: this.records.length + 1, // 🟢 就是加在这里！
             typeKey: key,
             cost: s.cost || 0,
             score: -(s.deduct || 0),
