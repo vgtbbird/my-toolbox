@@ -720,7 +720,7 @@ const ShopHelperModule = {
                             <div style="font-weight:700;color:#0a1a2a;font-size:0.85rem;" id="shSecondTimeDisplay">计算中...</div>
                             <!-- 🆕 二刷维护时间自动计算 & 更大的输入框 -->
                             <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;align-items:center;">
-                                <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">维护：</span>
+                                <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">请输入帮派维护时间：</span>
                                 <input type="text" id="shMaintenanceInput" placeholder="如 20:43" value="${this.guildMaintenanceTime || ''}" style="width:70px;padding:3px 4px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:600;">
                                 <button class="btn-small" id="shCalcMaintenanceBtn" style="padding:1px 8px;font-size:0.6rem;font-weight:700;background:#4c7a5c;color:#fff;">计算</button>
                                 
@@ -731,7 +731,7 @@ const ShopHelperModule = {
                                     <span style="font-size:0.7rem;color:#4a6a8a;font-weight:700;">分</span>
                                     <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:50px;padding:4px 2px;border:1px solid #bccad9;border-radius:4px;font-size:1rem;text-align:center;font-weight:700;">
                                     <span style="font-size:0.7rem;color:#4a6a8a;font-weight:700;">秒</span>
-                                    <button class="btn-small" id="shSetSecondBtn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;">设</button>
+                                    <button class="btn-small" id="shSetSecondBtn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;">设置</button>
                                     <button class="btn-small" id="shSecondAdd10Btn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;background:#4c7a5c;color:#fff;">+10秒</button>
                                     <button class="btn-small" id="shSecondResetBtn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;background:#b48b5f;color:#fff;">重置</button>
                                 </div>
