@@ -136,20 +136,33 @@ const GitHubSync = {
             const localV3 = localData.__sync_v3 || { history: [], records: [], _meta: { lastUpdated: 0 } };
             const cloudV3 = cloudData ? cloudData.__sync_v3 : null;
 
-            // 整合 History：用绝对 _id 去重
+            // ==========================================================
+            // 🏃 跑商助手：配置类数据采用“最新时间戳直接替换”模式
+            // ==========================================================
+            if (moduleKey === 'shopHelper') {
+                const localTime = localV3._meta?.lastUpdated || 0;
+                const cloudTime = cloudV3?._meta?.lastUpdated || 0;
+                if (cloudTime > localTime) {
+                    finalModules['shopHelper'] = cloudData;
+                } else {
+                    finalModules['shopHelper'] = localData;
+                }
+                continue; 
+            }
+            // ==========================================================
+
+            // 跑宠环/抓宠/种树等走原有逻辑（绝对ID去重、合并）
             let historyMap = new Map();
             if (cloudV3 && cloudV3.history) {
                 cloudV3.history.forEach(h => historyMap.set(h._id, h));
             }
             localV3.history.forEach(h => {
-                // 如果本地有这条历史，且它比云端的更新，则用本地覆盖云端
                 if (!historyMap.has(h._id) || h._createdAt > historyMap.get(h._id)._createdAt) {
                     historyMap.set(h._id, h);
                 }
             });
             const finalHistory = Array.from(historyMap.values());
 
-            // 整合 Records：用绝对 _id 去重，并用 _index 保证顺序
             let recordsMap = new Map();
             if (cloudV3 && cloudV3.records) {
                 cloudV3.records.forEach(r => recordsMap.set(r._id, r));
@@ -160,10 +173,8 @@ const GitHubSync = {
                 }
             });
             let finalRecords = Array.from(recordsMap.values());
-            // 按环数 _index 排序（如果是跑宠环）
             finalRecords.sort((a, b) => (a._index || 0) - (b._index || 0));
 
-            // 最终合成单模块数据
             finalModules[moduleKey] = {
                 ...localData,
                 __sync_v3: {
@@ -177,7 +188,7 @@ const GitHubSync = {
                 }
             };
         }
-
+        
         // 4. 构造并上传最终的 db.json
         const payload = {
             version: '3.0',
@@ -242,7 +253,16 @@ const GitHubSync = {
                 console.log('☁️ 开始安全拉取...');
                 // 直接写入本地，因为是全量精准数据
                 for (let [moduleKey, cloudData] of Object.entries(content.modules)) {
-                    // 如果云端有数据，直接覆盖本地（因为云端已经是经过锚点合并过的完美数据）
+                    // ==========================================================
+                    // 🏃 跑商助手：配置类数据直接覆盖，防止拉取出错
+                    // ==========================================================
+                    if (moduleKey === 'shopHelper' && cloudData && cloudData.__sync_v3) {
+                        localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(cloudData));
+                        continue; 
+                    }
+                    // ==========================================================
+                    
+                    // 其他模块（跑环、抓宠、种树等）保留原有逻辑
                     if (cloudData && cloudData.__sync_v3) {
                         localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(cloudData));
                     }
