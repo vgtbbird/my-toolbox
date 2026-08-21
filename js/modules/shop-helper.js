@@ -724,13 +724,16 @@ const ShopHelperModule = {
                                 <input type="text" id="shMaintenanceInput" placeholder="如 20:43" value="${this.guildMaintenanceTime || ''}" style="width:70px;padding:3px 4px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:600;">
                                 <button class="btn-small" id="shCalcMaintenanceBtn" style="padding:1px 8px;font-size:0.6rem;font-weight:700;background:#4c7a5c;color:#fff;">计算</button>
                                 
-                                <!-- 二刷微调输入框放大 -->
-                                <div style="display:flex;align-items:center;gap:2px;margin-left:2px;">
-                                    <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:34px;padding:3px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:700;">
-                                    <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">分</span>
-                                    <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:34px;padding:3px 2px;border:1px solid #bccad9;border-radius:4px;font-size:0.8rem;text-align:center;font-weight:700;">
-                                    <span style="font-size:0.6rem;color:#4a6a8a;font-weight:600;">秒</span>
-                                    <button class="btn-small" id="shSetSecondBtn" style="padding:1px 8px;font-size:0.6rem;font-weight:700;">设</button>
+                                                                <!-- 二刷微调输入框（加大 & 允许换行，不挤压） -->
+                                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px;">
+                                    <span style="font-size:0.75rem;color:#4a6a8a;font-weight:700;">时间：</span>
+                                    <input type="number" id="shSecondMinute" value="${this.secondMinute}" min="0" max="9" style="width:50px;padding:4px 2px;border:1px solid #bccad9;border-radius:4px;font-size:1rem;text-align:center;font-weight:700;">
+                                    <span style="font-size:0.7rem;color:#4a6a8a;font-weight:700;">分</span>
+                                    <input type="number" id="shSecondSecond" value="${this.secondSecond}" min="0" max="59" style="width:50px;padding:4px 2px;border:1px solid #bccad9;border-radius:4px;font-size:1rem;text-align:center;font-weight:700;">
+                                    <span style="font-size:0.7rem;color:#4a6a8a;font-weight:700;">秒</span>
+                                    <button class="btn-small" id="shSetSecondBtn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;">设</button>
+                                    <button class="btn-small" id="shSecondAdd10Btn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;background:#4c7a5c;color:#fff;">+10秒</button>
+                                    <button class="btn-small" id="shSecondResetBtn" style="padding:2px 10px;font-size:0.7rem;font-weight:700;background:#b48b5f;color:#fff;">重置</button>
                                 </div>
                             </div>
                         </div>
@@ -997,7 +1000,7 @@ const ShopHelperModule = {
             alert(`✅ 计算完成！二刷已自动设为：${newSecondMinute}分${newSecondSecond}秒。\n(注：每天维护时间会+10秒，届时只需再次输入新维护时间点击计算即可)`);
         });
 
-        // ===== 二刷设置 =====
+                // ===== 二刷设置（含微调） =====
         document.getElementById('shSetSecondBtn').addEventListener('click', () => {
             const m = parseInt(document.getElementById('shSecondMinute').value);
             const s = parseInt(document.getElementById('shSecondSecond').value);
@@ -1008,6 +1011,30 @@ const ShopHelperModule = {
             this.saveData();
             this.updateStatusOnly();
             alert('✅ 二刷时间已设置！');
+        });
+
+        // 🆕 二刷 +10秒
+        document.getElementById('shSecondAdd10Btn').addEventListener('click', () => {
+            let s = parseInt(document.getElementById('shSecondSecond').value) || 0;
+            let m = parseInt(document.getElementById('shSecondMinute').value) || 0;
+            s += 10;
+            if (s >= 60) { s -= 60; m += 1; }
+            document.getElementById('shSecondMinute').value = m;
+            document.getElementById('shSecondSecond').value = s;
+            ShopHelperModule.secondMinute = m;
+            ShopHelperModule.secondSecond = s;
+            ShopHelperModule.saveData();
+            ShopHelperModule.updateStatusOnly();
+        });
+
+        // 🆕 二刷重置
+        document.getElementById('shSecondResetBtn').addEventListener('click', () => {
+            document.getElementById('shSecondMinute').value = 3;
+            document.getElementById('shSecondSecond').value = 20;
+            ShopHelperModule.secondMinute = 3;
+            ShopHelperModule.secondSecond = 20;
+            ShopHelperModule.saveData();
+            ShopHelperModule.updateStatusOnly();
         });
 
         // ===== 折叠按钮 =====
