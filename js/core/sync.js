@@ -196,24 +196,31 @@ const GitHubSync = {
                                     });
                                     allData[key].history = unique;
                                 }
-                    if (cloudValue.records && allData[key].records) {
-                            // 🟢 新增规则：过滤掉不属于当前轮次的脏数据，避免跨设备环数叠加
-                            const runId = allData[key].currentRunId; 
-                            let validLocalRecords = allData[key].records.filter(r => r.runId === runId);
-                            let validCloudRecords = cloudValue.records.filter(r => r.runId === runId);
-        
-                            const combined = [...validCloudRecords, ...validLocalRecords];
-                            
-                            const seenIds = new Set();
-                            const finalRecords = [];
-                            for (let r of combined) {
-                                if (!seenIds.has(r.id)) {
-                                    seenIds.add(r.id);
-                                    finalRecords.push(r);
-                                }
-                            }
-                            allData[key].records = finalRecords;
+                                
+                if (cloudValue.records && allData[key].records) {
+                    const runId = allData[key].currentRunId; 
+                    
+                    let validLocalRecords = allData[key].records; 
+                    let validCloudRecords = cloudValue.records.filter(r => r.runId === runId);
+
+                    const combined = [...validCloudRecords, ...validLocalRecords];
+                    
+                    // 🟢 核心修正：用 runId + taskIndex 作为绝对唯一的标识
+                    const seenKeys = new Set();
+                    const finalRecords = [];
+                    for (let r of combined) {
+                        // 生成绝对唯一标识：本轮ID + 第几环
+                        const uniqueKey = r.runId + '_' + r.taskIndex; 
+                        if (!seenKeys.has(uniqueKey)) {
+                            seenKeys.add(uniqueKey);
+                            finalRecords.push(r);
                         }
+                    }
+                    // 按环数序号（taskIndex）从小到大排好序
+                    finalRecords.sort((a, b) => a.taskIndex - b.taskIndex);
+                    
+                    allData[key].records = finalRecords;
+                }
                             }
                         }
                     }
