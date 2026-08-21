@@ -28,9 +28,9 @@ const Storage = {
         try {
             // 确保 V3 结构的核心锚点存在
             if (!data.__sync_v3) {
-                data.__sync_v3 = { history: [], records: [], _meta: {} };
+                // ✅“确保跑商助手也有V3结构”：
+                data.__sync_v3 = { records: [], history: [], _meta: {} };
             }
-            // 更新最后操作时间
             data.__sync_v3._meta.lastUpdated = Date.now();
             
             localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(data));
