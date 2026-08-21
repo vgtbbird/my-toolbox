@@ -721,6 +721,9 @@
                 document.getElementById('statusDot').className = 'status-dot online';
                 document.getElementById('statusText').textContent = '✅ 已同步';
                 buildHomeCards();
+                
+                // 🟢 自动调用一次查询云端
+                document.getElementById('checkCloudDataBtn').click(); 
             }
         });
 
