@@ -47,6 +47,65 @@ const GitHubSync = {
         }
     },
 
+        // ===== 查询云端数据 =====
+    async checkCloudData() {
+        const token = this.getToken();
+        if (!token) {
+            return { success: false, message: '❌ 请先设置 Gitee Token', total: 0 };
+        }
+
+        const url = this.getApiUrl();
+
+        try {
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                return { success: false, message: '❌ 查询失败：' + (err.message || '文件不存在'), total: 0 };
+            }
+
+            const data = await res.json();
+            if (!data.content) {
+                return { success: false, message: '❌ 数据格式错误', total: 0 };
+            }
+
+            const jsonStr = this.decodeBase64(data.content);
+            const content = JSON.parse(jsonStr);
+
+            // 统计云端数据
+            const stats = this.countData(content.modules || {});
+            return { 
+                success: true, 
+                message: `✅ 云端共有 ${stats.total} 条数据`,
+                total: stats.total,
+                details: stats.details,
+                timestamp: content.timestamp
+            };
+        } catch (error) {
+            console.error('❌ 查询云端数据失败:', error);
+            return { success: false, message: '❌ 网络错误：' + error.message, total: 0 };
+        }
+    },
+
+    countData(data) {
+        const counts = {};
+        let total = 0;
+        for (let [key, value] of Object.entries(data)) {
+            if (value && typeof value === 'object') {
+                const historyCount = value.__sync_v3?.history?.length || value.history?.length || 0;
+                const recordsCount = value.__sync_v3?.records?.length || value.records?.length || 0;
+                counts[key] = { history: historyCount, records: recordsCount };
+                total += historyCount + recordsCount;
+            }
+        }
+        return { total, details: counts };
+    },
+
     // ===== 核心同步引擎 =====
     async syncToCloud() {
         const token = this.getToken();
