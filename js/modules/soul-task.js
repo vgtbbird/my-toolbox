@@ -200,24 +200,23 @@ const SoulTaskModule = {
                     <button class="btn-analysis" id="stAnalysisBtn" style="border-radius:50px;">📊 分析</button>
                 </div>
                 <div class="module-body" style="max-height:300px;overflow-y:auto;">
-                    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                    <table style="width:100%;font-size:0.75rem;border-collapse:collapse;">
                         <thead>
                             <tr style="background:#1f344b;color:#fff;">
-                                <th style="width:5%;padding:6px;text-align:center;">#</th>
-                                <th style="width:13%;padding:6px;text-align:center;">日期</th>
-                                <th style="width:12%;padding:6px;text-align:center;">成本</th>
+                                <th style="width:4%;padding:6px;text-align:center;">#</th>
+                                <th style="width:14%;padding:6px;text-align:center;">日期</th>
+                                <th style="width:10%;padding:6px;text-align:center;">成本</th>
                                 <th style="width:10%;padding:6px;text-align:center;">15环</th>
                                 <th style="width:10%;padding:6px;text-align:center;">30环</th>
                                 <th style="width:10%;padding:6px;text-align:center;">45环</th>
                                 <th style="width:10%;padding:6px;text-align:center;">60环</th>
-                                <th style="width:15%;padding:6px;text-align:center;">利润</th>
-                                <th style="width:5%;padding:6px;text-align:center;">操作</th>
+                                <th style="width:12%;padding:6px;text-align:center;">利润</th>
+                                <th style="width:4%;padding:6px;text-align:center;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="stHistoryTable"></tbody>
                     </table>
                 </div>
-            </div>
         `;
     },
 
@@ -438,27 +437,27 @@ const SoulTaskModule = {
             const m45 = parseFloat(payload.milestoneData?.m45) || 0;
             const m60 = parseFloat(payload.milestoneData?.m60) || 0;
             
-            // 🛡️ 绝对精准公式：利润 = 15环收入 + 30环收入 + 45环收入 + 60环收入 - 总成本
+            // 利润直接算，不带任何花里胡哨的逻辑
             const totalIncome = m15 + m30 + m45 + m60;
             const profit = totalIncome - totalCost;
             
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             
-            // 严格对齐的表格列
+            // 严格按照表头顺序，一行行输出（类似种树）
             html += `<tr style="border-bottom:1px solid #eef2f7;">
-                <td style="width:5%;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
-                <td style="width:13%;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="width:12%;padding:6px;text-align:center;">${totalCost.toFixed(1)}万</td>
-                <td style="width:10%;padding:6px;text-align:center;">${m15.toFixed(1)}万</td>
-                <td style="width:10%;padding:6px;text-align:center;">${m30.toFixed(1)}万</td>
-                <td style="width:10%;padding:6px;text-align:center;">${m45.toFixed(1)}万</td>
-                <td style="width:10%;padding:6px;text-align:center;">${m60.toFixed(1)}万</td>
-                <td style="width:15%;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}万</td>
-                <td style="width:5%;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="width:4%;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
+                <td style="width:14%;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="width:10%;padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m15.toFixed(1)}</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m30.toFixed(1)}</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m45.toFixed(1)}</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m60.toFixed(1)}</td>
+                <td style="width:12%;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
+                <td style="width:4%;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
-    };
+    },
 
 
 if (document.readyState === 'loading') {
