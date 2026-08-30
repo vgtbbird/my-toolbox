@@ -151,6 +151,36 @@ const GitHubSync = {
             }
             // ==========================================================
 
+                        // 🆕 新增：跑玉魄模块（复制宠环的安全策略）
+            if (moduleKey === 'soulTask') {
+                // 历史：绝对ID去重
+                let historyMap = new Map();
+                if (cloudV3 && cloudV3.history) cloudV3.history.forEach(h => historyMap.set(h._id, h));
+                localV3.history.forEach(h => {
+                    if (!historyMap.has(h._id) || h._createdAt > historyMap.get(h._id)._createdAt) historyMap.set(h._id, h);
+                });
+                const finalHistory = Array.from(historyMap.values());
+
+                // 当前轮次：runId + taskIndex 绝对去重
+                let recordsMap = new Map();
+                if (cloudV3 && cloudV3.records) cloudV3.records.forEach(r => recordsMap.set(r._id, r));
+                localV3.records.forEach(r => {
+                    if (!recordsMap.has(r._id) || r._createdAt > recordsMap.get(r._id)._createdAt) recordsMap.set(r._id, r);
+                });
+                let finalRecords = Array.from(recordsMap.values());
+                finalRecords.sort((a, b) => (a._index || 0) - (b._index || 0));
+
+                finalModules[moduleKey] = {
+                    ...localData,
+                    __sync_v3: {
+                        history: finalHistory,
+                        records: finalRecords,
+                        _meta: { version: '3.0', lastUpdated: Date.now(), lastDeviceId: 'toolbox_sync' }
+                    }
+                };
+                continue; 
+            }
+
             // 跑宠环/抓宠/种树等走原有逻辑（绝对ID去重、合并）
             let historyMap = new Map();
             if (cloudV3 && cloudV3.history) {
@@ -261,6 +291,26 @@ const GitHubSync = {
                         continue; 
                     }
                     // ==========================================================
+
+                                        // 🆕 新增：跑玉魄模块（和宠环一样走V3安全合并）
+                    if (moduleKey === 'soulTask' && cloudData && cloudData.__sync_v3) {
+                        let localData = Storage.get(moduleKey) || {};
+                        let localV3 = localData.__sync_v3 || { history: [], records: [], _meta: { lastUpdated: 0 } };
+                        
+                        let combinedHistory = [...(cloudData.__sync_v3.history || []), ...(localV3.history || [])];
+                        let seenHistory = new Map();
+                        combinedHistory.forEach(item => seenHistory.set(item._id, item));
+                        cloudData.__sync_v3.history = Array.from(seenHistory.values());
+
+                        let combinedRecords = [...(cloudData.__sync_v3.records || []), ...(localV3.records || [])];
+                        let seenRecords = new Map();
+                        combinedRecords.forEach(item => seenRecords.set(item._id, item));
+                        cloudData.__sync_v3.records = Array.from(seenRecords.values());
+                        cloudData.__sync_v3.records.sort((a, b) => (a._index || 0) - (b._index || 0));
+
+                        localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(cloudData));
+                        continue; 
+                    }
                     
                     // 其他模块（跑环、抓宠、种树等）保留原有逻辑
                     if (cloudData && cloudData.__sync_v3) {
