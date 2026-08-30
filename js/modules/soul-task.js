@@ -1,17 +1,115 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - 最终完整版 (无报错无NaN)
-//  功能：实时成本显示 + 里程碑手动结算 + 基础统计
+//  ✨ 跑玉魄(铸魂)模块 - 完美修复版
+//  功能：实时成本显示 + 里程碑手动结算 + 双排任务按钮
 //  数据架构：V3 (绝对ID + 轮次标签 + 版本锚点)
 // ============================================================
 const SoulTaskModule = {
     id: 'soulTask',
     storageKey: 'soulTask',
 
-    uiSettings: {       buildUI() {
+    // ========== 基础配置 ==========
+    uiSettings: {
+        bgColor: '#eef2f7',
+        btnColor: '#4CAF50',
+        cardBgColor: '#ffffff',
+        textColor: '#1a1a2e',
+        fontSize: 14
+    },
+
+    records: [],           
+    history: [],           
+    prices: {},            
+    currentRunId: null,    
+    milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
+
+    // ========== 任务类型定义 ==========
+    TASK_TYPES: [
+        { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
+        { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
+        { key: 'game', label: '小游戏', icon: '🎮', cost: 0 },
+        { key: 'ring60', label: '60环', icon: '🔵', cost: 12 },
+        { key: 'ring70', label: '70环', icon: '🟠', cost: 25 },
+        { key: 'ring80', label: '80环', icon: '🟣', cost: 45 },
+        { key: 'medicine', label: '药品', icon: '💊', cost: 2 },
+        { key: 'flower', label: '花乐', icon: '🌸', cost: 3 },
+        { key: 'pet2', label: '2技能宝宝', icon: '🐾', cost: 8 },
+        { key: 'pet3', label: '3技能宝宝', icon: '🐾', cost: 15 },
+        { key: 'pet4', label: '4技能宝宝', icon: '🐾', cost: 30 },
+        { key: 'pill', label: '炼兽丹', icon: '💊', cost: 10 },
+        { key: 'dew', label: '仙露小丸子', icon: '🧪', cost: 15 }
+    ],
+
+    // ========== 生命周期 ==========
+    init() {
+        this.loadData();
+        this.buildUI();
+        this.bindEvents();
+        App.register(this);
+        this.render();
+        setTimeout(() => this.applyUISettings(), 150);
+    },
+
+    loadData() {
+        const data = Storage.get(this.storageKey, {});
+        this.records = data.records || [];
+        this.history = data.history || [];
+        this.prices = data.prices || {};
+        this.milestoneIncome = data.milestoneIncome || { m15: 0, m30: 0, m45: 0, m60: 0 };
+        
+        this.currentRunId = data.currentRunId || null;
+        if (!this.currentRunId) {
+            this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        }
+
+        this.TASK_TYPES.forEach(t => {
+            if (this.prices[t.key] === undefined) this.prices[t.key] = t.cost;
+        });
+    },
+
+    saveData() {
+        Storage.set(this.storageKey, {
+            records: this.records,
+            history: this.history,
+            prices: this.prices,
+            currentRunId: this.currentRunId,
+            milestoneIncome: this.milestoneIncome
+        });
+    },
+
+    applyUISettings() {
+        const s = this.uiSettings;
+        const container = document.getElementById('soulTaskContainer');
+        if (!container) return;
+        container.querySelectorAll('.module, .stats-grid .stat-item').forEach(el => {
+            el.style.setProperty('background', s.cardBgColor, 'important');
+        });
+    },
+
+    // ========== 计算逻辑 ==========
+    calcStats() {
+        let totalCost = 0;
+        const typeCount = {};
+        this.TASK_TYPES.forEach(t => typeCount[t.key] = 0);
+
+        for (let r of this.records) {
+            totalCost += parseFloat(r.payload?.cost || r.cost || 0);
+            const key = r.payload?.typeKey || r.typeKey;
+            if (typeCount[key] !== undefined) typeCount[key]++;
+            else typeCount[key] = 1;
+        }
+
+        const totalIncome = (this.milestoneIncome.m15 || 0) + (this.milestoneIncome.m30 || 0) + (this.milestoneIncome.m45 || 0) + (this.milestoneIncome.m60 || 0);
+        const profit = totalIncome - totalCost;
+
+        return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
+    },
+
+    // ========== 构建UI ==========
+    buildUI() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
-        // 任务1-9及后续按钮完整生成（双排展示）
+        // 生成双排任务按钮（按每组5个自动换行）
         const taskBtns = this.TASK_TYPES.map(t => `
             <div class="st-task-wrapper" data-key="${t.key}" style="display:flex;flex-direction:column;align-items:center;">
                 <button class="st-task-btn" data-key="${t.key}" style="background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:6px 10px;font-size:0.8rem;font-weight:700;cursor:pointer;text-align:center;width:100%;">
@@ -30,7 +128,7 @@ const SoulTaskModule = {
                 <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润(万)</div></div>
             </div>
 
-            <!-- 任务记录区（双排按钮） -->
+            <!-- 任务记录区（直接铺满，浏览器自动换行） -->
             <div class="module">
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span style="font-size:0.7rem;font-weight:400;">— 点击记录一环</span></div>
@@ -40,13 +138,11 @@ const SoulTaskModule = {
                     </div>
                 </div>
                 <div class="module-body" id="stTaskBody">
-                    <!-- 双排布局 -->
-                    <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;margin-bottom:10px;">${taskBtns.slice(0, taskBtns.indexOf('<div class="st-task-wrapper" data-key="pet2') === -1 ? taskBtns.length : taskBtns.indexOf('<div class="st-task-wrapper" data-key="pet2'))}</div>
-                    <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">${taskBtns.slice(taskBtns.indexOf('<div class="st-task-wrapper" data-key="pet2') === -1 ? taskBtns.length : taskBtns.indexOf('<div class="st-task-wrapper" data-key="pet2'))}</div>
+                    <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;">${taskBtns}</div>
                 </div>
             </div>
 
-            <!-- 里程碑收入（含 15/30/45/60 四个入口） -->
+            <!-- 里程碑收入（手动输入，随时可改） -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🏆 里程碑收入 <span style="font-size:0.7rem;font-weight:400;">— 手动输入，随时可改</span></div>
@@ -118,200 +214,8 @@ const SoulTaskModule = {
             </div>
         `;
     },
-        bgColor: '#eef2f7',
-        btnColor: '#4CAF50',
-        cardBgColor: '#ffffff',
-        textColor: '#1a1a2e',
-        fontSize: 14
-    },
 
-    records: [],           
-    history: [],           
-    prices: {},            
-    currentRunId: null,    
-    milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
-
-    TASK_TYPES: [
-        { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
-        { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
-        { key: 'game', label: '小游戏', icon: '🎮', cost: 0 },
-        { key: 'ring60', label: '60环', icon: '🔵', cost: 12 },
-        { key: 'ring70', label: '70环', icon: '🟠', cost: 25 },
-        { key: 'ring80', label: '80环', icon: '🟣', cost: 45 },
-        { key: 'medicine', label: '药品', icon: '💊', cost: 2 },
-        { key: 'flower', label: '花乐', icon: '🌸', cost: 3 },
-        { key: 'pet2', label: '2技能宝宝', icon: '🐾', cost: 8 },
-        { key: 'pet3', label: '3技能宝宝', icon: '🐾', cost: 15 },
-        { key: 'pet4', label: '4技能宝宝', icon: '🐾', cost: 30 },
-        { key: 'pill', label: '炼兽丹', icon: '💊', cost: 10 },
-        { key: 'dew', label: '仙露小丸子', icon: '🧪', cost: 15 }
-    ],
-
-    init() {
-        this.loadData();
-        this.buildUI();
-        this.bindEvents();
-        App.register(this);
-        this.render();
-        setTimeout(() => this.applyUISettings(), 150);
-    },
-
-    loadData() {
-        const data = Storage.get(this.storageKey, {});
-        this.records = data.records || [];
-        this.history = data.history || [];
-        this.prices = data.prices || {};
-        this.milestoneIncome = data.milestoneIncome || { m15: 0, m30: 0, m45: 0, m60: 0 };
-        
-        this.currentRunId = data.currentRunId || null;
-        if (!this.currentRunId) {
-            this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        }
-
-        this.TASK_TYPES.forEach(t => {
-            if (this.prices[t.key] === undefined) this.prices[t.key] = t.cost;
-        });
-    },
-
-    saveData() {
-        Storage.set(this.storageKey, {
-            records: this.records,
-            history: this.history,
-            prices: this.prices,
-            currentRunId: this.currentRunId,
-            milestoneIncome: this.milestoneIncome
-        });
-    },
-
-    applyUISettings() {
-        const s = this.uiSettings;
-        const container = document.getElementById('soulTaskContainer');
-        if (!container) return;
-        container.querySelectorAll('.module, .stats-grid .stat-item').forEach(el => {
-            el.style.setProperty('background', s.cardBgColor, 'important');
-        });
-    },
-
-    calcStats() {
-        let totalCost = 0;
-        const typeCount = {};
-        this.TASK_TYPES.forEach(t => typeCount[t.key] = 0);
-
-        for (let r of this.records) {
-            totalCost += parseFloat(r.payload?.cost || r.cost || 0);
-            const key = r.payload?.typeKey || r.typeKey;
-            if (typeCount[key] !== undefined) typeCount[key]++;
-            else typeCount[key] = 1;
-        }
-
-        const totalIncome = (this.milestoneIncome.m15 || 0) + (this.milestoneIncome.m30 || 0) + (this.milestoneIncome.m45 || 0) + (this.milestoneIncome.m60 || 0);
-        const profit = totalIncome - totalCost;
-
-        return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
-    },
-
-    buildUI() {
-        const container = document.getElementById('soulTaskContainer');
-        if (!container) return;
-
-        const taskBtns = this.TASK_TYPES.map(t => `
-            <div class="st-task-wrapper" data-key="${t.key}" style="display:flex;flex-direction:column;align-items:center;">
-                <button class="st-task-btn" data-key="${t.key}" style="background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:6px 10px;font-size:0.8rem;font-weight:700;cursor:pointer;text-align:center;width:100%;">
-                    ${t.icon} ${t.label}
-                </button>
-                <span class="st-task-count" style="font-weight:700;color:#7a5d2e;background:#e6d7b8;padding:0 8px;border-radius:12px;margin-top:2px;min-width:20px;text-align:center;">0</span>
-            </div>
-        `).join('');
-
-        container.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-item"><div class="num" id="stTotalCost">0</div><div class="label">💰 实时成本(万)</div></div>
-                <div class="stat-item"><div class="num" id="stRingCount">0 / 60</div><div class="label">📌 当前环数</div></div>
-                <div class="stat-item"><div class="num" id="stTotalIncome">0</div><div class="label">📊 实时收入(万)</div></div>
-                <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润(万)</div></div>
-            </div>
-
-            <div class="module">
-                <div class="module-header">
-                    <div class="title">📋 任务类型 <span style="font-size:0.7rem;font-weight:400;">— 点击记录一环</span></div>
-                    <div style="display:flex;gap:6px;">
-                        <button class="btn-undo" id="stUndoBtn" style="background:#6b8baa;color:#fff;border:none;padding:4px 14px;border-radius:30px;font-weight:600;">↩️ 撤销</button>
-                        <button class="toggle-btn" id="stToggleTask" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button>
-                    </div>
-                </div>
-                <div class="module-body" id="stTaskBody">
-                    <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:4px;">${taskBtns}</div>
-                </div>
-            </div>
-
-            <div class="module" style="margin-top:10px;">
-                <div class="module-header">
-                    <div class="title">🏆 里程碑收入 <span style="font-size:0.7rem;font-weight:400;">— 手动输入，随时可改</span></div>
-                    <button class="toggle-btn" id="stToggleMilestone" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button>
-                </div>
-                <div class="module-body" id="stMilestoneBody" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-                    <div style="background:#f8faff;border:1px solid #dce5ef;border-radius:12px;padding:10px;text-align:center;">
-                        <div style="font-size:0.8rem;font-weight:700;color:#1f3b53;margin-bottom:4px;">15环产出</div>
-                        <input type="number" id="stM15" value="${this.milestoneIncome.m15}" placeholder="价值(万)" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;font-size:0.85rem;text-align:center;">
-                    </div>
-                    <div style="background:#f8faff;border:1px solid #dce5ef;border-radius:12px;padding:10px;text-align:center;">
-                        <div style="font-size:0.8rem;font-weight:700;color:#1f3b53;margin-bottom:4px;">30环产出</div>
-                        <input type="number" id="stM30" value="${this.milestoneIncome.m30}" placeholder="价值(万)" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;font-size:0.85rem;text-align:center;">
-                    </div>
-                    <div style="background:#f8faff;border:1px solid #dce5ef;border-radius:12px;padding:10px;text-align:center;">
-                        <div style="font-size:0.8rem;font-weight:700;color:#1f3b53;margin-bottom:4px;">45环产出</div>
-                        <input type="number" id="stM45" value="${this.milestoneIncome.m45}" placeholder="价值(万)" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;font-size:0.85rem;text-align:center;">
-                    </div>
-                    <div style="background:#f8faff;border:1px solid #dce5ef;border-radius:12px;padding:10px;text-align:center;">
-                        <div style="font-size:0.8rem;font-weight:700;color:#1f3b53;margin-bottom:4px;">60环玉魄</div>
-                        <input type="number" id="stM60" value="${this.milestoneIncome.m60}" placeholder="价值(万)" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;font-size:0.85rem;text-align:center;">
-                    </div>
-                </div>
-            </div>
-
-            <div class="module" style="margin-top:10px;">
-                <div class="module-header"><div class="title">⚙️ 物品单价 (万)</div><button class="toggle-btn" id="stTogglePrice" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
-                <div class="module-body" id="stPriceBody" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
-                    ${this.TASK_TYPES.filter(t => t.cost > 0).map(t => `
-                        <div style="display:flex;align-items:center;gap:2px;font-size:0.7rem;">
-                            <label style="white-space:nowrap;">${t.label}</label>
-                            <input type="number" id="stPrice_${t.key}" value="${this.prices[t.key]}" data-key="${t.key}" style="width:50px;padding:2px;border:1px solid #bccad9;border-radius:4px;text-align:center;font-weight:700;">
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div class="module" style="margin-top:10px;">
-                <div class="module-header"><div class="title">📜 本轮记录明细</div><button class="toggle-btn" id="stToggleRecords" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
-                <div class="module-body" id="stRecordsBody" style="max-height:200px;overflow-y:auto;font-size:0.75rem;padding:0 4px;"></div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-                <button id="stCompleteBtn" style="background:#4c7a5c;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">✅ 结算本轮</button>
-                <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🗑️ 重置本轮</button>
-            </div>
-
-            <div class="module" style="margin-top:10px;">
-                <div class="module-header">
-                    <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel">共0轮</span></div>
-                    <button class="btn-analysis" id="stAnalysisBtn" style="border-radius:50px;">📊 分析</button>
-                </div>
-                <div class="module-body" style="max-height:300px;overflow-y:auto;">
-                    <table style="width:100%;font-size:0.75rem;border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#1f344b;color:#fff;">
-                                <th style="padding:6px;">#</th><th>日期</th><th>成本</th>
-                                <th>15环</th><th>30环</th><th>45环</th><th>60环</th>
-                                <th>利润</th><th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stHistoryTable"></tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-    },
-
+    // ========== 绑定事件 ==========
     bindEvents() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
