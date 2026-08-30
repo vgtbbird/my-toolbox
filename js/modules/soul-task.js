@@ -310,9 +310,21 @@ const SoulTaskModule = {
             }
         });
 
-        document.getElementById('stAnalysisBtn').addEventListener('click', () => {
-            const totalProfit = SoulTaskModule.history.reduce((s, h) => s + parseFloat(h.payload.profit || 0), 0);
-            const avgProfit = SoulTaskModule.history.length > 0 ? (totalProfit / SoulTaskModule.history.length).toFixed(1) : 0;
+            document.getElementById('stAnalysisBtn').addEventListener('click', () => {
+            if (SoulTaskModule.history.length === 0) {
+                alert('📊 暂无历史记录，跑完一轮后再来看分析吧！');
+                return;
+            }
+            
+            let totalProfit = 0;
+            for (let h of SoulTaskModule.history) {
+                const profit = parseFloat(h.payload?.profit);
+                if (!isNaN(profit)) {
+                    totalProfit += profit;
+                }
+            }
+            const avgProfit = (totalProfit / SoulTaskModule.history.length).toFixed(1);
+            
             alert(`📊 历史数据分析\n\n已跑总轮数: ${SoulTaskModule.history.length}\n总利润: ${totalProfit.toFixed(1)} 万\n平均每轮利润: ${avgProfit} 万`);
         });
 
@@ -425,16 +437,16 @@ const SoulTaskModule = {
             const m45 = parseFloat(mData.m45) || 0;
             const m60 = parseFloat(mData.m60) || 0;
             
-            html += `<tr>
-                <td style="padding:4px;background:#f5f8fc;font-weight:700;">${row}</td>
-                <td style="padding:4px;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="padding:4px;">${totalCost.toFixed(1)}万</td>
-                <td style="padding:4px;">${m15.toFixed(1)}万</td>
-                <td style="padding:4px;">${m30.toFixed(1)}万</td>
-                <td style="padding:4px;">${m45.toFixed(1)}万</td>
-                <td style="padding:4px;">${m60.toFixed(1)}万</td>
-                <td style="padding:4px;${pc}">${profit.toFixed(1)}万</td>
-                <td style="padding:4px;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+            html += `<tr style="border-bottom:1px solid #eef2f7;">
+                <td style="padding:4px;background:#f5f8fc;font-weight:700;text-align:center;">${row}</td>
+                <td style="padding:4px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="padding:4px;text-align:center;">${totalCost.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;">${m15.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;">${m30.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;">${m45.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;">${m60.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;${pc}">${profit.toFixed(1)}万</td>
+                <td style="padding:4px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
