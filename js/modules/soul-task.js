@@ -517,19 +517,28 @@ const SoulTaskModule = {
                 details: details.join('、')
             };
 
-             // 只在当前数字更大时才更新，防止连续补录时把后面的数字覆盖掉
+            // 只在当前数字更大时才更新
             if (ring > SoulTaskModule.currentMilestone) {
                 SoulTaskModule.currentMilestone = ring;
             }
 
+            // ==========================================================
+            // ✅ 终极修复：60环结算时，直接读取当前准确的 cost 快照
+            // ==========================================================
             if (isFinal) {
-                // 终局结算，写入历史
-                const profit = totalIncome - parseFloat(totalCost);
+                // 从 records 里重新精确算一次当前总成本，防止因为异步导致算错
+                let exactTotalCost = 0;
+                for (let r of SoulTaskModule.records) {
+                    exactTotalCost += parseFloat(r.payload?.cost || r.cost || 0);
+                }
+
+                const profit = totalIncome - exactTotalCost;
+
                 const entry = {
                     _id: `${SoulTaskModule.storageKey}_hist_${Date.now()}_${Math.random().toString(36).substr(2,4)}`,
                     _createdAt: new Date().toISOString(),
                     payload: {
-                        totalCost: parseFloat(totalCost),
+                        totalCost: exactTotalCost.toFixed(1), // 用精确计算的值
                         totalIncome: totalIncome,
                         profit: profit.toFixed(1),
                         ringCount: 60,
