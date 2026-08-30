@@ -423,26 +423,32 @@ const SoulTaskModule = {
             const h = list[i];
             const row = list.length - i;
             const payload = h.payload || {};
-            const profit = parseFloat(payload.profit || 0);
+            
+            const totalCost = parseFloat(payload.totalCost) || 0;
+            const totalIncome = parseFloat(payload.totalIncome) || 0;
+            const profit = parseFloat(payload.profit) || (totalIncome - totalCost);
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             
             const mData = payload.milestoneData || {};
+            const m15 = parseFloat(mData.m15) || 0;
+            const m30 = parseFloat(mData.m30) || 0;
+            const m45 = parseFloat(mData.m45) || 0;
+            const m60 = parseFloat(mData.m60) || 0;
             
             html += `<tr>
                 <td style="padding:4px;background:#f5f8fc;font-weight:700;">${row}</td>
                 <td style="padding:4px;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="padding:4px;">${parseFloat(payload.totalCost || 0).toFixed(1)}万</td>
-                <td style="padding:4px;">${parseFloat(mData.m15 || 0).toFixed(1)}万</td>
-                <td style="padding:4px;">${parseFloat(mData.m30 || 0).toFixed(1)}万</td>
-                <td style="padding:4px;">${parseFloat(mData.m45 || 0).toFixed(1)}万</td>
-                <td style="padding:4px;">${parseFloat(mData.m60 || 0).toFixed(1)}万</td>
+                <td style="padding:4px;">${totalCost.toFixed(1)}万</td>
+                <td style="padding:4px;">${m15.toFixed(1)}万</td>
+                <td style="padding:4px;">${m30.toFixed(1)}万</td>
+                <td style="padding:4px;">${m45.toFixed(1)}万</td>
+                <td style="padding:4px;">${m60.toFixed(1)}万</td>
                 <td style="padding:4px;${pc}">${profit.toFixed(1)}万</td>
                 <td style="padding:4px;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
-    }
-};
+    };
 
 // ===== 自动初始化 =====
 if (document.readyState === 'loading') {
