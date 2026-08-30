@@ -221,10 +221,11 @@ const SoulTaskModule = {
 
         // 点击里程碑
         container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.st-milestone-btn');
+             const btn = e.target.closest('.st-milestone-btn');
             if (btn) {
                 const ring = parseInt(btn.dataset.ring);
-                if (ring === SoulTaskModule.currentMilestone + 15 || (ring === 60 && SoulTaskModule.currentMilestone === 45)) {
+                // 🛠️ 允许点击所有还没结算的里程碑，方便您随时补录！
+                if (SoulTaskModule.currentMilestone < ring && !SoulTaskModule.pendingSettle[`m${ring}`]) {
                     SoulTaskModule.showMilestoneModal(ring);
                 }
             }
@@ -516,7 +517,10 @@ const SoulTaskModule = {
                 details: details.join('、')
             };
 
-            SoulTaskModule.currentMilestone = ring;
+             // 只在当前数字更大时才更新，防止连续补录时把后面的数字覆盖掉
+            if (ring > SoulTaskModule.currentMilestone) {
+                SoulTaskModule.currentMilestone = ring;
+            }
 
             if (isFinal) {
                 // 终局结算，写入历史
