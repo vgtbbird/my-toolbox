@@ -438,10 +438,13 @@ const SoulTaskModule = {
             const m45 = parseFloat(payload.milestoneData?.m45) || 0;
             const m60 = parseFloat(payload.milestoneData?.m60) || 0;
             
+            // 🛡️ 绝对精准公式：利润 = 15环收入 + 30环收入 + 45环收入 + 60环收入 - 总成本
             const totalIncome = m15 + m30 + m45 + m60;
             const profit = totalIncome - totalCost;
+            
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             
+            // 严格对齐的表格列
             html += `<tr style="border-bottom:1px solid #eef2f7;">
                 <td style="width:5%;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
                 <td style="width:13%;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
@@ -455,7 +458,7 @@ const SoulTaskModule = {
             </tr>`;
         }
         tbody.innerHTML = html;
-    },
+    };
 
 
 if (document.readyState === 'loading') {
