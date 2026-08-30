@@ -426,7 +426,7 @@ const SoulTaskModule = {
             const m60 = parseFloat(mData.m60) || 0;
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             html += `<tr>
-                <td style="border:1px solid #d0dce8;padding:6px;text-align:center;background:#f5f8fc;">${row}</td>
+                <td style="border:1px solid #d0dce8;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;">${m15.toFixed(1)}</td>
@@ -434,7 +434,7 @@ const SoulTaskModule = {
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;">${m45.toFixed(1)}</td>
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;">${m60.toFixed(1)}</td>
                 <td style="border:1px solid #d0dce8;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
-                <td style="border:1px solid #d0dce8;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 8px;color:#8f3a3a;cursor:pointer;">✕</button></td>
+                <td style="border:1px solid #d0dce8;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
