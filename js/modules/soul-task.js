@@ -199,23 +199,26 @@ const SoulTaskModule = {
                     <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel">共0轮</span></div>
                     <button class="btn-analysis" id="stAnalysisBtn" style="border-radius:50px;">📊 分析</button>
                 </div>
-                               <div class="module-body" style="max-height:300px;overflow-y:auto;border:1px solid #d0dce8;border-radius:8px;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
-                        <thead>
-                            <tr>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:5%;">#</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:12%;">日期</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:10%;">成本</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:10%;">15环</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:10%;">30环</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:10%;">45环</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:10%;">60环</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:13%;">利润</th>
-                                <th style="border:1px solid #d0dce8;background:#1f344b;color:#fff;padding:6px;text-align:center;width:5%;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stHistoryTable"></tbody>
-                    </table>
+                     <div class="module-body" style="max-height:300px;overflow-y:auto;padding:0 12px;">
+                    <!-- 居中外框 -->
+                    <div style="display:flex;justify-content:center;width:100%;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.8rem;table-layout:fixed;">
+                            <thead>
+                                <tr style="background:#1f344b;color:#fff;">
+                                    <th style="border:1px solid #d0dce8;width:4%;padding:12px 0;text-align:center;font-size:1.1rem;">#</th>
+                                    <th style="border:1px solid #d0dce8;width:14%;padding:12px 0;text-align:center;font-size:1.1rem;">日期</th>
+                                    <th style="border:1px solid #d0dce8;width:12%;padding:12px 0;text-align:center;font-size:1.1rem;">成本</th>
+                                    <th style="border:1px solid #d0dce8;width:10%;padding:12px 0;text-align:center;font-size:1.1rem;">15环</th>
+                                    <th style="border:1px solid #d0dce8;width:10%;padding:12px 0;text-align:center;font-size:1.1rem;">30环</th>
+                                    <th style="border:1px solid #d0dce8;width:10%;padding:12px 0;text-align:center;font-size:1.1rem;">45环</th>
+                                    <th style="border:1px solid #d0dce8;width:10%;padding:12px 0;text-align:center;font-size:1.1rem;">60环</th>
+                                    <th style="border:1px solid #d0dce8;width:14%;padding:12px 0;text-align:center;font-size:1.1rem;">利润</th>
+                                    <th style="border:1px solid #d0dce8;width:6%;padding:12px 0;text-align:center;font-size:1.1rem;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stHistoryTable" style="background:#ffffff;"></tbody>
+                        </table>
+                    </div>
                 </div>
         `;
     },
