@@ -355,38 +355,64 @@ const SoulTaskModule = {
         if (this.records.length === 60) this.showMilestoneModal(60);
     },
 
-    // ========== 里程碑弹窗 ==========
+    // 里程碑结算弹窗（15/30/45 三选一固定产物；60 阴阳玉魄点选）
     showMilestoneModal(ring) {
         const stats = this.calcStats();
         const modal = document.createElement('div');
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;';
+        
         const m = this.MILESTONES.find(m => m.ring === ring);
         if (!m) return;
         
-        const itemsInput = m.defaultItems.map(item => `
-            <div style="margin-bottom:8px;">
-                <label style="font-weight:600;font-size:0.85rem;color:#1f3b53;">${item} 数量与总价值</label>
-                <div style="display:flex;gap:8px;margin-top:4px;">
-                    <input type="number" id="ms_count_${item}" placeholder="数量" style="width:70px;padding:4px;border:1px solid #bccad9;border-radius:6px;font-size:0.8rem;text-align:center;">
-                    <input type="number" id="ms_value_${item}" placeholder="总价值(万)" style="flex:1;padding:4px;border:1px solid #bccad9;border-radius:6px;font-size:0.8rem;text-align:center;">
-                </div>
-            </div>
-        `).join('');
-
         const totalCost = stats.totalCost;
         const isFinal = ring === 60;
 
+        // 🌟 15/30/45环：固定三种产物选项
+        const stageItems = ['女娲祝符', '五色灵尘', '女娲灵契'];
+        
+        // 🌟 60环：阴阳玉魄固定选项（额外带五色灵尘作为辅助收入）
+        const finalItems = ['阳玉魄', '阴玉魄'];
+
+        let optionsHtml = '';
+        
+        if (!isFinal) {
+            // 15/30/45 循环生成三选一按钮
+            optionsHtml = stageItems.map(item => `
+                <div class="ms-item-selector" data-item="${item}" style="border:2px solid #dce5ef;border-radius:12px;padding:10px;margin-bottom:8px;cursor:pointer;transition:0.2s;">
+                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;">${item}</div>
+                    <div class="ms-input-wrap" style="display:none;margin-top:8px;">
+                        <label style="font-size:0.75rem;color:#5a7a94;">请输入价值 (万)</label>
+                        <input type="number" class="ms-value-input" placeholder="价值" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;font-size:0.85rem;text-align:center;margin-top:4px;">
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            // 60环：阴阳玉魄两选一
+            optionsHtml = finalItems.map(item => `
+                <div class="ms-item-selector" data-item="${item}" style="border:2px solid #dce5ef;border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;transition:0.2s;">
+                    <div style="font-weight:700;font-size:1rem;color:${item === '阳玉魄' ? '#b45a3a' : '#3a5a9e'};">
+                        ${item === '阳玉魄' ? '☀️' : '🌙'} ${item}
+                    </div>
+                    <div class="ms-input-wrap" style="display:none;margin-top:8px;">
+                        <label style="font-size:0.75rem;color:#5a7a94;">请输入价值 (万)</label>
+                        <input type="number" class="ms-value-input" placeholder="价值" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;font-size:0.85rem;text-align:center;margin-top:4px;">
+                    </div>
+                </div>
+            `).join('');
+        }
+
         modal.innerHTML = `
-            <div style="background:#f8faff;border-radius:24px;padding:24px;max-width:560px;width:95%;box-shadow:0 10px 40px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+            <div style="background:#f8faff;border-radius:24px;padding:24px;max-width:520px;width:95%;box-shadow:0 10px 40px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
                 <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">🏆 ${m.label}</h3>
-                <div style="font-size:0.85rem;color:#5a7a94;margin-bottom:12px;">当前已到第 <b>${ring}</b> 环。请输入产出价值。</div>
+                <div style="font-size:0.85rem;color:#5a7a94;margin-bottom:12px;">当前已到第 <b>${ring}</b> 环。</div>
                 <div style="background:#f0f5fb;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:0.9rem;font-weight:700;color:#0a1a2a;">当前累计成本：<span style="color:#c0392b;">${totalCost}</span> 万</div>
                 
-                <div style="font-weight:600;font-size:0.9rem;color:#1f3b53;margin-bottom:10px;">🎁 默认产出物品：</div>
-                <div style="margin-bottom:10px;">${itemsInput}</div>
+                <div style="font-weight:600;font-size:0.9rem;color:#1f3b53;margin-bottom:10px;">🎁 点击获得以下产物之一：</div>
+                <div>${optionsHtml}</div>
 
+                <!-- 自定义额外产出（可选） -->
                 <div style="background:#f8faff;border-top:1px dashed #ccc;padding-top:10px;margin-top:10px;">
-                    <label style="font-weight:700;font-size:0.85rem;color:#1f3b53;">➕ 自定义添加物品：</label>
+                    <label style="font-weight:700;font-size:0.85rem;color:#1f3b53;">➕ 自定义额外物品(可空)：</label>
                     <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
                         <input type="text" id="newItemName" placeholder="物品名称" style="flex:1;padding:4px;border:1px solid #bccad9;border-radius:6px;font-size:0.8rem;">
                         <input type="number" id="newItemVal" placeholder="价值(万)" style="width:80px;padding:4px;border:1px solid #bccad9;border-radius:6px;font-size:0.8rem;">
@@ -407,6 +433,35 @@ const SoulTaskModule = {
 
         document.body.appendChild(modal);
 
+        let totalIncome = 0;
+        let selectedItem = '';
+
+        // 点击选择物品展开输入框
+        modal.querySelectorAll('.ms-item-selector').forEach(selector => {
+            selector.addEventListener('click', () => {
+                // 清空其他选择
+                modal.querySelectorAll('.ms-item-selector').forEach(s => {
+                    s.style.borderColor = '#dce5ef';
+                    s.style.background = 'transparent';
+                    s.querySelector('.ms-input-wrap').style.display = 'none';
+                });
+                
+                // 高亮当前选择
+                selector.style.borderColor = '#4CAF50';
+                selector.style.background = '#f0f8f0';
+                selector.querySelector('.ms-input-wrap').style.display = 'block';
+                selectedItem = selector.dataset.item;
+                
+                updateTotal();
+            });
+        });
+
+        // 监听所有价值输入框变化
+        modal.querySelectorAll('.ms-value-input').forEach(input => {
+            input.addEventListener('input', updateTotal);
+        });
+
+        // 自定义物品累加逻辑
         let customTotal = 0;
         document.getElementById('addItemBtn').addEventListener('click', () => {
             const name = document.getElementById('newItemName').value.trim();
@@ -421,47 +476,56 @@ const SoulTaskModule = {
         });
 
         function updateTotal() {
-            let totalIncome = customTotal;
-            for (let item of m.defaultItems) {
-                const val = parseFloat(document.getElementById(`ms_value_${item}`).value) || 0;
-                totalIncome += val;
-            }
+            let total = customTotal;
+            // 获取选中的物品价值
+            modal.querySelectorAll('.ms-item-selector').forEach(selector => {
+                const input = selector.querySelector('.ms-value-input');
+                if (input && input.value) {
+                    total += parseFloat(input.value) || 0;
+                }
+            });
+            totalIncome = total;
             document.getElementById('msTotalIncomeDisplay').textContent = `总收入: ${totalIncome}万`;
         }
 
-        m.defaultItems.forEach(item => {
-            document.getElementById(`ms_value_${item}`).addEventListener('input', updateTotal);
+        document.getElementById('milestone_cancel').addEventListener('click', () => {
+            modal.remove();
         });
 
-        document.getElementById('milestone_cancel').addEventListener('click', () => modal.remove());
-
         document.getElementById('milestone_confirm').addEventListener('click', () => {
-            let totalIncome = customTotal;
-            const itemDetails = [];
-            for (let item of m.defaultItems) {
-                const count = parseInt(document.getElementById(`ms_count_${item}`).value) || 0;
-                const val = parseFloat(document.getElementById(`ms_value_${item}`).value) || 0;
-                totalIncome += val;
-                if (count > 0 || val > 0) itemDetails.push(`${item}(${count}个/${val}万)`);
+            if (totalIncome <= 0 && !selectedItem) {
+                alert('请先点击选择一个产出物品，并输入价值！');
+                return;
             }
-            
-            itemDetails.push(`自定义(+${customTotal}万)`);
 
+            // 记录产出详情
+            const details = [];
+            modal.querySelectorAll('.ms-item-selector').forEach(selector => {
+                const item = selector.dataset.item;
+                const input = selector.querySelector('.ms-value-input');
+                if (input && input.value && parseFloat(input.value) > 0) {
+                    details.push(`${item}: ${parseFloat(input.value)}万`);
+                }
+            });
+            if (customTotal > 0) details.push(`自定义物品: ${customTotal}万`);
+
+            // 保存里程碑产出到数据结构
             if (!SoulTaskModule.pendingSettle) SoulTaskModule.pendingSettle = {};
             SoulTaskModule.pendingSettle[`m${ring}`] = {
                 income: totalIncome,
-                details: itemDetails.filter(d => !d.includes('+0万')).join('、')
+                details: details.join('、')
             };
 
             SoulTaskModule.currentMilestone = ring;
 
             if (isFinal) {
-                const profit = totalIncome - parseFloat(stats.totalCost);
+                // 终局结算，写入历史
+                const profit = totalIncome - parseFloat(totalCost);
                 const entry = {
                     _id: `${SoulTaskModule.storageKey}_hist_${Date.now()}_${Math.random().toString(36).substr(2,4)}`,
                     _createdAt: new Date().toISOString(),
                     payload: {
-                        totalCost: parseFloat(stats.totalCost),
+                        totalCost: parseFloat(totalCost),
                         totalIncome: totalIncome,
                         profit: profit.toFixed(1),
                         ringCount: 60,
@@ -469,6 +533,8 @@ const SoulTaskModule = {
                     }
                 };
                 SoulTaskModule.history.push(entry);
+                
+                // 重置本轮
                 SoulTaskModule.records = [];
                 SoulTaskModule.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                 SoulTaskModule.currentMilestone = 0;
