@@ -1,13 +1,10 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - 完美修复版
-//  功能：实时成本显示 + 里程碑手动结算 + 双排任务按钮
-//  数据架构：V3 (绝对ID + 轮次标签 + 版本锚点)
+//  ✨ 跑玉魄(铸魂)模块 - 最终完整版本
 // ============================================================
 const SoulTaskModule = {
     id: 'soulTask',
     storageKey: 'soulTask',
 
-    // ========== 基础配置 ==========
     uiSettings: {
         bgColor: '#eef2f7',
         btnColor: '#4CAF50',
@@ -22,7 +19,6 @@ const SoulTaskModule = {
     currentRunId: null,    
     milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
 
-    // ========== 任务类型定义 ==========
     TASK_TYPES: [
         { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
         { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
@@ -39,7 +35,6 @@ const SoulTaskModule = {
         { key: 'dew', label: '仙露小丸子', icon: '🧪', cost: 15 }
     ],
 
-    // ========== 生命周期 ==========
     init() {
         this.loadData();
         this.buildUI();
@@ -60,7 +55,6 @@ const SoulTaskModule = {
         if (!this.currentRunId) {
             this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
-
         this.TASK_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.cost;
         });
@@ -85,7 +79,6 @@ const SoulTaskModule = {
         });
     },
 
-    // ========== 计算逻辑 ==========
     calcStats() {
         let totalCost = 0;
         const typeCount = {};
@@ -100,16 +93,13 @@ const SoulTaskModule = {
 
         const totalIncome = (this.milestoneIncome.m15 || 0) + (this.milestoneIncome.m30 || 0) + (this.milestoneIncome.m45 || 0) + (this.milestoneIncome.m60 || 0);
         const profit = totalIncome - totalCost;
-
         return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
     },
 
-    // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
-        // 生成双排任务按钮（按每组5个自动换行）
         const taskBtns = this.TASK_TYPES.map(t => `
             <div class="st-task-wrapper" data-key="${t.key}" style="display:flex;flex-direction:column;align-items:center;">
                 <button class="st-task-btn" data-key="${t.key}" style="background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:6px 10px;font-size:0.8rem;font-weight:700;cursor:pointer;text-align:center;width:100%;">
@@ -120,7 +110,6 @@ const SoulTaskModule = {
         `).join('');
 
         container.innerHTML = `
-            <!-- 顶部实时统计看板 -->
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="stTotalCost">0</div><div class="label">💰 实时成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="stRingCount">0 / 60</div><div class="label">📌 当前环数</div></div>
@@ -128,7 +117,6 @@ const SoulTaskModule = {
                 <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润(万)</div></div>
             </div>
 
-            <!-- 任务记录区（直接铺满，浏览器自动换行） -->
             <div class="module">
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span style="font-size:0.7rem;font-weight:400;">— 点击记录一环</span></div>
@@ -142,7 +130,6 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 里程碑收入（手动输入，随时可改） -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🏆 里程碑收入 <span style="font-size:0.7rem;font-weight:400;">— 手动输入，随时可改</span></div>
@@ -168,7 +155,6 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 物品单价设置 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">⚙️ 物品单价 (万)</div><button class="toggle-btn" id="stTogglePrice" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
                 <div class="module-body" id="stPriceBody" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
@@ -181,26 +167,22 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 本轮记录明细 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">📜 本轮记录明细</div><button class="toggle-btn" id="stToggleRecords" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
                 <div class="module-body" id="stRecordsBody" style="max-height:200px;overflow-y:auto;font-size:0.75rem;padding:0 4px;"></div>
             </div>
 
-            <!-- 快捷操作 -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
                 <button id="stCompleteBtn" style="background:#4c7a5c;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">✅ 结算本轮</button>
                 <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🗑️ 重置本轮</button>
             </div>
 
-            <!-- 历史记录 -->
-                       <div class="module" style="margin-top:10px;">
+            <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel">共0轮</span></div>
                     <button class="btn-analysis" id="stAnalysisBtn" style="border-radius:50px;">📊 分析</button>
                 </div>
-                     <div class="module-body" style="max-height:300px;overflow-y:auto;padding:0 12px;">
-                    <!-- 居中外框 -->
+                <div class="module-body" style="max-height:300px;overflow-y:auto;padding:0 12px;">
                     <div style="display:flex;justify-content:center;width:100%;">
                         <table style="width:100%;border-collapse:collapse;font-size:0.8rem;table-layout:fixed;">
                             <thead>
@@ -220,10 +202,10 @@ const SoulTaskModule = {
                         </table>
                     </div>
                 </div>
+            </div>
         `;
     },
 
-    // ========== 绑定事件 ==========
     bindEvents() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
@@ -318,7 +300,7 @@ const SoulTaskModule = {
             }
         });
 
-            document.getElementById('stAnalysisBtn').addEventListener('click', () => {
+        document.getElementById('stAnalysisBtn').addEventListener('click', () => {
             if (SoulTaskModule.history.length === 0) {
                 alert('📊 暂无历史记录，跑完一轮后再来看分析吧！');
                 return;
@@ -458,8 +440,8 @@ const SoulTaskModule = {
             </tr>`;
         }
         tbody.innerHTML = html;
-    },
-
+    }
+};
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
