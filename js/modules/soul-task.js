@@ -1,5 +1,5 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - V3 极简实时版
+//  ✨ 跑玉魄(铸魂)模块 - 最终完整版 (无报错无NaN)
 //  功能：实时成本显示 + 里程碑手动结算 + 基础统计
 //  数据架构：V3 (绝对ID + 轮次标签 + 版本锚点)
 // ============================================================
@@ -15,13 +15,12 @@ const SoulTaskModule = {
         fontSize: 14
     },
 
-    records: [],           // 当前轮次记录
-    history: [],           // 已结算的历史轮次
-    prices: {},            // 物品价格设置
-    currentRunId: null,    // 当前轮次ID
-    milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 }, // 手动输入的里程碑收入
+    records: [],           
+    history: [],           
+    prices: {},            
+    currentRunId: null,    
+    milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
 
-    // ========== 任务类型定义 ==========
     TASK_TYPES: [
         { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
         { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
@@ -83,7 +82,6 @@ const SoulTaskModule = {
         });
     },
 
-    // ========== 实时计算逻辑 ==========
     calcStats() {
         let totalCost = 0;
         const typeCount = {};
@@ -102,7 +100,6 @@ const SoulTaskModule = {
         return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
     },
 
-    // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
@@ -117,7 +114,6 @@ const SoulTaskModule = {
         `).join('');
 
         container.innerHTML = `
-            <!-- 顶部实时统计看板 -->
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="stTotalCost">0</div><div class="label">💰 实时成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="stRingCount">0 / 60</div><div class="label">📌 当前环数</div></div>
@@ -125,7 +121,6 @@ const SoulTaskModule = {
                 <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润(万)</div></div>
             </div>
 
-            <!-- 任务记录 -->
             <div class="module">
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span style="font-size:0.7rem;font-weight:400;">— 点击记录一环</span></div>
@@ -139,7 +134,6 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 里程碑手动录入（无忧更改） -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🏆 里程碑收入 <span style="font-size:0.7rem;font-weight:400;">— 手动输入，随时可改</span></div>
@@ -165,7 +159,6 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 价格设置 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">⚙️ 物品单价 (万)</div><button class="toggle-btn" id="stTogglePrice" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
                 <div class="module-body" id="stPriceBody" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
@@ -178,19 +171,16 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 当前环节明细 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">📜 本轮记录明细</div><button class="toggle-btn" id="stToggleRecords" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;cursor:pointer;">👁️ 隐藏</button></div>
                 <div class="module-body" id="stRecordsBody" style="max-height:200px;overflow-y:auto;font-size:0.75rem;padding:0 4px;"></div>
             </div>
 
-            <!-- 快捷操作 -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
                 <button id="stCompleteBtn" style="background:#4c7a5c;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">✅ 结算本轮</button>
                 <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🗑️ 重置本轮</button>
             </div>
 
-            <!-- 历史记录 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel">共0轮</span></div>
@@ -212,12 +202,10 @@ const SoulTaskModule = {
         `;
     },
 
-    // ========== 绑定事件 ==========
     bindEvents() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
-        // 折叠控制
         const toggles = [
             ['stToggleTask', 'stTaskBody'], 
             ['stToggleMilestone', 'stMilestoneBody'], 
@@ -234,7 +222,6 @@ const SoulTaskModule = {
             }
         });
 
-        // 物品价格修改
         container.addEventListener('change', (e) => {
             const input = e.target.closest('[data-key]');
             if (input && input.id.startsWith('stPrice_')) {
@@ -245,7 +232,6 @@ const SoulTaskModule = {
             }
         });
 
-        // 任务记录
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('.st-task-btn');
             if (btn) {
@@ -253,7 +239,6 @@ const SoulTaskModule = {
             }
         });
 
-        // 里程碑收入随时修改
         ['stM15', 'stM30', 'stM45', 'stM60'].forEach(id => {
             document.getElementById(id).addEventListener('input', function() {
                 const key = id.replace('stM', 'm');
@@ -263,7 +248,6 @@ const SoulTaskModule = {
             });
         });
 
-        // 撤销
         document.getElementById('stUndoBtn').addEventListener('click', () => {
             if (SoulTaskModule.records.length > 0) {
                 SoulTaskModule.records.pop();
@@ -272,7 +256,6 @@ const SoulTaskModule = {
             }
         });
 
-        // 结算本轮
         document.getElementById('stCompleteBtn').addEventListener('click', () => {
             const stats = SoulTaskModule.calcStats();
             if (stats.ringCount < 60) {
@@ -294,7 +277,6 @@ const SoulTaskModule = {
             
             SoulTaskModule.history.push(entry);
             
-            // 重置本轮
             SoulTaskModule.records = [];
             SoulTaskModule.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             SoulTaskModule.milestoneIncome = { m15: 0, m30: 0, m45: 0, m60: 0 };
@@ -304,7 +286,6 @@ const SoulTaskModule = {
             alert('✅ 本轮结算完成！');
         });
 
-        // 重置本轮
         document.getElementById('stResetBtn').addEventListener('click', () => {
             if (confirm('确定要重置本轮全部记录吗？')) {
                 SoulTaskModule.records = [];
@@ -315,14 +296,12 @@ const SoulTaskModule = {
             }
         });
 
-        // 分析
         document.getElementById('stAnalysisBtn').addEventListener('click', () => {
             const totalProfit = SoulTaskModule.history.reduce((s, h) => s + parseFloat(h.payload.profit || 0), 0);
             const avgProfit = SoulTaskModule.history.length > 0 ? (totalProfit / SoulTaskModule.history.length).toFixed(1) : 0;
             alert(`📊 历史数据分析\n\n已跑总轮数: ${SoulTaskModule.history.length}\n总利润: ${totalProfit.toFixed(1)} 万\n平均每轮利润: ${avgProfit} 万`);
         });
 
-        // 历史删除
         container.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.st-del-history');
             if (delBtn) {
@@ -356,7 +335,6 @@ const SoulTaskModule = {
         this.render();
     },
 
-    // ========== 渲染方法 ==========
     render() {
         this.updateStats();
         this.updateRecordsList();
@@ -371,7 +349,6 @@ const SoulTaskModule = {
         document.getElementById('stTotalIncome').textContent = stats.totalIncome === 'NaN' ? '0' : stats.totalIncome;
         document.getElementById('stProfit').textContent = stats.profit === 'NaN' ? '0' : stats.profit;
 
-        // 利润颜色
         const profitBox = document.getElementById('stProfitBox');
         if (parseFloat(stats.profit) >= 0) {
             profitBox.className = 'stat-item profit';
@@ -379,7 +356,6 @@ const SoulTaskModule = {
             profitBox.className = 'stat-item loss';
         }
 
-        // 更新任务计数器
         document.querySelectorAll('.st-task-wrapper').forEach(w => {
             const key = w.dataset.key;
             const ce = w.querySelector('.st-task-count');
@@ -448,9 +424,9 @@ const SoulTaskModule = {
             </tr>`;
         }
         tbody.innerHTML = html;
-    };
+    }
+};
 
-// ===== 自动初始化 =====
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
 } else {
