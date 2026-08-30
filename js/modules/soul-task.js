@@ -194,18 +194,24 @@ const SoulTaskModule = {
             </div>
 
             <!-- 历史记录 -->
-            <div class="module" style="margin-top:10px;">
+                       <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel">共0轮</span></div>
                     <button class="btn-analysis" id="stAnalysisBtn" style="border-radius:50px;">📊 分析</button>
                 </div>
                 <div class="module-body" style="max-height:300px;overflow-y:auto;">
-                    <table style="width:100%;font-size:0.75rem;border-collapse:collapse;">
+                    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
                         <thead>
                             <tr style="background:#1f344b;color:#fff;">
-                                <th style="padding:6px;">#</th><th>日期</th><th>成本</th>
-                                <th>15环</th><th>30环</th><th>45环</th><th>60环</th>
-                                <th>利润</th><th>操作</th>
+                                <th style="width:5%;padding:6px;text-align:center;">#</th>
+                                <th style="width:13%;padding:6px;text-align:center;">日期</th>
+                                <th style="width:12%;padding:6px;text-align:center;">成本</th>
+                                <th style="width:10%;padding:6px;text-align:center;">15环</th>
+                                <th style="width:10%;padding:6px;text-align:center;">30环</th>
+                                <th style="width:10%;padding:6px;text-align:center;">45环</th>
+                                <th style="width:10%;padding:6px;text-align:center;">60环</th>
+                                <th style="width:15%;padding:6px;text-align:center;">利润</th>
+                                <th style="width:5%;padding:6px;text-align:center;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="stHistoryTable"></tbody>
@@ -427,31 +433,30 @@ const SoulTaskModule = {
             const payload = h.payload || {};
             
             const totalCost = parseFloat(payload.totalCost) || 0;
-            const totalIncome = parseFloat(payload.totalIncome) || 0;
-            const profit = parseFloat(payload.profit) || (totalIncome - totalCost);
+            const m15 = parseFloat(payload.milestoneData?.m15) || 0;
+            const m30 = parseFloat(payload.milestoneData?.m30) || 0;
+            const m45 = parseFloat(payload.milestoneData?.m45) || 0;
+            const m60 = parseFloat(payload.milestoneData?.m60) || 0;
+            
+            const totalIncome = m15 + m30 + m45 + m60;
+            const profit = totalIncome - totalCost;
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             
-            const mData = payload.milestoneData || {};
-            const m15 = parseFloat(mData.m15) || 0;
-            const m30 = parseFloat(mData.m30) || 0;
-            const m45 = parseFloat(mData.m45) || 0;
-            const m60 = parseFloat(mData.m60) || 0;
-            
             html += `<tr style="border-bottom:1px solid #eef2f7;">
-                <td style="padding:4px;background:#f5f8fc;font-weight:700;text-align:center;">${row}</td>
-                <td style="padding:4px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="padding:4px;text-align:center;">${totalCost.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;">${m15.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;">${m30.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;">${m45.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;">${m60.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;${pc}">${profit.toFixed(1)}万</td>
-                <td style="padding:4px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="width:5%;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
+                <td style="width:13%;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="width:12%;padding:6px;text-align:center;">${totalCost.toFixed(1)}万</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m15.toFixed(1)}万</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m30.toFixed(1)}万</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m45.toFixed(1)}万</td>
+                <td style="width:10%;padding:6px;text-align:center;">${m60.toFixed(1)}万</td>
+                <td style="width:15%;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}万</td>
+                <td style="width:5%;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
-    }
-};
+    },
+
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
