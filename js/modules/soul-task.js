@@ -1,5 +1,5 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - 完美复刻种树表格逻辑版
+//  ✨ 跑玉魄(铸魂)模块 - 完整修复版 (修复保存按钮和利润计算)
 // ============================================================
 const SoulTaskModule = {
     id: 'soulTask',
@@ -72,9 +72,10 @@ const SoulTaskModule = {
         for (let r of this.records) {
             totalCost += parseFloat(r.payload?.cost || r.cost || 0);
             const key = r.payload?.typeKey || r.typeKey;
+            if (!key) continue; // 修复：避免 undefined
             typeCount[key] = (typeCount[key] || 0) + (r.payload?.count || r.count || 1);
         }
-        const totalIncome = (this.milestoneIncome.m15 || 0) + (this.milestoneIncome.m30 || 0) + (this.milestoneIncome.m45 || 0) + (this.milestoneIncome.m60 || 0);
+        const totalIncome = (parseFloat(this.milestoneIncome.m15) || 0) + (parseFloat(this.milestoneIncome.m30) || 0) + (parseFloat(this.milestoneIncome.m45) || 0) + (parseFloat(this.milestoneIncome.m60) || 0);
         const profit = totalIncome - totalCost;
         return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
     },
@@ -168,7 +169,7 @@ const SoulTaskModule = {
                 <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🗑️ 重置本轮</button>
             </div>
 
-            <!-- 历史记录（完美参照种树） -->
+            <!-- 历史记录 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="historyCountLabel">共0轮</span></div>
@@ -199,12 +200,10 @@ const SoulTaskModule = {
         `;
     },
 
-    // 里程碑卡片（完全参照种树的输入逻辑）
-     buildMilestoneCard(ring) {
+    // 里程碑卡片（修复：加上 class 以便监听）
+    buildMilestoneCard(ring) {
         const isFinal = ring === 60;
         const items = isFinal ? ['阳玉魄', '阴玉魄'] : ['女娲灵契', '女娲祝符', '五色灵尘'];
-        
-        // 修复：正确读取输入框里的值，防止出现 NaN
         const currentVal = this.milestoneIncome['m' + ring] || 0;
 
         return `
@@ -214,7 +213,7 @@ const SoulTaskModule = {
                     ${items.map(item => `<option value="${item}">${item}</option>`).join('')}
                 </select>
                 <input type="number" id="ms_val_${ring}" placeholder="价值(万)" value="${currentVal}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;text-align:center;margin-bottom:6px;">
-                <button id="save_m${ring}" data-ring="${ring}" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:6px;font-weight:700;cursor:pointer;">💾 保存</button>
+                <button id="save_m${ring}" data-ring="${ring}" class="save_m_btn" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:6px;font-weight:700;cursor:pointer;">💾 保存</button>
             </div>
         `;
     },
@@ -235,24 +234,11 @@ const SoulTaskModule = {
             });
         });
 
+        // 里程碑保存（修复：加入 class 捕捉！）
         container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.st-task-btn');
-            if (btn) this.openTaskQuantityModal(btn.dataset.key);
-        });
-
-        container.addEventListener('change', (e) => {
-            const input = e.target.closest('[data-key]');
-            if (input && input.id.startsWith('price_')) {
-                this.prices[input.dataset.key] = parseFloat(input.value) || 0;
-                this.saveData();
-                this.render();
-            }
-        });
-
-        container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.save_m');
-            if (btn) {
-                const ring = btn.dataset.ring;
+            const saveBtn = e.target.closest('.save_m_btn');
+            if (saveBtn) {
+                const ring = saveBtn.dataset.ring;
                 const item = document.getElementById(`ms_item_${ring}`).value;
                 const val = parseFloat(document.getElementById(`ms_val_${ring}`).value) || 0;
                 this.milestoneIncome['m' + ring] = val;
@@ -263,10 +249,28 @@ const SoulTaskModule = {
             }
         });
 
+        // 任务点击
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.st-task-btn');
+            if (btn) this.openTaskQuantityModal(btn.dataset.key);
+        });
+
+        // 单价修改
+        container.addEventListener('change', (e) => {
+            const input = e.target.closest('[data-key]');
+            if (input && input.id.startsWith('price_')) {
+                this.prices[input.dataset.key] = parseFloat(input.value) || 0;
+                this.saveData();
+                this.render();
+            }
+        });
+
+        // 撤销
         document.getElementById('stUndoBtn').addEventListener('click', () => {
             if (this.records.length > 0) { this.records.pop(); this.saveData(); this.render(); }
         });
 
+        // 完成本轮
         document.getElementById('stCompleteBtn').addEventListener('click', () => {
             const stats = this.calcStats();
             if (stats.ringCount < 60 && !confirm(`当前只有 ${stats.ringCount} 环，确定要主动完成本轮吗？`)) return;
@@ -287,6 +291,7 @@ const SoulTaskModule = {
             this.saveData(); this.render(); alert('✅ 本轮已完成结算！');
         });
 
+        // 重置本轮
         document.getElementById('stResetBtn').addEventListener('click', () => {
             if (confirm('确定要重置本轮全部数据吗？')) {
                 this.records = []; this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -295,6 +300,7 @@ const SoulTaskModule = {
             }
         });
 
+        // 数据分析
         document.getElementById('analysisBtn').addEventListener('click', () => {
             if (this.history.length === 0) { alert('暂无数据'); return; }
             let totalCost = 0, totalProfit = 0, wins = 0;
@@ -310,6 +316,7 @@ const SoulTaskModule = {
             alert(`📊 历史数据分析\n\n总轮数: ${this.history.length}\n总成本: ${totalCost.toFixed(1)}万\n总利润: ${totalProfit.toFixed(1)}万\n平均成本: ${avgCost}万\n平均利润: ${avgProfit}万\n盈利率: ${winRate}%`);
         });
 
+        // 删除历史
         container.addEventListener('click', (e) => {
             const delBtn = e.target.closest('.st-del-history');
             if (delBtn) {
@@ -343,6 +350,11 @@ const SoulTaskModule = {
         `;
         document.body.appendChild(overlay);
 
+        // 点击遮罩层关闭
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+
         const updateTotal = () => {
             let num = parseInt(document.getElementById('qtyInput').value) || 0;
             if (num <= 0) num = parseInt(document.querySelector('.qty-btn.active')?.dataset.num) || 1;
@@ -353,7 +365,7 @@ const SoulTaskModule = {
             btn.addEventListener('click', () => {
                 overlay.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById('qtyInput').value = '';
+                document.getElementById('qtyInput').value = num;
                 updateTotal();
             });
         });
@@ -404,51 +416,40 @@ const SoulTaskModule = {
         list.innerHTML = html;
     },
 
-        updateHistory() {
+    updateHistory() {
         const tbody = document.getElementById('historyTable');
         if (!tbody) return;
-        if (this.history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="border:1px solid #ccc;padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>';
-            return;
-        }
+        if (this.history.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>'; return; }
         let html = '';
         const list = this.history.slice().reverse();
         for (let i = 0; i < list.length; i++) {
             const h = list[i];
             const row = list.length - i;
             const payload = h.payload || {};
-            
-            // 读取里程碑收入
-            const m15 = parseFloat(payload.milestoneData?.m15) || 0;
-            const m30 = parseFloat(payload.milestoneData?.m30) || 0;
-            const m45 = parseFloat(payload.milestoneData?.m45) || 0;
-            const m60 = parseFloat(payload.milestoneData?.m60) || 0;
-            
-            // 利润 = (15+30+45+60) - 总成本
-            const totalIncome = m15 + m30 + m45 + m60;
             const totalCost = parseFloat(payload.totalCost) || 0;
+            const m15 = parseFloat(payload.milestoneData?.m15 || 0);
+            const m30 = parseFloat(payload.milestoneData?.m30 || 0);
+            const m45 = parseFloat(payload.milestoneData?.m45 || 0);
+            const m60 = parseFloat(payload.milestoneData?.m60 || 0);
+            const totalIncome = m15 + m30 + m45 + m60;
             const profit = totalIncome - totalCost;
-            
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
-            
-            // 绝对居中、带边框（Excel样式）
             html += `<tr style="border-bottom:1px solid #eef2f7;">
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${totalCost.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m15.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m30.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m45.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m60.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;${pc}">${profit.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:8px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="padding:6px;text-align:center;font-weight:700;background:#f5f8fc;">${row}</td>
+                <td style="padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;">${m15.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;">${m30.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;">${m45.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;">${m60.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
+                <td style="padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
     }
 };
 
-// ===== 自动初始化 =====
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
 } else {
