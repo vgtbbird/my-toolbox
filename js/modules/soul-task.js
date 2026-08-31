@@ -404,36 +404,51 @@ const SoulTaskModule = {
     updateHistory() {
         const tbody = document.getElementById('historyTable');
         if (!tbody) return;
-        if (this.history.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>'; return; }
+        if (this.history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="border:1px solid #ccc;padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>';
+            return;
+        }
         let html = '';
         const list = this.history.slice().reverse();
         for (let i = 0; i < list.length; i++) {
             const h = list[i];
             const row = list.length - i;
             const payload = h.payload || {};
-            const totalCost = parseFloat(payload.totalCost) || 0;
-            const m15 = parseFloat(payload.milestoneData?.m15 || 0);
-            const m30 = parseFloat(payload.milestoneData?.m30 || 0);
-            const m45 = parseFloat(payload.milestoneData?.m45 || 0);
-            const m60 = parseFloat(payload.milestoneData?.m60 || 0);
+            
+            // ==========================================================
+            // 🛡️ 核心修复：从 milestoneData 里直接读取四段收入！
+            // ==========================================================
+            const m15 = parseFloat(payload.milestoneData?.m15) || 0;
+            const m30 = parseFloat(payload.milestoneData?.m30) || 0;
+            const m45 = parseFloat(payload.milestoneData?.m45) || 0;
+            const m60 = parseFloat(payload.milestoneData?.m60) || 0;
+            
+            // 真正的总收入 = 四段之和
             const totalIncome = m15 + m30 + m45 + m60;
+            
+            // 真正的总成本 = 任务里点击花的钱（不是历史存的乱数字）
+            const totalCost = parseFloat(payload.totalCost) || 0;
+            
+            // 利润 = 总收入 - 总成本
             const profit = totalIncome - totalCost;
+            
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
+            
             html += `<tr style="border-bottom:1px solid #eef2f7;">
-                <td style="padding:6px;text-align:center;font-weight:700;background:#f5f8fc;">${row}</td>
-                <td style="padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m15.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m30.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m45.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m60.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${totalCost.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m15.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m30.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m45.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;">${m60.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;${pc}">${profit.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:8px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
     }
-};
+
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
