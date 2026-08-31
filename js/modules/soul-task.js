@@ -200,9 +200,12 @@ const SoulTaskModule = {
     },
 
     // 里程碑卡片（完全参照种树的输入逻辑）
-    buildMilestoneCard(ring) {
+     buildMilestoneCard(ring) {
         const isFinal = ring === 60;
         const items = isFinal ? ['阳玉魄', '阴玉魄'] : ['女娲灵契', '女娲祝符', '五色灵尘'];
+        
+        // 修复：正确读取输入框里的值，防止出现 NaN
+        const currentVal = this.milestoneIncome['m' + ring] || 0;
 
         return `
             <div style="border:1px solid #d0dce8;border-radius:8px;padding:10px;background:#f8faff;">
@@ -210,7 +213,7 @@ const SoulTaskModule = {
                 <select id="ms_item_${ring}" style="width:100%;padding:4px;border:1px solid #bccad9;border-radius:6px;margin-bottom:6px;">
                     ${items.map(item => `<option value="${item}">${item}</option>`).join('')}
                 </select>
-                <input type="number" id="ms_val_${ring}" placeholder="价值(万)" value="${this.milestoneIncome['m' + ring] || ''}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;text-align:center;margin-bottom:6px;">
+                <input type="number" id="ms_val_${ring}" placeholder="价值(万)" value="${currentVal}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;text-align:center;margin-bottom:6px;">
                 <button id="save_m${ring}" data-ring="${ring}" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:6px;font-weight:700;cursor:pointer;">💾 保存</button>
             </div>
         `;
@@ -401,7 +404,7 @@ const SoulTaskModule = {
         list.innerHTML = html;
     },
 
-    updateHistory() {
+        updateHistory() {
         const tbody = document.getElementById('historyTable');
         if (!tbody) return;
         if (this.history.length === 0) {
@@ -415,25 +418,20 @@ const SoulTaskModule = {
             const row = list.length - i;
             const payload = h.payload || {};
             
-            // ==========================================================
-            // 🛡️ 核心修复：从 milestoneData 里直接读取四段收入！
-            // ==========================================================
+            // 读取里程碑收入
             const m15 = parseFloat(payload.milestoneData?.m15) || 0;
             const m30 = parseFloat(payload.milestoneData?.m30) || 0;
             const m45 = parseFloat(payload.milestoneData?.m45) || 0;
             const m60 = parseFloat(payload.milestoneData?.m60) || 0;
             
-            // 真正的总收入 = 四段之和
+            // 利润 = (15+30+45+60) - 总成本
             const totalIncome = m15 + m30 + m45 + m60;
-            
-            // 真正的总成本 = 任务里点击花的钱（不是历史存的乱数字）
             const totalCost = parseFloat(payload.totalCost) || 0;
-            
-            // 利润 = 总收入 - 总成本
             const profit = totalIncome - totalCost;
             
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             
+            // 绝对居中、带边框（Excel样式）
             html += `<tr style="border-bottom:1px solid #eef2f7;">
                 <td style="border:1px solid #ccc;padding:8px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
                 <td style="border:1px solid #ccc;padding:8px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
@@ -448,7 +446,6 @@ const SoulTaskModule = {
         }
         tbody.innerHTML = html;
     }
-
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
