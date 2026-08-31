@@ -446,7 +446,9 @@ const SoulTaskModule = {
         }
         tbody.innerHTML = html;
     }
+};
 
+// ===== 自动初始化 =====
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
 } else {
