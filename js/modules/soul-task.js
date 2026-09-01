@@ -1,10 +1,12 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - 完整修复版 (修复保存按钮和利润计算)
+//  ✨ 跑玉魄(铸魂)模块 - 终极强联动版
+//  核心：所有数据绑定唯一的 milestoneIncome，任一处修改全界面同步。
 // ============================================================
 const SoulTaskModule = {
     id: 'soulTask',
     storageKey: 'soulTask',
 
+    // ========== 基础数据 ==========
     uiSettings: { bgColor: '#eef2f7', btnColor: '#4CAF50', cardBgColor: '#ffffff', textColor: '#1a1a2e', fontSize: 14 },
     records: [],
     history: [],
@@ -13,6 +15,7 @@ const SoulTaskModule = {
     milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
     milestoneDetails: { m15: '', m30: '', m45: '', m60: '' },
 
+    // 任务类型
     TASK_TYPES: [
         { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
         { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
@@ -29,6 +32,7 @@ const SoulTaskModule = {
         { key: 'dew', label: '仙露小丸子', icon: '🧪', cost: 15 }
     ],
 
+    // ========== 生命周期 ==========
     init() {
         this.loadData();
         this.buildUI();
@@ -65,6 +69,7 @@ const SoulTaskModule = {
         container.querySelectorAll('.module, .stats-grid .stat-item').forEach(el => el.style.setProperty('background', s.cardBgColor, 'important'));
     },
 
+    // ========== 计算逻辑（全链路唯一数据源） ==========
     calcStats() {
         let totalCost = 0;
         const typeCount = {};
@@ -72,21 +77,23 @@ const SoulTaskModule = {
         for (let r of this.records) {
             totalCost += parseFloat(r.payload?.cost || r.cost || 0);
             const key = r.payload?.typeKey || r.typeKey;
-            if (!key) continue; // 修复：避免 undefined
+            if (!key) continue;
             typeCount[key] = (typeCount[key] || 0) + (r.payload?.count || r.count || 1);
         }
+        // 强制读取唯一数据源
         const totalIncome = (parseFloat(this.milestoneIncome.m15) || 0) + (parseFloat(this.milestoneIncome.m30) || 0) + (parseFloat(this.milestoneIncome.m45) || 0) + (parseFloat(this.milestoneIncome.m60) || 0);
         const profit = totalIncome - totalCost;
         return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
     },
 
+    // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
         const taskBtns = this.TASK_TYPES.map(t => `
             <div class="st-task-wrapper" data-key="${t.key}" style="display:flex;flex-direction:column;align-items:center;">
-                <button class="st-task-btn" data-key="${t.key}" style="background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:6px 10px;font-size:0.8rem;font-weight:700;cursor:pointer;text-align:center;width:100%;">
+                <button class="st-task-btn" data-key="${t.key}" style="background:#4CAF50;color:#fff;border:none;border-radius:30px;padding:6px 12px;font-size:0.8rem;font-weight:700;cursor:pointer;width:100%;">
                     ${t.icon} ${t.label}
                 </button>
                 <span class="st-task-count" style="font-weight:700;color:#7a5d2e;background:#e6d7b8;padding:0 8px;border-radius:12px;margin-top:2px;min-width:20px;text-align:center;">0</span>
@@ -94,7 +101,7 @@ const SoulTaskModule = {
         `).join('');
 
         container.innerHTML = `
-            <!-- 背景设置 -->
+            <!-- 1. 界面设置 -->
             <div class="module">
                 <div class="module-header"><div class="title">🎨 界面设置</div><button class="toggle-btn" id="toggleUISettings">👁️ 隐藏</button></div>
                 <div class="module-body" id="bodyUISettings">
@@ -105,7 +112,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 顶部实时看板 -->
+            <!-- 2. 顶部实时看板 -->
             <div class="stats-grid">
                 <div class="stat-item"><div class="num" id="stTotalCost">0</div><div class="label">💰 实时成本</div></div>
                 <div class="stat-item"><div class="num" id="stRingCount">0 / 60</div><div class="label">📌 当前环数</div></div>
@@ -113,7 +120,7 @@ const SoulTaskModule = {
                 <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润</div></div>
             </div>
 
-            <!-- 任务记录区 -->
+            <!-- 3. 任务记录区 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📋 任务类型</div>
@@ -127,7 +134,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 里程碑区 -->
+            <!-- 4. 里程碑收入区（唯一数据源面板） -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🏆 里程碑收入</div>
@@ -144,7 +151,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 物品单价 -->
+            <!-- 5. 物品单价 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">⚙️ 物品单价 (万)</div><button class="toggle-btn" id="togglePrices">👁️ 隐藏</button></div>
                 <div class="module-body" id="bodyPrices" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
@@ -157,19 +164,19 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 本轮记录明细 -->
+            <!-- 6. 本轮记录明细 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header"><div class="title">📜 本轮记录明细</div><button class="toggle-btn" id="toggleDetails">👁️ 隐藏</button></div>
                 <div class="module-body" id="bodyDetails" style="max-height:200px;overflow-y:auto;"></div>
             </div>
 
-            <!-- 快捷操作 -->
+            <!-- 7. 底部快捷操作 -->
             <div style="display:flex;justify-content:space-between;margin-top:10px;">
                 <button id="stCompleteBtn" style="background:#b48b5f;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🏁 完成本轮</button>
                 <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:10px 24px;border-radius:40px;font-weight:700;cursor:pointer;">🗑️ 重置本轮</button>
             </div>
 
-            <!-- 历史记录 -->
+            <!-- 8. 历史记录（绝对居中带线） -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="historyCountLabel">共0轮</span></div>
@@ -179,18 +186,18 @@ const SoulTaskModule = {
                     </div>
                 </div>
                 <div class="module-body" id="bodyHistory" style="overflow-x:auto;">
-                    <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
+                    <table style="width:100%;font-size:0.8rem;border-collapse:collapse;table-layout:fixed;">
                         <thead>
                             <tr style="background:#1f344b;color:#fff;">
-                                <th style="padding:6px;text-align:center;">#</th>
-                                <th style="padding:6px;text-align:center;">日期</th>
-                                <th style="padding:6px;text-align:center;">成本</th>
-                                <th style="padding:6px;text-align:center;">15环</th>
-                                <th style="padding:6px;text-align:center;">30环</th>
-                                <th style="padding:6px;text-align:center;">45环</th>
-                                <th style="padding:6px;text-align:center;">60环</th>
-                                <th style="padding:6px;text-align:center;">利润</th>
-                                <th style="padding:6px;text-align:center;">操作</th>
+                                <th style="border:1px solid #ccc;width:4%;padding:6px;text-align:center;">#</th>
+                                <th style="border:1px solid #ccc;width:12%;padding:6px;text-align:center;">日期</th>
+                                <th style="border:1px solid #ccc;width:12%;padding:6px;text-align:center;">成本</th>
+                                <th style="border:1px solid #ccc;width:10%;padding:6px;text-align:center;">15环</th>
+                                <th style="border:1px solid #ccc;width:10%;padding:6px;text-align:center;">30环</th>
+                                <th style="border:1px solid #ccc;width:10%;padding:6px;text-align:center;">45环</th>
+                                <th style="border:1px solid #ccc;width:10%;padding:6px;text-align:center;">60环</th>
+                                <th style="border:1px solid #ccc;width:12%;padding:6px;text-align:center;">利润</th>
+                                <th style="border:1px solid #ccc;width:6%;padding:6px;text-align:center;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="historyTable"></tbody>
@@ -200,17 +207,18 @@ const SoulTaskModule = {
         `;
     },
 
-    // 里程碑卡片（修复：加上 class 以便监听）
+    // 里程碑卡片（面板上的输入框）
     buildMilestoneCard(ring) {
         const isFinal = ring === 60;
         const items = isFinal ? ['阳玉魄', '阴玉魄'] : ['女娲灵契', '女娲祝符', '五色灵尘'];
         const currentVal = this.milestoneIncome['m' + ring] || 0;
+        const currentDetail = this.milestoneDetails['m' + ring] || '';
 
         return `
             <div style="border:1px solid #d0dce8;border-radius:8px;padding:10px;background:#f8faff;">
                 <div style="font-weight:700;margin-bottom:6px;">${ring}环奖励</div>
                 <select id="ms_item_${ring}" style="width:100%;padding:4px;border:1px solid #bccad9;border-radius:6px;margin-bottom:6px;">
-                    ${items.map(item => `<option value="${item}">${item}</option>`).join('')}
+                    ${items.map(item => `<option value="${item}" ${currentDetail === item ? 'selected' : ''}>${item}</option>`).join('')}
                 </select>
                 <input type="number" id="ms_val_${ring}" placeholder="价值(万)" value="${currentVal}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:6px;text-align:center;margin-bottom:6px;">
                 <button id="save_m${ring}" data-ring="${ring}" class="save_m_btn" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:6px;font-weight:700;cursor:pointer;">💾 保存</button>
@@ -218,10 +226,12 @@ const SoulTaskModule = {
         `;
     },
 
+    // ========== 绑定事件 ==========
     bindEvents() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
+        // 隐藏/显示切换（所有模块）
         const toggles = [
             ['toggleUISettings', 'bodyUISettings'], ['toggleTasks', 'bodyTasks'], ['toggleMilestones', 'bodyMilestones'],
             ['togglePrices', 'bodyPrices'], ['toggleDetails', 'bodyDetails'], ['toggleHistory', 'bodyHistory']
@@ -234,7 +244,7 @@ const SoulTaskModule = {
             });
         });
 
-        // 里程碑保存（修复：加入 class 捕捉！）
+        // 里程碑保存（主面板强绑定）
         container.addEventListener('click', (e) => {
             const saveBtn = e.target.closest('.save_m_btn');
             if (saveBtn) {
@@ -244,7 +254,7 @@ const SoulTaskModule = {
                 this.milestoneIncome['m' + ring] = val;
                 this.milestoneDetails['m' + ring] = item;
                 this.saveData();
-                this.render();
+                this.render(); // 触发全局刷新，实时利润和历史联动
                 alert(`✅ ${ring}环已保存！`);
             }
         });
@@ -270,7 +280,7 @@ const SoulTaskModule = {
             if (this.records.length > 0) { this.records.pop(); this.saveData(); this.render(); }
         });
 
-        // 完成本轮
+        // 完成本轮（强制快照写入历史，联动历史表格）
         document.getElementById('stCompleteBtn').addEventListener('click', () => {
             const stats = this.calcStats();
             if (stats.ringCount < 60 && !confirm(`当前只有 ${stats.ringCount} 环，确定要主动完成本轮吗？`)) return;
@@ -282,7 +292,9 @@ const SoulTaskModule = {
                 _createdAt: new Date().toISOString(),
                 payload: {
                     totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1),
-                    ringCount: stats.ringCount, milestoneData: { ...this.milestoneIncome }, milestoneDetails: { ...this.milestoneDetails }
+                    ringCount: stats.ringCount, 
+                    milestoneData: { ...this.milestoneIncome }, 
+                    milestoneDetails: { ...this.milestoneDetails }
                 }
             };
             this.history.push(entry);
@@ -350,11 +362,6 @@ const SoulTaskModule = {
         `;
         document.body.appendChild(overlay);
 
-        // 点击遮罩层关闭
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.remove();
-        });
-
         const updateTotal = () => {
             let num = parseInt(document.getElementById('qtyInput').value) || 0;
             if (num <= 0) num = parseInt(document.querySelector('.qty-btn.active')?.dataset.num) || 1;
@@ -365,7 +372,7 @@ const SoulTaskModule = {
             btn.addEventListener('click', () => {
                 overlay.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById('qtyInput').value = num;
+                document.getElementById('qtyInput').value = '';
                 updateTotal();
             });
         });
@@ -380,6 +387,7 @@ const SoulTaskModule = {
         });
     },
 
+    // ========== 渲染 ==========
     render() { this.updateStats(); this.updateDetails(); this.updateHistory(); },
 
     updateStats() {
@@ -394,6 +402,7 @@ const SoulTaskModule = {
             const key = w.dataset.key; const ce = w.querySelector('.st-task-count');
             if (ce && stats.typeCount[key]) ce.textContent = stats.typeCount[key];
         });
+        // 强制显示总收入
         document.getElementById('milestoneTotalIncome').textContent = stats.totalIncome;
     },
 
@@ -427,6 +436,7 @@ const SoulTaskModule = {
             const row = list.length - i;
             const payload = h.payload || {};
             const totalCost = parseFloat(payload.totalCost) || 0;
+            // 强联动：历史统计直接读取当时保存的 milestoneData 快照
             const m15 = parseFloat(payload.milestoneData?.m15 || 0);
             const m30 = parseFloat(payload.milestoneData?.m30 || 0);
             const m45 = parseFloat(payload.milestoneData?.m45 || 0);
@@ -435,15 +445,15 @@ const SoulTaskModule = {
             const profit = totalIncome - totalCost;
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
             html += `<tr style="border-bottom:1px solid #eef2f7;">
-                <td style="padding:6px;text-align:center;font-weight:700;background:#f5f8fc;">${row}</td>
-                <td style="padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
-                <td style="padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m15.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m30.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m45.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;">${m60.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
-                <td style="padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${totalCost.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m15.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m30.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m45.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m60.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
