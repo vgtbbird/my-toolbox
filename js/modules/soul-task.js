@@ -231,19 +231,30 @@ const SoulTaskModule = {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
-        // 隐藏/显示切换（所有模块）
+        // ==========================================================
+        // 🛡️ 修复所有隐藏按钮：绑定了 toggle 事件，并且改了文字
+        // ==========================================================
         const toggles = [
-            ['toggleUISettings', 'bodyUISettings'], ['toggleTasks', 'bodyTasks'], ['toggleMilestones', 'bodyMilestones'],
-            ['togglePrices', 'bodyPrices'], ['toggleDetails', 'bodyDetails'], ['toggleHistory', 'bodyHistory']
+            ['toggleUISettings', 'bodyUISettings'],
+            ['toggleTasks', 'bodyTasks'],
+            ['toggleMilestones', 'bodyMilestones'],
+            ['togglePrices', 'bodyPrices'],
+            ['toggleDetails', 'bodyDetails'],
+            ['toggleHistory', 'bodyHistory']
         ];
+
         toggles.forEach(([btnId, bodyId]) => {
             const btn = document.getElementById(btnId);
-            if (btn) btn.addEventListener('click', () => {
-                document.getElementById(bodyId).classList.toggle('hidden');
-                btn.textContent = document.getElementById(bodyId).classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
-            });
+            const body = document.getElementById(bodyId);
+            if (btn && body) {
+                btn.addEventListener('click', () => {
+                    // 切换隐藏类名
+                    body.classList.toggle('hidden');
+                    // 更新按钮文字
+                    btn.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+                });
+            }
         });
-
         // 里程碑保存（主面板强绑定）
         container.addEventListener('click', (e) => {
             const saveBtn = e.target.closest('.save_m_btn');
