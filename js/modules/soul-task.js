@@ -235,26 +235,30 @@ const SoulTaskModule = {
         // 🛡️ 修复所有隐藏按钮：绑定了 toggle 事件，并且改了文字
         // ==========================================================
         const toggles = [
-            ['toggleUISettings', 'bodyUISettings'],
-            ['toggleTasks', 'bodyTasks'],
+            ['toggleUISettings', 'bodyUISettings'], 
+            ['toggleTasks', 'bodyTasks'], 
             ['toggleMilestones', 'bodyMilestones'],
-            ['togglePrices', 'bodyPrices'],
-            ['toggleDetails', 'bodyDetails'],
+            ['togglePrices', 'bodyPrices'], 
+            ['toggleDetails', 'bodyDetails'], 
             ['toggleHistory', 'bodyHistory']
         ];
-
         toggles.forEach(([btnId, bodyId]) => {
             const btn = document.getElementById(btnId);
             const body = document.getElementById(bodyId);
             if (btn && body) {
                 btn.addEventListener('click', () => {
-                    // 切换隐藏类名
-                    body.classList.toggle('hidden');
-                    // 更新按钮文字
-                    btn.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+                    // 💥 硬核修复：不用 classList，直接控制 display 属性！
+                    if (body.style.display === 'none') {
+                        body.style.display = 'block'; // 或 'grid'，取决于原本样式
+                        btn.textContent = '👁️ 隐藏';
+                    } else {
+                        body.style.display = 'none';
+                        btn.textContent = '👁️ 显示';
+                    }
                 });
             }
         });
+        
         // 里程碑保存（主面板强绑定）
         container.addEventListener('click', (e) => {
             const saveBtn = e.target.closest('.save_m_btn');
