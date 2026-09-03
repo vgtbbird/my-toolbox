@@ -242,17 +242,21 @@ const SoulTaskModule = {
             ['toggleDetails', 'bodyDetails'], 
             ['toggleHistory', 'bodyHistory']
         ];
+                // 用一个对象记录每个模块原生的 display 值，防止被硬编码覆盖
+        const originalDisplays = {}; 
         toggles.forEach(([btnId, bodyId]) => {
             const btn = document.getElementById(btnId);
             const body = document.getElementById(bodyId);
             if (btn && body) {
+                // 记录原始的 display (如 'grid', 'block', 'flex')
+                originalDisplays[bodyId] = body.style.display || getComputedStyle(body).display;
+                
                 btn.addEventListener('click', () => {
-                    // 💥 硬核修复：不用 classList，直接控制 display 属性！
                     if (body.style.display === 'none') {
-                        body.style.display = 'block'; // 或 'grid'，取决于原本样式
+                        body.style.display = originalDisplays[bodyId]; // 恢复原样
                         btn.textContent = '👁️ 隐藏';
                     } else {
-                        body.style.display = 'none';
+                        body.style.display = 'none'; // 隐藏
                         btn.textContent = '👁️ 显示';
                     }
                 });
@@ -295,9 +299,32 @@ const SoulTaskModule = {
             if (this.records.length > 0) { this.records.pop(); this.saveData(); this.render(); }
         });
 
+                // 🛡️ 绑定颜色修改事件（新增）
+        const bgColorInput = document.getElementById('bgColor');
+        const cardColorInput = document.getElementById('cardColor');
+        
+        if (bgColorInput) {
+            bgColorInput.addEventListener('input', function() {
+                SoulTaskModule.uiSettings.bgColor = this.value;
+                document.getElementById('soulTaskContainer').style.background = this.value;
+            });
+        }
+
+        if (cardColorInput) {
+            cardColorInput.addEventListener('input', function() {
+                SoulTaskModule.uiSettings.cardBgColor = this.value;
+                document.querySelectorAll('#soulTaskContainer .module, #soulTaskContainer .stats-grid .stat-item').forEach(el => el.style.background = this.value);
+            });
+        }
+
         // 完成本轮（强制快照写入历史，联动历史表格）
         document.getElementById('stCompleteBtn').addEventListener('click', () => {
             const stats = this.calcStats();
+            // 🛡️ 强制校验 15/30/45/60 不能全为 0
+            if (!this.milestoneIncome.m15 && !this.milestoneIncome.m30 && !this.milestoneIncome.m45 && !this.milestoneIncome.m60) {
+                alert('⚠️ 请先保存至少一阶段的奖励价值，或确认收入为0后再结算！');
+                return;
+            }
             if (stats.ringCount < 60 && !confirm(`当前只有 ${stats.ringCount} 环，确定要主动完成本轮吗？`)) return;
             const totalIncome = parseFloat(stats.totalIncome);
             const totalCost = parseFloat(stats.totalCost);
@@ -403,7 +430,16 @@ const SoulTaskModule = {
     },
 
     // ========== 渲染 ==========
-    render() { this.updateStats(); this.updateDetails(); this.updateHistory(); },
+        render() { 
+        this.updateStats(); 
+        this.updateDetails(); 
+        this.updateHistory(); 
+        // 强制让里程碑卡片也刷新数据
+        this.buildMilestoneCard(15);
+        this.buildMilestoneCard(30);
+        this.buildMilestoneCard(45);
+        this.buildMilestoneCard(60);
+    },
 
     updateStats() {
         const stats = this.calcStats();
@@ -440,18 +476,24 @@ const SoulTaskModule = {
         list.innerHTML = html;
     },
 
-    updateHistory() {
+        updateHistory() {
         const tbody = document.getElementById('historyTable');
         if (!tbody) return;
-        if (this.history.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>'; return; }
+        if (this.history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#6c87a0;">暂无记录</td></tr>';
+            return;
+        }
         let html = '';
         const list = this.history.slice().reverse();
         for (let i = 0; i < list.length; i++) {
             const h = list[i];
             const row = list.length - i;
+            
+            // 🛡️ 核心修复：直接计算出原始数组的真实索引，不再用 indexOf！
+            const originalIndex = this.history.length - 1 - i;
+            
             const payload = h.payload || {};
             const totalCost = parseFloat(payload.totalCost) || 0;
-            // 强联动：历史统计直接读取当时保存的 milestoneData 快照
             const m15 = parseFloat(payload.milestoneData?.m15 || 0);
             const m30 = parseFloat(payload.milestoneData?.m30 || 0);
             const m45 = parseFloat(payload.milestoneData?.m45 || 0);
@@ -459,6 +501,7 @@ const SoulTaskModule = {
             const totalIncome = m15 + m30 + m45 + m60;
             const profit = totalIncome - totalCost;
             const pc = profit >= 0 ? 'color:#2d6b2d;font-weight:700;' : 'color:#c0392b;font-weight:700;';
+            
             html += `<tr style="border-bottom:1px solid #eef2f7;">
                 <td style="border:1px solid #ccc;padding:6px;text-align:center;background:#f5f8fc;font-weight:700;">${row}</td>
                 <td style="border:1px solid #ccc;padding:6px;text-align:center;">${h._createdAt ? h._createdAt.split('T')[0] : '-'}</td>
@@ -468,7 +511,7 @@ const SoulTaskModule = {
                 <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m45.toFixed(1)}</td>
                 <td style="border:1px solid #ccc;padding:6px;text-align:center;">${m60.toFixed(1)}</td>
                 <td style="border:1px solid #ccc;padding:6px;text-align:center;${pc}">${profit.toFixed(1)}</td>
-                <td style="border:1px solid #ccc;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${this.history.indexOf(h)}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
+                <td style="border:1px solid #ccc;padding:6px;text-align:center;"><button class="st-del-history" data-idx="${originalIndex}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;color:#8f3a3a;cursor:pointer;font-size:0.7rem;">✕</button></td>
             </tr>`;
         }
         tbody.innerHTML = html;
