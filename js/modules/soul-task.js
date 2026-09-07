@@ -1,13 +1,18 @@
 // ============================================================
-//  ✨ 跑玉魄(铸魂)模块 - 终极修复版
-//  修复：重复声明、折叠按钮、历史表格对齐、利润计算
+//  ✨ 跑玉魄(铸魂)模块 - 完整重写版
+//  功能：任务记录 + 里程碑结算 + 历史统计
+//  修复：去除重复声明、所有方法完整实现
 // ============================================================
 const SoulTaskModule = {
     id: 'soulTask',
     storageKey: 'soulTask',
 
-    // ========== 基础数据 ==========
-    uiSettings: { bgColor: '#eef2f7', btnColor: '#4CAF50', cardBgColor: '#ffffff', textColor: '#1a1a2e', fontSize: 14 },
+    // ========== 数据 ==========
+    uiSettings: { 
+        bgColor: '#eef2f7', 
+        cardBgColor: '#ffffff', 
+        fontSize: 14 
+    },
     records: [],
     history: [],
     prices: {},
@@ -15,7 +20,6 @@ const SoulTaskModule = {
     milestoneIncome: { m15: 0, m30: 0, m45: 0, m60: 0 },
     milestoneDetails: { m15: '', m30: '', m45: '', m60: '' },
 
-    // 任务类型
     TASK_TYPES: [
         { key: 'find', label: '寻人', icon: '🔍', cost: 0 },
         { key: 'fight', label: '战斗', icon: '⚔️', cost: 0 },
@@ -32,12 +36,16 @@ const SoulTaskModule = {
         { key: 'dew', label: '仙露小丸子', icon: '🧪', cost: 15 }
     ],
 
-    // ========== 生命周期 ==========
+    // ============================================================
+    //  生命周期
+    // ============================================================
     init() {
         this.loadData();
         this.buildUI();
         this.bindEvents();
-        App.register(this);
+        if (typeof App !== 'undefined' && App.register) {
+            App.register(this);
+        }
         this.render();
         setTimeout(() => this.applyUISettings(), 150);
     },
@@ -49,16 +57,23 @@ const SoulTaskModule = {
         this.prices = data.prices || {};
         this.milestoneIncome = data.milestoneIncome || { m15: 0, m30: 0, m45: 0, m60: 0 };
         this.milestoneDetails = data.milestoneDetails || { m15: '', m30: '', m45: '', m60: '' };
-        this.currentRunId = data.currentRunId || null;
-        if (!this.currentRunId) this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        this.TASK_TYPES.forEach(t => { if (this.prices[t.key] === undefined) this.prices[t.key] = t.cost; });
+        this.currentRunId = data.currentRunId || Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        this.uiSettings = data.uiSettings || { bgColor: '#eef2f7', cardBgColor: '#ffffff', fontSize: 14 };
+        
+        this.TASK_TYPES.forEach(t => {
+            if (this.prices[t.key] === undefined) this.prices[t.key] = t.cost;
+        });
     },
 
     saveData() {
         Storage.set(this.storageKey, {
-            records: this.records, history: this.history, prices: this.prices,
-            currentRunId: this.currentRunId, milestoneIncome: this.milestoneIncome,
-            milestoneDetails: this.milestoneDetails
+            records: this.records,
+            history: this.history,
+            prices: this.prices,
+            currentRunId: this.currentRunId,
+            milestoneIncome: this.milestoneIncome,
+            milestoneDetails: this.milestoneDetails,
+            uiSettings: this.uiSettings
         });
     },
 
@@ -66,30 +81,56 @@ const SoulTaskModule = {
         const s = this.uiSettings;
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
-        container.querySelectorAll('.module, .stats-grid .stat-item').forEach(el => el.style.setProperty('background', s.cardBgColor, 'important'));
+        
+        const tabContent = container.closest('.tab-content');
+        if (tabContent) {
+            tabContent.style.setProperty('background', s.bgColor, 'important');
+        }
+        
+        container.querySelectorAll('.module, .stats-grid .stat-item').forEach(el => {
+            el.style.setProperty('background', s.cardBgColor, 'important');
+        });
+        
+        const fontSize = s.fontSize + 'px';
+        container.querySelectorAll('.stat-item .num, .stat-item .label, .module .title, .st-task-btn, .st-task-count, input, select, button, #stHistoryTable td, #stHistoryTable th').forEach(el => {
+            el.style.setProperty('font-size', fontSize, 'important');
+        });
     },
 
-    // ========== 计算逻辑 ==========
+    // ============================================================
+    //  计算
+    // ============================================================
     calcStats() {
         let totalCost = 0;
         const typeCount = {};
         this.TASK_TYPES.forEach(t => typeCount[t.key] = 0);
+        
         for (let r of this.records) {
             totalCost += parseFloat(r.payload?.cost || r.cost || 0);
             const key = r.payload?.typeKey || r.typeKey;
-            if (!key) continue;
-            typeCount[key] = (typeCount[key] || 0) + (r.payload?.count || r.count || 1);
+            if (key && typeCount[key] !== undefined) {
+                typeCount[key] += (r.payload?.count || r.count || 1);
+            }
         }
-        // 总收入 = 所有里程碑收入之和
+        
         const totalIncome = (parseFloat(this.milestoneIncome.m15) || 0) + 
                            (parseFloat(this.milestoneIncome.m30) || 0) + 
                            (parseFloat(this.milestoneIncome.m45) || 0) + 
                            (parseFloat(this.milestoneIncome.m60) || 0);
         const profit = totalIncome - totalCost;
-        return { totalCost: totalCost.toFixed(1), totalIncome: totalIncome.toFixed(1), profit: profit.toFixed(1), typeCount, ringCount: this.records.length };
+        
+        return { 
+            totalCost: totalCost.toFixed(1), 
+            totalIncome: totalIncome.toFixed(1), 
+            profit: profit.toFixed(1), 
+            typeCount, 
+            ringCount: this.records.length 
+        };
     },
 
-    // ========== 构建UI ==========
+    // ============================================================
+    //  构建UI
+    // ============================================================
     buildUI() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
@@ -103,14 +144,14 @@ const SoulTaskModule = {
             </div>
         `).join('');
 
+        const milestoneCards = this.buildMilestoneCards();
+
         container.innerHTML = `
-            <!-- 1. 界面设置 -->
+            <!-- 界面设置 -->
             <div class="module" style="background:#f0f4f8;border:1px solid #d0dce8;border-radius:16px;margin-bottom:14px;">
                 <div class="module-header">
                     <div class="title">🎨 界面设置</div>
-                    <div>
-                        <button class="toggle-btn" id="stToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
-                    </div>
+                    <button class="toggle-btn" id="stToggleUISettings" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:2px 14px;font-size:0.6rem;font-weight:600;color:#1f3b53;cursor:pointer;">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="stUISettingsBody">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;padding:6px 0;">
@@ -121,7 +162,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 2. 顶部实时看板 -->
+            <!-- 顶部看板 -->
             <div class="stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
                 <div class="stat-item"><div class="num" id="stTotalCost">0</div><div class="label">💰 实时成本</div></div>
                 <div class="stat-item"><div class="num" id="stRingCount">0 / 60</div><div class="label">📌 当前环数</div></div>
@@ -129,7 +170,7 @@ const SoulTaskModule = {
                 <div class="stat-item" id="stProfitBox"><div class="num" id="stProfit">0</div><div class="label">📈 实时利润</div></div>
             </div>
 
-            <!-- 3. 任务记录区 -->
+            <!-- 任务类型 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📋 任务类型</div>
@@ -143,7 +184,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 4. 里程碑收入区 -->
+            <!-- 里程碑 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">🏆 里程碑收入</div>
@@ -153,14 +194,11 @@ const SoulTaskModule = {
                     </div>
                 </div>
                 <div class="module-body" id="stMilestonesBody" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-                    ${this.buildMilestoneCard(15)}
-                    ${this.buildMilestoneCard(30)}
-                    ${this.buildMilestoneCard(45)}
-                    ${this.buildMilestoneCard(60)}
+                    ${milestoneCards}
                 </div>
             </div>
 
-            <!-- 5. 物品单价 -->
+            <!-- 物品单价 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">⚙️ 物品单价 (万)</div>
@@ -176,7 +214,7 @@ const SoulTaskModule = {
                 </div>
             </div>
 
-            <!-- 6. 本轮记录明细 -->
+            <!-- 本轮明细 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📜 本轮记录明细</div>
@@ -185,13 +223,13 @@ const SoulTaskModule = {
                 <div class="module-body" id="stDetailsBody" style="max-height:200px;overflow-y:auto;"></div>
             </div>
 
-            <!-- 7. 底部快捷操作 -->
+            <!-- 操作按钮 -->
             <div style="display:flex;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap;">
                 <button id="stCompleteBtn" style="background:#b48b5f;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;font-size:0.85rem;">🏁 完成本轮</button>
                 <button id="stResetBtn" style="background:#b45f5f;color:#fff;border:none;padding:8px 24px;border-radius:40px;font-weight:700;cursor:pointer;font-size:0.85rem;">🗑️ 重置本轮</button>
             </div>
 
-            <!-- 8. 历史记录 -->
+            <!-- 历史记录 -->
             <div class="module" style="margin-top:10px;">
                 <div class="module-header">
                     <div class="title">📊 历史轮次统计 <span id="stHistoryCountLabel" style="font-weight:400;font-size:0.75rem;color:#5a7a94;">共0轮</span></div>
@@ -226,30 +264,34 @@ const SoulTaskModule = {
         `;
     },
 
-    buildMilestoneCard(ring) {
-        const isFinal = ring === 60;
-        const items = isFinal ? ['阳玉魄', '阴玉魄'] : ['女娲灵契', '女娲祝符', '五色灵尘'];
-        const currentVal = this.milestoneIncome['m' + ring] || 0;
-        const currentDetail = this.milestoneDetails['m' + ring] || '';
+    buildMilestoneCards() {
+        return [15, 30, 45, 60].map(ring => {
+            const isFinal = ring === 60;
+            const items = isFinal ? ['阳玉魄', '阴玉魄'] : ['女娲灵契', '女娲祝符', '五色灵尘'];
+            const currentVal = this.milestoneIncome['m' + ring] || 0;
+            const currentDetail = this.milestoneDetails['m' + ring] || '';
 
-        return `
-            <div style="border:1px solid #d0dce8;border-radius:12px;padding:10px;background:#f8faff;">
-                <div style="font-weight:700;font-size:0.85rem;color:#1f3b53;margin-bottom:6px;">${ring}环奖励</div>
-                <select id="stMsItem_${ring}" style="width:100%;padding:4px 6px;border:1px solid #bccad9;border-radius:8px;font-size:0.75rem;margin-bottom:6px;">
-                    ${items.map(item => `<option value="${item}" ${currentDetail === item ? 'selected' : ''}>${item}</option>`).join('')}
-                </select>
-                <input type="number" id="stMsVal_${ring}" placeholder="价值(万)" value="${currentVal}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;text-align:center;font-weight:600;margin-bottom:6px;">
-                <button class="stSaveMilestone" data-ring="${ring}" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.75rem;">💾 保存</button>
-            </div>
-        `;
+            return `
+                <div style="border:1px solid #d0dce8;border-radius:12px;padding:10px;background:#f8faff;">
+                    <div style="font-weight:700;font-size:0.85rem;color:#1f3b53;margin-bottom:6px;">${ring}环奖励</div>
+                    <select id="stMsItem_${ring}" style="width:100%;padding:4px 6px;border:1px solid #bccad9;border-radius:8px;font-size:0.75rem;margin-bottom:6px;">
+                        ${items.map(item => `<option value="${item}" ${currentDetail === item ? 'selected' : ''}>${item}</option>`).join('')}
+                    </select>
+                    <input type="number" id="stMsVal_${ring}" placeholder="价值(万)" value="${currentVal}" style="width:100%;padding:6px;border:1px solid #bccad9;border-radius:8px;text-align:center;font-weight:600;margin-bottom:6px;">
+                    <button class="stSaveMilestone" data-ring="${ring}" style="width:100%;background:#4c7a5c;color:#fff;border:none;padding:6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.75rem;">💾 保存</button>
+                </div>
+            `;
+        }).join('');
     },
 
-    // ========== 绑定事件 ==========
+    // ============================================================
+    //  事件绑定
+    // ============================================================
     bindEvents() {
         const container = document.getElementById('soulTaskContainer');
         if (!container) return;
 
-        // ===== 🛡️ 折叠隐藏按钮 - 使用委托事件 =====
+        // 折叠按钮
         const toggleMap = {
             'stToggleUISettings': 'stUISettingsBody',
             'stToggleTasks': 'stTasksBody',
@@ -279,37 +321,24 @@ const SoulTaskModule = {
             }
         });
 
-        // ===== UI设置 =====
-        const bgInput = document.getElementById('stBgColor');
-        if (bgInput) {
-            bgInput.addEventListener('input', function() {
-                SoulTaskModule.uiSettings.bgColor = this.value;
-                const container = document.getElementById('soulTaskContainer');
-                if (container) container.style.background = this.value;
-                SoulTaskModule.saveData();
-            });
-        }
+        // UI设置
+        document.getElementById('stBgColor').addEventListener('input', function() {
+            SoulTaskModule.uiSettings.bgColor = this.value;
+            SoulTaskModule.applyUISettings();
+            SoulTaskModule.saveData();
+        });
+        document.getElementById('stCardColor').addEventListener('input', function() {
+            SoulTaskModule.uiSettings.cardBgColor = this.value;
+            SoulTaskModule.applyUISettings();
+            SoulTaskModule.saveData();
+        });
+        document.getElementById('stFontSize').addEventListener('change', function() {
+            SoulTaskModule.uiSettings.fontSize = parseInt(this.value) || 14;
+            SoulTaskModule.applyUISettings();
+            SoulTaskModule.saveData();
+        });
 
-        const cardInput = document.getElementById('stCardColor');
-        if (cardInput) {
-            cardInput.addEventListener('input', function() {
-                SoulTaskModule.uiSettings.cardBgColor = this.value;
-                SoulTaskModule.applyUISettings();
-                SoulTaskModule.saveData();
-            });
-        }
-
-        const fontInput = document.getElementById('stFontSize');
-        if (fontInput) {
-            fontInput.addEventListener('change', function() {
-                const val = parseInt(this.value) || 14;
-                SoulTaskModule.uiSettings.fontSize = val;
-                SoulTaskModule.applyUISettings();
-                SoulTaskModule.saveData();
-            });
-        }
-
-        // ===== 里程碑保存 =====
+        // 里程碑保存
         container.addEventListener('click', function(e) {
             const btn = e.target.closest('.stSaveMilestone');
             if (btn) {
@@ -318,18 +347,15 @@ const SoulTaskModule = {
                 const valInput = document.getElementById('stMsVal_' + ring);
                 if (!itemSelect || !valInput) return;
                 
-                const item = itemSelect.value;
-                const val = parseFloat(valInput.value) || 0;
-                
-                SoulTaskModule.milestoneIncome['m' + ring] = val;
-                SoulTaskModule.milestoneDetails['m' + ring] = item;
+                SoulTaskModule.milestoneIncome['m' + ring] = parseFloat(valInput.value) || 0;
+                SoulTaskModule.milestoneDetails['m' + ring] = itemSelect.value;
                 SoulTaskModule.saveData();
                 SoulTaskModule.render();
                 alert('✅ ' + ring + '环已保存！');
             }
         });
 
-        // ===== 任务点击 =====
+        // 任务点击
         container.addEventListener('click', function(e) {
             const btn = e.target.closest('.st-task-btn');
             if (btn) {
@@ -337,120 +363,105 @@ const SoulTaskModule = {
             }
         });
 
-        // ===== 单价修改 =====
+        // 单价修改
         container.addEventListener('change', function(e) {
             const input = e.target.closest('[data-key]');
             if (input && input.id && input.id.startsWith('stPrice_')) {
-                const key = input.dataset.key;
-                SoulTaskModule.prices[key] = parseFloat(input.value) || 0;
+                SoulTaskModule.prices[input.dataset.key] = parseFloat(input.value) || 0;
                 SoulTaskModule.saveData();
-                SoulTaskModule.render();
             }
         });
 
-        // ===== 撤销 =====
-        const undoBtn = document.getElementById('stUndoBtn');
-        if (undoBtn) {
-            undoBtn.addEventListener('click', function() {
-                if (SoulTaskModule.records.length > 0) {
-                    SoulTaskModule.records.pop();
-                    SoulTaskModule.saveData();
-                    SoulTaskModule.render();
-                } else {
-                    alert('没有可撤销的记录！');
-                }
-            });
-        }
+        // 撤销
+        document.getElementById('stUndoBtn').addEventListener('click', function() {
+            if (SoulTaskModule.records.length > 0) {
+                SoulTaskModule.records.pop();
+                SoulTaskModule.saveData();
+                SoulTaskModule.render();
+            } else {
+                alert('没有可撤销的记录！');
+            }
+        });
 
-        // ===== 完成本轮 =====
-        const completeBtn = document.getElementById('stCompleteBtn');
-        if (completeBtn) {
-            completeBtn.addEventListener('click', function() {
-                const stats = SoulTaskModule.calcStats();
-                const totalIncome = parseFloat(stats.totalIncome);
-                const totalCost = parseFloat(stats.totalCost);
-                const profit = totalIncome - totalCost;
-                
-                // 检查是否有里程碑收入
-                const hasIncome = SoulTaskModule.milestoneIncome.m15 > 0 || 
-                                  SoulTaskModule.milestoneIncome.m30 > 0 || 
-                                  SoulTaskModule.milestoneIncome.m45 > 0 || 
-                                  SoulTaskModule.milestoneIncome.m60 > 0;
-                
-                if (!hasIncome && stats.ringCount > 0) {
-                    if (!confirm('⚠️ 尚未保存任何里程碑收入，确定要结算吗？')) return;
+        // 完成本轮
+        document.getElementById('stCompleteBtn').addEventListener('click', function() {
+            const stats = SoulTaskModule.calcStats();
+            const totalIncome = parseFloat(stats.totalIncome);
+            const totalCost = parseFloat(stats.totalCost);
+            const profit = totalIncome - totalCost;
+            
+            const hasIncome = SoulTaskModule.milestoneIncome.m15 > 0 || 
+                              SoulTaskModule.milestoneIncome.m30 > 0 || 
+                              SoulTaskModule.milestoneIncome.m45 > 0 || 
+                              SoulTaskModule.milestoneIncome.m60 > 0;
+            
+            if (!hasIncome && SoulTaskModule.records.length > 0) {
+                if (!confirm('⚠️ 尚未保存任何里程碑收入，确定要结算吗？')) return;
+            }
+            
+            if (SoulTaskModule.records.length === 0) {
+                alert('还没有任何记录！');
+                return;
+            }
+            
+            if (!confirm(`当前 ${stats.ringCount} 环，总收入 ${totalIncome}万，总成本 ${totalCost}万，利润 ${profit.toFixed(1)}万，确认结算？`)) return;
+            
+            const entry = {
+                _id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                _createdAt: new Date().toISOString(),
+                payload: {
+                    totalCost: totalCost.toFixed(1),
+                    totalIncome: totalIncome.toFixed(1),
+                    profit: profit.toFixed(1),
+                    ringCount: stats.ringCount,
+                    milestoneData: { ...SoulTaskModule.milestoneIncome },
+                    milestoneDetails: { ...SoulTaskModule.milestoneDetails }
                 }
-                
-                if (stats.ringCount === 0) {
-                    alert('还没有任何记录！');
-                    return;
-                }
-                
-                if (!confirm(`当前 ${stats.ringCount} 环，总收入 ${totalIncome}万，总成本 ${totalCost}万，利润 ${profit.toFixed(1)}万，确认结算？`)) return;
-                
-                const entry = {
-                    _id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                    _createdAt: new Date().toISOString(),
-                    payload: {
-                        totalCost: totalCost.toFixed(1),
-                        totalIncome: totalIncome.toFixed(1),
-                        profit: profit.toFixed(1),
-                        ringCount: stats.ringCount,
-                        milestoneData: { ...SoulTaskModule.milestoneIncome },
-                        milestoneDetails: { ...SoulTaskModule.milestoneDetails }
-                    }
-                };
-                
-                SoulTaskModule.history.push(entry);
+            };
+            
+            SoulTaskModule.history.push(entry);
+            SoulTaskModule.records = [];
+            SoulTaskModule.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            SoulTaskModule.milestoneIncome = { m15: 0, m30: 0, m45: 0, m60: 0 };
+            SoulTaskModule.milestoneDetails = { m15: '', m30: '', m45: '', m60: '' };
+            SoulTaskModule.saveData();
+            SoulTaskModule.render();
+            alert('✅ 本轮已结算！');
+        });
+
+        // 重置
+        document.getElementById('stResetBtn').addEventListener('click', function() {
+            if (confirm('确定要重置本轮全部数据吗？')) {
                 SoulTaskModule.records = [];
                 SoulTaskModule.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                 SoulTaskModule.milestoneIncome = { m15: 0, m30: 0, m45: 0, m60: 0 };
                 SoulTaskModule.milestoneDetails = { m15: '', m30: '', m45: '', m60: '' };
                 SoulTaskModule.saveData();
                 SoulTaskModule.render();
-                alert('✅ 本轮已结算！');
-            });
-        }
+            }
+        });
 
-        // ===== 重置本轮 =====
-        const resetBtn = document.getElementById('stResetBtn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function() {
-                if (confirm('确定要重置本轮全部数据吗？')) {
-                    SoulTaskModule.records = [];
-                    SoulTaskModule.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                    SoulTaskModule.milestoneIncome = { m15: 0, m30: 0, m45: 0, m60: 0 };
-                    SoulTaskModule.milestoneDetails = { m15: '', m30: '', m45: '', m60: '' };
-                    SoulTaskModule.saveData();
-                    SoulTaskModule.render();
-                }
-            });
-        }
+        // 分析
+        document.getElementById('stAnalysisBtn').addEventListener('click', function() {
+            if (SoulTaskModule.history.length === 0) {
+                alert('暂无历史数据');
+                return;
+            }
+            let totalCost = 0, totalProfit = 0, wins = 0;
+            for (let h of SoulTaskModule.history) {
+                const cost = parseFloat(h.payload?.totalCost || 0);
+                const profit = parseFloat(h.payload?.profit || 0);
+                totalCost += cost;
+                totalProfit += profit;
+                if (profit > 0) wins++;
+            }
+            const avgCost = (totalCost / SoulTaskModule.history.length).toFixed(1);
+            const avgProfit = (totalProfit / SoulTaskModule.history.length).toFixed(1);
+            const winRate = ((wins / SoulTaskModule.history.length) * 100).toFixed(0);
+            alert(`📊 历史数据分析\n\n总轮数: ${SoulTaskModule.history.length}\n总成本: ${totalCost.toFixed(1)}万\n总利润: ${totalProfit.toFixed(1)}万\n平均成本: ${avgCost}万\n平均利润: ${avgProfit}万\n盈利轮数: ${wins}\n盈利率: ${winRate}%`);
+        });
 
-        // ===== 数据分析 =====
-        const analysisBtn = document.getElementById('stAnalysisBtn');
-        if (analysisBtn) {
-            analysisBtn.addEventListener('click', function() {
-                if (SoulTaskModule.history.length === 0) {
-                    alert('暂无历史数据');
-                    return;
-                }
-                let totalCost = 0, totalProfit = 0, wins = 0;
-                for (let h of SoulTaskModule.history) {
-                    const cost = parseFloat(h.payload?.totalCost || 0);
-                    const profit = parseFloat(h.payload?.profit || 0);
-                    totalCost += cost;
-                    totalProfit += profit;
-                    if (profit > 0) wins++;
-                }
-                const avgCost = (totalCost / SoulTaskModule.history.length).toFixed(1);
-                const avgProfit = (totalProfit / SoulTaskModule.history.length).toFixed(1);
-                const winRate = ((wins / SoulTaskModule.history.length) * 100).toFixed(0);
-                alert(`📊 历史数据分析\n\n总轮数: ${SoulTaskModule.history.length}\n总成本: ${totalCost.toFixed(1)}万\n总利润: ${totalProfit.toFixed(1)}万\n平均成本: ${avgCost}万\n平均利润: ${avgProfit}万\n盈利轮数: ${wins}\n盈利率: ${winRate}%`);
-            });
-        }
-
-        // ===== 删除历史 =====
+        // 删除历史
         container.addEventListener('click', function(e) {
             const delBtn = e.target.closest('.stDelHistory');
             if (delBtn) {
@@ -466,7 +477,9 @@ const SoulTaskModule = {
         });
     },
 
-    // ===== 任务数量弹窗 =====
+    // ============================================================
+    //  任务数量弹窗
+    // ============================================================
     openTaskQuantityModal(key) {
         const type = this.TASK_TYPES.find(t => t.key === key);
         if (!type) return;
@@ -526,16 +539,16 @@ const SoulTaskModule = {
         });
 
         document.getElementById('stQtyManual').addEventListener('input', updateTotal);
+        
         document.getElementById('stQtyManualBtn').addEventListener('click', function() {
             const qty = parseInt(document.getElementById('stQtyManual').value) || 1;
             if (qty > 0) {
-                const unitPrice2 = SoulTaskModule.prices[key] || 0;
                 SoulTaskModule.records.push({
                     id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
                     runId: SoulTaskModule.currentRunId,
                     taskIndex: SoulTaskModule.records.length + 1,
                     createdAt: new Date().toISOString(),
-                    payload: { typeKey: key, cost: qty * unitPrice2, count: qty }
+                    payload: { typeKey: key, cost: qty * unitPrice, count: qty }
                 });
                 SoulTaskModule.saveData();
                 SoulTaskModule.render();
@@ -556,20 +569,22 @@ const SoulTaskModule = {
         if (firstBtn) firstBtn.click();
     },
 
-    // ========== 渲染 ==========
+    // ============================================================
+    //  渲染
+    // ============================================================
     render() {
         this.updateStats();
         this.updateDetails();
         this.updateHistory();
-        this.updateMilestoneTotalIncome();
+        setTimeout(() => this.applyUISettings(), 100);
     },
 
     updateStats() {
         const stats = this.calcStats();
-        document.getElementById('stTotalCost').textContent = stats.totalCost === 'NaN' ? '0' : stats.totalCost;
+        document.getElementById('stTotalCost').textContent = stats.totalCost;
         document.getElementById('stRingCount').textContent = `${stats.ringCount} / 60`;
-        document.getElementById('stAvgCost').textContent = stats.totalCost === 'NaN' ? '0' : (parseFloat(stats.totalCost) / (stats.ringCount || 1)).toFixed(1);
-        document.getElementById('stProfit').textContent = stats.profit === 'NaN' ? '0' : stats.profit;
+        document.getElementById('stAvgCost').textContent = stats.ringCount > 0 ? (parseFloat(stats.totalCost) / stats.ringCount).toFixed(1) : '0';
+        document.getElementById('stProfit').textContent = stats.profit;
         
         const profitBox = document.getElementById('stProfitBox');
         if (profitBox) {
@@ -583,9 +598,8 @@ const SoulTaskModule = {
                 ce.textContent = stats.typeCount[key];
             }
         });
-    },
 
-    updateMilestoneTotalIncome() {
+        // 更新总收入
         const total = (parseFloat(this.milestoneIncome.m15) || 0) + 
                       (parseFloat(this.milestoneIncome.m30) || 0) + 
                       (parseFloat(this.milestoneIncome.m45) || 0) + 
@@ -637,22 +651,15 @@ const SoulTaskModule = {
             const row = i + 1;
             const payload = h.payload || {};
             const totalCost = parseFloat(payload.totalCost || 0);
-            const totalIncome = parseFloat(payload.totalIncome || 0);
-            const profit = parseFloat(payload.profit || 0);
             const mData = payload.milestoneData || {};
             const m15 = parseFloat(mData.m15 || 0);
             const m30 = parseFloat(mData.m30 || 0);
             const m45 = parseFloat(mData.m45 || 0);
             const m60 = parseFloat(mData.m60 || 0);
-            
-            // 重新计算利润确保正确
-            const recalculatedProfit = (m15 + m30 + m45 + m60) - totalCost;
-            const displayProfit = Math.abs(profit - recalculatedProfit) < 0.01 ? profit : recalculatedProfit;
-            
-            const profitColor = displayProfit >= 0 ? '#2d6b2d' : '#c0392b';
+            const totalIncome = m15 + m30 + m45 + m60;
+            const profit = totalIncome - totalCost;
+            const profitColor = profit >= 0 ? '#2d6b2d' : '#c0392b';
             const dateStr = h._createdAt ? h._createdAt.split('T')[0] : '-';
-
-            // 计算原始索引用于删除
             const originalIdx = this.history.indexOf(h);
 
             html += `<tr style="border-bottom:1px solid #eef2f7;">
@@ -663,7 +670,7 @@ const SoulTaskModule = {
                 <td style="padding:6px 8px;text-align:center;color:#1f3b53;border:1px solid #e8eef5;">${m30.toFixed(1)}</td>
                 <td style="padding:6px 8px;text-align:center;color:#1f3b53;border:1px solid #e8eef5;">${m45.toFixed(1)}</td>
                 <td style="padding:6px 8px;text-align:center;color:#1f3b53;border:1px solid #e8eef5;">${m60.toFixed(1)}</td>
-                <td style="padding:6px 8px;text-align:center;font-weight:700;color:${profitColor};border:1px solid #e8eef5;">${displayProfit.toFixed(1)}</td>
+                <td style="padding:6px 8px;text-align:center;font-weight:700;color:${profitColor};border:1px solid #e8eef5;">${profit.toFixed(1)}</td>
                 <td style="padding:6px 8px;text-align:center;border:1px solid #e8eef5;">
                     <button class="stDelHistory" data-idx="${originalIdx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
                 </td>
@@ -671,10 +678,9 @@ const SoulTaskModule = {
         }
         tbody.innerHTML = html;
 
-        // 重新绑定删除事件
+        // 绑定删除事件
         tbody.querySelectorAll('.stDelHistory').forEach(btn => {
-            btn.removeEventListener('click', btn._delHandler);
-            btn._delHandler = function() {
+            btn.onclick = function() {
                 const idx = parseInt(this.dataset.idx);
                 if (!isNaN(idx) && idx >= 0 && idx < SoulTaskModule.history.length) {
                     if (confirm('确定删除这条历史记录吗？')) {
@@ -684,12 +690,13 @@ const SoulTaskModule = {
                     }
                 }
             };
-            btn.addEventListener('click', btn._delHandler);
         });
     }
 };
 
-// ===== 自动初始化 =====
+// ============================================================
+//  自动初始化
+// ============================================================
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => SoulTaskModule.init());
 } else {
