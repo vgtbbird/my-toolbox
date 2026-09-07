@@ -2,7 +2,7 @@
 //  📊 总收益统计模块 - 汇总所有模块数据
 //  功能：统计跑宠环、种树、抓宠、跑玉魄等所有模块的收益
 // ============================================================
-const TotalStatsModule = {
+const TotalStatsModule = {  // ← ✅ 修改1：把 SoulTaskModule 改成 TotalStatsModule
     id: 'totalStats',
     storageKey: 'totalStats',
 
@@ -84,7 +84,6 @@ const TotalStatsModule = {
         // 抓宠
         const petHuntData = Storage.get('petHunt', {});
         const petHuntRecords = petHuntData.records || [];
-        // 计算抓宠已卖出的利润
         let petHuntProfit = 0;
         let petHuntCost = 0;
         let petHuntIncome = 0;
