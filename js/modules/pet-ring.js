@@ -1547,12 +1547,90 @@ const PetRingModule = {
         });
     },
 
-    // 🆕 显示每环详细数据弹窗
-    showRingsDetailModal(entry) {
-        if (!entry || !entry.rings || entry.rings.length === 0) {
-            alert('该轮次没有详细的环数据');
-            return;
+// 🆕 显示每环详细数据弹窗（兼容旧数据）
+showRingsDetailModal(entry) {
+    if (!entry) return;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+
+    let html = `
+        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:650px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
+            <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:8px;">${entry.date || '未知日期'}</div>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:10px;border:1px solid #dce5ef;">
+                <div><span style="color:#5a7a94;">总成本</span> <strong>${(entry.totalCost || 0).toFixed(1)}万</strong></div>
+                <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
+                <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
+                ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : '<div></div>'}
+            </div>
+
+            <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
+            <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px;">
+    `;
+
+    const typeCount = entry.typeCount || {};
+    let hasTypeCount = false;
+    for (let [key, count] of Object.entries(typeCount)) {
+        if (count > 0) {
+            hasTypeCount = true;
+            const label = this.getTaskLabel(key);
+            html += `<span style="display:inline-block;background:#f0f5fb;padding:2px 10px;border-radius:12px;margin:2px;font-size:0.7rem;">${label}: ${count}次</span>`;
         }
+    }
+
+    if (!hasTypeCount) {
+        html += `<span style="color:#6c87a0;font-size:0.7rem;">暂无次数统计</span>`;
+    }
+
+    html += `</div>`;
+
+    const rings = entry.rings || [];
+    if (rings.length > 0) {
+        html += `
+            <div style="margin-bottom:6px;font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
+            <div style="max-height:300px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+        `;
+        for (let r of rings) {
+            const label = this.getTaskLabel(r.typeKey);
+            const relogIcon = r.isRelog ? ' 🔁' : '';
+            const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
+            html += `
+                <div style="display:flex;justify-content:space-between;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;">
+                    <span style="font-weight:600;color:#1f3b53;min-width:60px;">第${r.taskIndex}环</span>
+                    <span style="color:#1f3b53;">${label}${relogIcon}</span>
+                    <span style="color:#5a7a94;">💰${(r.cost || 0).toFixed(1)}万 ⭐${r.score || 0}</span>
+                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;">🔁 下线重登</span>' : '<span style="color:#5a7a94;">✅ 正常</span>'}
+                </div>
+            `;
+        }
+        html += `</div>`;
+    } else if (hasTypeCount) {
+        html += `
+            <div style="margin-top:8px;padding:8px 12px;background:#f5f8fc;border-radius:8px;border:1px solid #e8eef5;text-align:center;color:#5a7a94;font-size:0.75rem;">
+                ℹ️ 该轮次为旧数据，仅显示任务次数统计（无每环详情）
+            </div>
+        `;
+    }
+
+    html += `
+            <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                <button class="btn-cancel" id="ringsDetailClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+            </div>
+        </div>
+    `;
+
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+
+    document.getElementById('ringsDetailClose').addEventListener('click', () => {
+        overlay.remove();
+    });
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
 
         const rings = entry.rings;
         const taskLabels = this.taskLabel;
