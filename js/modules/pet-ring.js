@@ -1,8 +1,7 @@
 // ============================================================
-//  🏃 跑宠环模块 - 完整版
+//  🏃 跑宠环模块 - 完整版（烹饪/三药拆分 + 历史详情弹窗 + 重登标记）
 //  功能：跑环记录 + 期望值计算 + 策略建议 + 100环结算弹窗 + 修炼点价值计入
-//  新增：书铁按钮选择（书/铁切换 + 等级按钮 + 书种类选择）
-//  新增：历史表格「书铁」和「随机奖励」分列显示
+//  新增：烹饪/三药拆分 | 历史详情弹窗显示每环数据 | 重登标记
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
@@ -20,6 +19,7 @@ const PetRingModule = {
     pendingSettle: null,
     exchangeRate: 0.08,
     fruitPrice: 80,
+    pendingRelog: false,  // 🆕 是否有待标记的重登
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -38,7 +38,8 @@ const PetRingModule = {
         ring70: 0.05,
         ring80: 0.05,
         flower: 0.04,
-        cook: 0.16,
+        cook: 0.08,       // 🆕 均分
+        medicine: 0.08,   // 🆕 新增
         furn1: 0.07,
         furn2: 0.05,
         var_spec: 0.01
@@ -50,6 +51,7 @@ const PetRingModule = {
         ring80: 5,
         flower: 4,
         cook: 2,
+        medicine: 2,
         furn1: 2,
         furn2: 5,
         var_spec: 10
@@ -60,7 +62,8 @@ const PetRingModule = {
         ring70: '70环',
         ring80: '80环',
         flower: '花卉乐器',
-        cook: '烹饪三药',
+        cook: '烹饪',
+        medicine: '三药',
         furn1: '1级家具',
         furn2: '2级家具',
         var_spec: '指定变异'
@@ -72,7 +75,8 @@ const PetRingModule = {
         { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
         { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
         { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
-        { key: 'cook', label: '烹饪三药', icon: '🍳', score: 2, defaultPrice: 1, color: '#3a9e7a' },
+        { key: 'cook', label: '烹饪', icon: '🍳', score: 2, defaultPrice: 0.8, color: '#3a9e7a' },
+        { key: 'medicine', label: '三药', icon: '💊', score: 2, defaultPrice: 1.5, color: '#7a5a9e' },
         { key: 'furn1', label: '1级家具', icon: '🪑', score: 2, defaultPrice: 1, color: '#7a8a3a' },
         { key: 'furn2', label: '2级家具', icon: '🛋️', score: 5, defaultPrice: 3, color: '#8a6a3a' },
         { key: 'var_common', label: '非指定变异', icon: '🐉', score: 5, defaultPrice: 30, color: '#b45a3a' },
@@ -138,6 +142,7 @@ const PetRingModule = {
         this.pendingSettle = data.pendingSettle || null;
         this.exchangeRate = data.exchangeRate || 0.08;
         this.fruitPrice = data.fruitPrice || 80;
+        this.pendingRelog = data.pendingRelog || false;
 
         this.ITEM_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.defaultPrice;
@@ -160,7 +165,8 @@ const PetRingModule = {
             uiSettings: this.uiSettings,
             pendingSettle: this.pendingSettle,
             exchangeRate: this.exchangeRate,
-            fruitPrice: this.fruitPrice
+            fruitPrice: this.fruitPrice,
+            pendingRelog: this.pendingRelog
         });
     },
 
@@ -232,6 +238,23 @@ const PetRingModule = {
         }
     },
 
+    // ========== 获取任务标签（兼容旧数据） ==========
+    getTaskLabel(key) {
+        // 🆕 兼容旧数据：如果历史记录中有 cook 但没有 medicine，说明是旧数据
+        // 在显示时统一处理
+        if (key === 'cook') {
+            // 检查当前是否在显示历史数据
+            // 如果是旧数据（没有 medicine 字段），显示"烹饪三药"
+            // 新数据显示"烹饪"
+            return '烹饪三药';  // 默认兼容显示
+        }
+        if (key === 'medicine') {
+            return '三药';
+        }
+        const type = this.ITEM_TYPES.find(t => t.key === key);
+        return type ? type.label : key;
+    },
+
     // ========== 100环强制结算弹窗 ==========
     showFullSettleModal(stats) {
         const fruitPrice = this.fruitPrice || 80;
@@ -242,10 +265,8 @@ const PetRingModule = {
         const fruitValue = fruitPrice;
         const furnValue = furnPrice;
 
-        // 书种类列表
         const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '衣服', '项链', '帽子', '腰带', '鞋子'];
 
-        // 初始状态
         let currentBookType = '书';
         let currentLevel = 130;
         let currentBookName = '';
@@ -277,13 +298,11 @@ const PetRingModule = {
                     <div style="margin-bottom:8px;">
                         <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择等级</div>
                         <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleLevelContainer">
-                            <!-- JS 生成 -->
                         </div>
                     </div>
                     <div style="margin-bottom:8px;" id="settleBookNameContainer">
                         <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
                         <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
-                            <!-- JS 生成 -->
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
@@ -338,7 +357,6 @@ const PetRingModule = {
         overlay.innerHTML = modalHTML;
         document.body.appendChild(overlay);
 
-        // ===== 书铁交互逻辑 =====
         const levelContainer = document.getElementById('settleLevelContainer');
         const bookNameContainer = document.getElementById('settleBookNameContainer');
         const bookNameList = document.getElementById('settleBookNameList');
@@ -413,7 +431,6 @@ const PetRingModule = {
             document.getElementById('settleBookDisplayText').textContent = detailText;
         }
 
-        // 书/铁切换
         document.querySelectorAll('.ph-book-type-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.ph-book-type-btn').forEach(b => {
@@ -438,12 +455,10 @@ const PetRingModule = {
             });
         });
 
-        // 初始化
         renderLevels('书');
         renderBookNames();
         updateDisplayText();
 
-        // ===== 预览更新 =====
         const updatePreview = () => {
             const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
             const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
@@ -480,7 +495,6 @@ const PetRingModule = {
             document.getElementById('settlePreviewProfit').style.color = profit >= 0 ? '#2d6b2d' : '#c0392b';
         };
 
-        // 绑定预览事件
         document.getElementById('settleBookValue').addEventListener('input', updatePreview);
         document.querySelectorAll('input[name="rewardType"]').forEach(el => {
             el.addEventListener('change', updatePreview);
@@ -488,7 +502,6 @@ const PetRingModule = {
 
         setTimeout(updatePreview, 200);
 
-        // ===== 取消 =====
         document.getElementById('settleFullCancel').addEventListener('click', function() {
             overlay.remove();
         });
@@ -496,7 +509,6 @@ const PetRingModule = {
             if (e.target === overlay) overlay.remove();
         });
 
-        // ===== 确认结算 =====
         document.getElementById('settleFullConfirm').addEventListener('click', () => {
             const bookType = currentBookType;
             const bookLevel = currentLevel;
@@ -534,6 +546,18 @@ const PetRingModule = {
             const typeCount = stats.typeCount || {};
             const rewardsDesc = `${bookDisplayName}（${bookValue}万） + ${rewardLabel}（${rewardValue.toFixed(1)}万） + 修炼点${stats.totalPoints}点（${pointsVal.toFixed(1)}万）`;
 
+            // 🆕 保存 rings 详细数据
+            const ringsData = this.records.map(r => ({
+                taskIndex: r.taskIndex,
+                typeKey: r.typeKey,
+                cost: r.cost,
+                score: r.score,
+                ringPoints: r.ringPoints,
+                isDeduct: r.isDeduct || false,
+                isRelog: r.isRelog || false,
+                date: r.date
+            }));
+
             const entry = {
                 date: new Date().toLocaleString(),
                 ringCount: stats.ringCount,
@@ -555,7 +579,9 @@ const PetRingModule = {
                 rewards: rewardsDesc,
                 exchangeRate: this.exchangeRate,
                 rewardType: rewardType,
-                prediction20: this._prediction20 || null
+                prediction20: this._prediction20 || null,
+                rings: ringsData,  // 🆕 保存每环详细数据
+                relogCount: ringsData.filter(r => r.isRelog).length  // 🆕 重登次数
             };
 
             this.history.push(entry);
@@ -563,6 +589,7 @@ const PetRingModule = {
             this.bookRewards = [];
             this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
             this.pendingSettle = null;
+            this.pendingRelog = false;
             this.saveData();
 
             overlay.remove();
@@ -597,6 +624,18 @@ const PetRingModule = {
         const pointsValue = stats.totalPoints * (fruitPrice / 170);
         const rewards = this.bookRewards.map(b => `${b.name}(${b.value}万)`).join(' + ');
 
+        // 🆕 保存 rings 详细数据
+        const ringsData = this.records.map(r => ({
+            taskIndex: r.taskIndex,
+            typeKey: r.typeKey,
+            cost: r.cost,
+            score: r.score,
+            ringPoints: r.ringPoints,
+            isDeduct: r.isDeduct || false,
+            isRelog: r.isRelog || false,
+            date: r.date
+        }));
+
         const entry = {
             date: new Date().toLocaleString(),
             ringCount: stats.ringCount,
@@ -615,13 +654,16 @@ const PetRingModule = {
             pointsValue: pointsValue,
             bookDisplayName: null,
             rewardType: null,
-            prediction20: this._prediction20 || null
+            prediction20: this._prediction20 || null,
+            rings: ringsData,  // 🆕 保存每环详细数据
+            relogCount: ringsData.filter(r => r.isRelog).length  // 🆕 重登次数
         };
         this.history.push(entry);
         this.records = [];
         this.bookRewards = [];
         this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
         this.pendingSettle = null;
+        this.pendingRelog = false;
         this.saveData();
 
         this.updateStats();
@@ -685,6 +727,15 @@ const PetRingModule = {
             bodyHTML += `
                 <span style="grid-column:1/-1;padding:2px 0;">
                     🎁 随机奖励: <strong>${rewardLabel}</strong> 价值 <strong>${rewardValue.toFixed(1)}万</strong>
+                </span>
+            `;
+        }
+
+        // 🆕 显示重登次数
+        if (entry.relogCount > 0) {
+            bodyHTML += `
+                <span style="grid-column:1/-1;padding:2px 0;color:#dbbd7c;">
+                    🔁 下线重登: <strong>${entry.relogCount}</strong> 次
                 </span>
             `;
         }
@@ -922,7 +973,9 @@ const PetRingModule = {
             <div class="module" id="prModuleTask">
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span class="hint">— 点击记录一环</span></div>
-                    <div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="btn-relog" id="prMarkRelogBtn" style="background:#dbbd7c;color:#1f344b;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.7rem;">🔁 标记下线重登</button>
+                        <span id="prRelogStatus" style="font-size:0.7rem;color:#5a7a94;display:flex;align-items:center;">无待标记</span>
                         <button class="btn-undo" id="prUndoBtn">↩️ 撤销</button>
                         <button class="toggle-btn" id="prToggleTaskBtn">👁️ 隐藏</button>
                     </div>
@@ -1160,6 +1213,22 @@ const PetRingModule = {
             PetRingModule.render();
         });
 
+        // ===== 🆕 标记下线重登 =====
+        document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
+            if (PetRingModule.records.length === 0) {
+                alert('请先开始跑环（记录至少一环）！');
+                return;
+            }
+            if (PetRingModule.pendingRelog) {
+                alert('已有待标记的重登，请先记录当前环再标记下一环');
+                return;
+            }
+            PetRingModule.pendingRelog = true;
+            const nextIndex = PetRingModule.records.length + 1;
+            document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
+            document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+        });
+
         // ===== 确认结算 =====
         document.getElementById('prConfirmSettleBtn').addEventListener('click', () => {
             const stats = this.calcStats();
@@ -1251,21 +1320,21 @@ const PetRingModule = {
             this.quickSettle(stats, income);
         });
 
-     // ===== 重置 =====
-            document.getElementById('prResetBtn').addEventListener('click', () => {
-                if (confirm('重置本轮所有记录？（不会删除已结算的历史）')) {
-                    this.records = [];
-                    this.bookRewards = [];
-                    this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
-                    this.pendingSettle = null;
-                    
-                    // 🔥 核心修复：重置时强制生成一个新的本轮ID！
-                    this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                    
-                    this.saveData();
-                    this.render();
-                }
-            });
+        // ===== 重置 =====
+        document.getElementById('prResetBtn').addEventListener('click', () => {
+            if (confirm('重置本轮所有记录？（不会删除已结算的历史）')) {
+                this.records = [];
+                this.bookRewards = [];
+                this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
+                this.pendingSettle = null;
+                this.pendingRelog = false;
+                this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                document.getElementById('prRelogStatus').textContent = '无待标记';
+                document.getElementById('prRelogStatus').style.color = '#5a7a94';
+                this.saveData();
+                this.render();
+            }
+        });
 
         // ===== 书铁添加 =====
         document.getElementById('prAddBookBtn').addEventListener('click', () => {
@@ -1444,8 +1513,16 @@ const PetRingModule = {
             if (e.target === this) this.classList.remove('show');
         });
 
-        // ===== 历史表格删除 =====
-        document.getElementById('petRingContainer').addEventListener('click', (e) => {
+        // ===== 🆕 历史表格详情按钮 - 弹窗显示每环数据 =====
+        document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
+            const btn = e.target.closest('.detail-toggle');
+            if (btn) {
+                const idx = parseInt(btn.dataset.idx);
+                if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
+                    this.showRingsDetailModal(this.history[idx]);
+                }
+                return;
+            }
             const delBtn = e.target.closest('.del-btn');
             if (delBtn) {
                 const idx = parseInt(delBtn.dataset.idx);
@@ -1460,16 +1537,6 @@ const PetRingModule = {
                         this.updateHistoryTable();
                     }
                 }
-                return;
-            }
-            const detailBtn = e.target.closest('.detail-toggle');
-            if (detailBtn) {
-                const idx = parseInt(detailBtn.dataset.idx);
-                const detail = document.querySelector(`.detail-row[data-idx="${idx}"]`);
-                if (detail) {
-                    detail.classList.toggle('show');
-                    detailBtn.textContent = detail.classList.contains('show') ? '📊✕' : '📊';
-                }
             }
         });
 
@@ -1477,6 +1544,82 @@ const PetRingModule = {
         document.getElementById('prSortHeader')?.addEventListener('click', function() {
             PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
             PetRingModule.updateHistoryTable();
+        });
+    },
+
+    // 🆕 显示每环详细数据弹窗
+    showRingsDetailModal(entry) {
+        if (!entry || !entry.rings || entry.rings.length === 0) {
+            alert('该轮次没有详细的环数据');
+            return;
+        }
+
+        const rings = entry.rings;
+        const taskLabels = this.taskLabel;
+        const relogCount = rings.filter(r => r.isRelog).length;
+
+        // 统计各类型出现次数
+        const typeStats = {};
+        for (let r of rings) {
+            const label = this.getTaskLabel(r.typeKey);
+            if (!typeStats[label]) typeStats[label] = 0;
+            typeStats[label]++;
+        }
+
+        let statsHtml = '';
+        for (let [label, count] of Object.entries(typeStats)) {
+            statsHtml += `<span style="display:inline-block;background:#f0f5fb;padding:2px 10px;border-radius:12px;margin:2px;font-size:0.7rem;">${label}: ${count}次</span>`;
+        }
+
+        // 生成每环列表
+        let listHtml = '';
+        for (let r of rings) {
+            const label = this.getTaskLabel(r.typeKey);
+            const relogIcon = r.isRelog ? ' 🔁' : '';
+            const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
+            listHtml += `
+                <div style="display:flex;justify-content:space-between;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;">
+                    <span style="font-weight:600;color:#1f3b53;min-width:60px;">第${r.taskIndex}环</span>
+                    <span style="color:#1f3b53;">${label}</span>
+                    <span style="color:#5a7a94;">💰${(r.cost || 0).toFixed(1)}万 ⭐${r.score || 0}</span>
+                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;">🔁 下线重登</span>' : '<span style="color:#5a7a94;">✅ 正常</span>'}
+                </div>
+            `;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+        overlay.innerHTML = `
+            <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:650px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+                <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount}环 详细数据</h3>
+                <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:8px;">${entry.date || '未知日期'}</div>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:10px;border:1px solid #dce5ef;">
+                    <div><span style="color:#5a7a94;">总成本</span> <strong>${(entry.totalCost || 0).toFixed(1)}万</strong></div>
+                    <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
+                    <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
+                    ${relogCount > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${relogCount}次</strong></div>` : '<div></div>'}
+                </div>
+
+                <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
+                <div style="margin-bottom:10px;">${statsHtml}</div>
+
+                <div style="max-height:350px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+                    ${listHtml}
+                </div>
+
+                <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                    <button class="btn-cancel" id="ringsDetailClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('ringsDetailClose').addEventListener('click', () => {
+            overlay.remove();
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
         });
     },
 
@@ -1489,15 +1632,25 @@ const PetRingModule = {
         const type = this.ITEM_TYPES.find(t => t.key === key);
         const score = type ? type.score : 0;
         const idx = this.records.length;
+        
+        // 🆕 检查是否有待标记的重登
+        const isRelog = this.pendingRelog || false;
+        if (this.pendingRelog) {
+            this.pendingRelog = false;
+            document.getElementById('prRelogStatus').textContent = '无待标记';
+            document.getElementById('prRelogStatus').style.color = '#5a7a94';
+        }
+
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
             runId: this.currentRunId, 
-            taskIndex: this.records.length + 1, // 🟢 新增：记录这是本轮的第几环
+            taskIndex: this.records.length + 1,
             typeKey: key, 
             cost: price, 
             score, 
             ringPoints: this.getRingPoints(idx), 
             isDeduct: false,
+            isRelog: isRelog,  // 🆕 重登标记
             date: new Date().toLocaleString()
         });
         this.render();
@@ -1512,15 +1665,25 @@ const PetRingModule = {
         if (!s) return;
         const type = this.DEDUCT_TYPES.find(d => d.key === key);
         const idx = this.records.length;
+        
+        // 🆕 检查是否有待标记的重登
+        const isRelog = this.pendingRelog || false;
+        if (this.pendingRelog) {
+            this.pendingRelog = false;
+            document.getElementById('prRelogStatus').textContent = '无待标记';
+            document.getElementById('prRelogStatus').style.color = '#5a7a94';
+        }
+
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
             runId: this.currentRunId, 
-            taskIndex: this.records.length + 1, // 🟢 就是加在这里！
+            taskIndex: this.records.length + 1,
             typeKey: key,
             cost: s.cost || 0,
             score: -(s.deduct || 0),
             ringPoints: this.getRingPoints(idx),
             isDeduct: true,
+            isRelog: isRelog,  // 🆕 重登标记
             label: type ? type.label : key,
             date: new Date().toLocaleString()
         });
@@ -1529,7 +1692,13 @@ const PetRingModule = {
 
     undoRecord() {
         if (this.records.length > 0) {
-            this.records.pop();
+            const removed = this.records.pop();
+            // 如果撤销的是重登标记的环，清除待标记状态
+            if (removed.isRelog) {
+                this.pendingRelog = false;
+                document.getElementById('prRelogStatus').textContent = '无待标记';
+                document.getElementById('prRelogStatus').style.color = '#5a7a94';
+            }
             if (this.pendingSettle) {
                 this.pendingSettle = null;
             }
@@ -1726,9 +1895,10 @@ const PetRingModule = {
             const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
             const label = type ? type.label : (r.label || r.typeKey);
             const sc = r.score < 0 ? r.score : `+${r.score}`;
+            const relogIcon = r.isRelog ? ' 🔁' : '';
             html += `<div class="history-item">
                 <div class="info">
-                    <span style="background:${r.isDeduct?'#f5d0d0':'#dce6f0'};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}</span>
+                    <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}${relogIcon}</span>
                     <span>💰${r.cost.toFixed(1)}</span>
                     <span>⭐${sc}</span>
                     <span>📈+${r.ringPoints}</span>
@@ -1773,7 +1943,6 @@ const PetRingModule = {
             const idx = this.history.indexOf(h);
             const rmb = h.profit * this.exchangeRate;
 
-            // ===== 修炼点显示 =====
             const points = h.totalPoints || 0;
             const pointsValue = points * (fruitPrice / 170);
             let pointsDisplay = points + '点';
@@ -1781,7 +1950,6 @@ const PetRingModule = {
                 pointsDisplay += ` (${pointsValue.toFixed(1)}万)`;
             }
 
-            // ===== 📘 书铁显示 =====
             let bookDisplay = '-';
             if (h.bookDisplayName) {
                 bookDisplay = h.bookDisplayName;
@@ -1789,7 +1957,6 @@ const PetRingModule = {
                 bookDisplay = `书铁(${h.bookIncome.toFixed(1)}万)`;
             }
 
-            // ===== 🎁 随机奖励显示 =====
             let rewardDisplay = '-';
             let rewardLabel = '';
             if (h.rewardType === 'points200') {
@@ -1806,20 +1973,15 @@ const PetRingModule = {
                 rewardDisplay = h.rewards;
             }
 
-            // ===== 总收入 =====
             const totalIncome = h.totalIncome || 0;
 
-            // ===== 详情 =====
-            let detailStr = '';
-            if (h.typeCount) {
-                const details = [];
-                for (let key of this.ITEM_TYPES.map(t => t.key)) {
-                    if (h.typeCount[key] > 0) {
-                        const label = this.ITEM_TYPES.find(t => t.key === key)?.label || key;
-                        details.push(`${label}:${h.typeCount[key]}`);
-                    }
-                }
-                detailStr = details.join(' | ');
+            // 🆕 详情按钮改为打开弹窗
+            const hasRings = h.rings && h.rings.length > 0;
+
+            // 🆕 重登次数显示
+            let relogDisplay = '-';
+            if (h.relogCount && h.relogCount > 0) {
+                relogDisplay = `🔁 ${h.relogCount}次`;
             }
 
             html += `<tr>
@@ -1833,11 +1995,13 @@ const PetRingModule = {
                 <td style="font-size:0.75rem;">${rewardDisplay}</td>
                 <td><strong>${totalIncome.toFixed(1)}</strong></td>
                 <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
-                <td><button class="detail-toggle" data-idx="${idx}">📊</button></td>
+                <td>
+                    <button class="detail-toggle" data-idx="${idx}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#1f3b53;font-weight:600;">
+                        ${hasRings ? '📊' : '📊'}
+                    </button>
+                    ${relogDisplay !== '-' ? `<span style="font-size:0.6rem;color:#dbbd7c;display:block;">${relogDisplay}</span>` : ''}
+                </td>
                 <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-            </tr>
-            <tr class="detail-row" data-idx="${idx}">
-                <td colspan="12" style="padding:6px 12px;text-align:left;color:#4a6a8a;background:#f7faff;font-size:0.75rem;">${detailStr || '无详细任务数据'}</td>
             </tr>`;
         }
         tbody.innerHTML = html;
@@ -1915,7 +2079,6 @@ const PetRingModule = {
 
         predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
 
-        // 保存20环预测数据
         if (runRings === 20) {
             this._prediction20 = Math.round(expectedFinal);
         } else if (runRings < 20) {
@@ -2149,7 +2312,9 @@ const PetRingModule = {
             fruitIncome,
             isComplete: true,
             typeCount,
-            rewards: rewards || `修炼果${fruitIncome.toFixed(1)}万`
+            rewards: rewards || `修炼果${fruitIncome.toFixed(1)}万`,
+            rings: [],  // 导入数据没有详细环数据
+            relogCount: 0
         };
 
         this.history.push(entry);
