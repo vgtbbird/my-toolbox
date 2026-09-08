@@ -1213,21 +1213,17 @@ const PetRingModule = {
             PetRingModule.render();
         });
 
-        // ===== 🆕 标记下线重登 =====
-        document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
-            if (PetRingModule.records.length === 0) {
-                alert('请先开始跑环（记录至少一环）！');
-                return;
-            }
-            if (PetRingModule.pendingRelog) {
-                alert('已有待标记的重登，请先记录当前环再标记下一环');
-                return;
-            }
-            PetRingModule.pendingRelog = true;
-            const nextIndex = PetRingModule.records.length + 1;
-            document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
-            document.getElementById('prRelogStatus').style.color = '#dbbd7c';
-        });
+// ===== 🆕 标记下线重登 =====
+document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
+    if (PetRingModule.pendingRelog) {
+        alert('已有待标记的重登，请先记录当前环再标记下一环');
+        return;
+    }
+    PetRingModule.pendingRelog = true;
+    const nextIndex = PetRingModule.records.length + 1;
+    document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
+    document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+});
 
         // ===== 确认结算 =====
         document.getElementById('prConfirmSettleBtn').addEventListener('click', () => {
