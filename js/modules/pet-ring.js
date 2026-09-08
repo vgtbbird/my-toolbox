@@ -1630,8 +1630,7 @@ showRingsDetailModal(entry) {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.remove();
     });
-}
-
+},
         const rings = entry.rings;
         const taskLabels = this.taskLabel;
         const relogCount = rings.filter(r => r.isRelog).length;
