@@ -926,6 +926,11 @@ showFullSettleModal(stats) {
                 <div class="stat-item" id="prProfitStat"><div class="num" id="prProfitDisplay">0</div><div class="label">💰 利润(万)</div></div>
             </div>
 
+            <!-- 🔁 重登实时分析（放在任务类型上面） -->
+<div id="prRelogAnalysis" style="font-size:0.85rem;color:#1f3b53;padding:6px 12px;background:#fdf8ee;border-radius:10px;margin-bottom:8px;border:1px solid #f0e8d0;font-weight:600;">
+    🔁 等待重登标记...
+</div>
+
             <div class="module" id="prModuleTask">
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span class="hint">— 点击记录一环</span></div>
@@ -1019,7 +1024,6 @@ showFullSettleModal(stats) {
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="prHistoryBody">
-                    <div id="prRelogAnalysis" style="font-size:0.7rem;color:#dbbd7c;padding:4px 8px;background:#fdf8ee;border-radius:8px;margin-bottom:6px;min-height:20px;border:1px solid #f0e8d0;">🔁 等待重登标记...</div>
                     <div class="history-section" id="prHistoryList"><div class="empty-history">暂无记录</div></div>
                 </div>
             </div>
