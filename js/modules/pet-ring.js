@@ -1580,18 +1580,18 @@ showRingsDetailModal(entry) {
     
 
      // ===== 🆕 重登区间分析 =====
-    const rings = entry.rings || [];
-    if (rings.length > 0) {
-       const relogIndices = [];
-for (let i = 0; i < records.length; i++) {
-    if (records[i].isRelog) {
-        const idx = (records[i].taskIndex || (i + 1)) - 1;
-        // 🆕 去重：如果已经存在，不再添加
+const rings = entry.rings || [];
+if (rings.length > 0) {
+   const relogIndices = [];
+for (let i = 0; i < rings.length; i++) {
+    if (rings[i].isRelog) {
+        const idx = (rings[i].taskIndex || (i + 1)) - 1;
         if (!relogIndices.includes(idx)) {
             relogIndices.push(idx);
         }
     }
 }
+    
 relogIndices.sort((a, b) => a - b);
 console.log('🔍 relogIndices:', relogIndices);
         if (relogIndices.length > 0) {
