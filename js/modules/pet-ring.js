@@ -255,358 +255,309 @@ const PetRingModule = {
         return type ? type.label : key;
     },
 
-    // ========== 100环强制结算弹窗 ==========
-    showFullSettleModal(stats) {
-        const fruitPrice = this.fruitPrice || 80;
-        const furnPrice = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
+// ========== 100环强制结算弹窗（优化版：自动判定等级） ==========
+showFullSettleModal(stats) {
+    const fruitPrice = this.fruitPrice || 80;
+    const furnPrice = parseFloat(document.getElementById('prFurniturePrice')?.value) || 3.5;
 
-        const pointsValue = stats.totalPoints * (fruitPrice / 170);
-        const points200Value = (200 / 170) * fruitPrice;
-        const fruitValue = fruitPrice;
-        const furnValue = furnPrice;
+    const pointsValue = stats.totalPoints * (fruitPrice / 170);
+    const points200Value = (200 / 170) * fruitPrice;
+    const fruitValue = fruitPrice;
+    const furnValue = furnPrice;
 
-        const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '衣服', '项链', '帽子', '腰带', '鞋子'];
+    // 🆕 根据总积分自动判定书铁等级
+    const score = stats.totalScore;
+    let autoLevel = 90;
+    let autoLevelLabel = '90级';
+    if (score >= 222) { autoLevel = 150; autoLevelLabel = '150级'; }
+    else if (score >= 212) { autoLevel = 140; autoLevelLabel = '140级'; }
+    else if (score >= 202) { autoLevel = 130; autoLevelLabel = '130级'; }
+    else if (score >= 192) { autoLevel = 120; autoLevelLabel = '120级'; }
+    else if (score >= 182) { autoLevel = 110; autoLevelLabel = '110级'; }
+    else if (score >= 172) { autoLevel = 100; autoLevelLabel = '100级'; }
+    else { autoLevel = 90; autoLevelLabel = '90级'; }
 
-        let currentBookType = '书';
-        let currentLevel = 130;
-        let currentBookName = '';
+    const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '铠甲', '女衣', '项链', '发钗', '头盔', '腰带', '鞋子'];
 
-        const modalHTML = `
-            <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:600px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-                <h3 style="color:#1f3b53;margin-bottom:8px;font-size:1.2rem;">🎯 100环结算报告</h3>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px 14px;background:#f0f5fb;border-radius:12px;margin-bottom:14px;font-size:0.8rem;border:1px solid #dce5ef;">
-                    <div><span style="color:#5a7a94;">总成本</span> <strong>${stats.totalCost.toFixed(1)}万</strong></div>
-                    <div><span style="color:#5a7a94;">总积分</span> <strong>${stats.totalScore}</strong></div>
-                    <div><span style="color:#5a7a94;">修炼点</span> <strong>${stats.totalPoints}</strong> <span style="color:#8ab0c8;font-size:0.7rem;">（≈${(stats.totalPoints/170).toFixed(2)}果）</span></div>
-                </div>
+    let currentBookType = '书';
+    let currentLevel = autoLevel;  // 🆕 使用自动判定的等级
+    let currentBookName = '';
 
-                <div style="margin-bottom:14px;padding:10px 16px;background:#e8f0e8;border-radius:12px;border:1px solid #5f8f5f;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-size:0.85rem;color:#1f3b53;">📈 修炼点价值（自动计算）</span>
-                        <span style="font-size:1rem;font-weight:700;color:#2d6b2d;">${pointsValue.toFixed(1)}万</span>
-                    </div>
-                    <div style="font-size:0.65rem;color:#5a7a94;">${stats.totalPoints}点 × (修炼果单价${fruitPrice}万 / 170点) = ${pointsValue.toFixed(1)}万</div>
-                </div>
+    const modalHTML = `
+        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">🎯 100环结算报告</h3>
+            
+            <!-- 摘要 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:14px;font-size:0.8rem;border:1px solid #dce5ef;">
+                <div><span style="color:#5a7a94;">总成本</span> <strong>${stats.totalCost.toFixed(1)}万</strong></div>
+                <div><span style="color:#5a7a94;">总积分</span> <strong style="color:${score>=192?'#2d6b2d':'#c0392b'};">${stats.totalScore}</strong></div>
+                <div><span style="color:#5a7a94;">修炼点</span> <strong>${stats.totalPoints}</strong> <span style="color:#8ab0c8;font-size:0.7rem;">（≈${(stats.totalPoints/170).toFixed(2)}果）</span></div>
+            </div>
 
-                <!-- 📘 书铁奖励 -->
-                <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
-                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">📘 书铁奖励（必得，二选一）</div>
-                    <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
-                        <button class="ph-book-type-btn active" data-type="书" style="padding:4px 20px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:600;">📕 书</button>
-                        <button class="ph-book-type-btn" data-type="铁" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">📗 铁</button>
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择等级</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleLevelContainer">
-                        </div>
-                    </div>
-                    <div style="margin-bottom:8px;" id="settleBookNameContainer">
-                        <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
-                        </div>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-                        <label style="font-weight:500;font-size:0.8rem;color:#1f3b53;">💰 价值(万)</label>
-                        <input type="number" id="settleBookValue" placeholder="输入价值" style="width:100px;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
-                    </div>
-                    <div style="font-size:0.65rem;color:#8ab0c8;margin-top:4px;" id="settleBookDisplay">💡 当前选择：<span id="settleBookDisplayText">请选择</span></div>
-                </div>
-
-                <!-- 🎁 三选一 -->
-                <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
-                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">🎁 随机奖励（三选一）</div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="points200">
-                            <input type="radio" name="rewardType" value="points200" checked> 200修炼点（≈${points200Value.toFixed(1)}万）
-                        </label>
-                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="fruit">
-                            <input type="radio" name="rewardType" value="fruit"> 1个修炼果（${fruitValue.toFixed(1)}万）
-                        </label>
-                        <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="furniture">
-                            <input type="radio" name="rewardType" value="furniture"> 家具图×1（${furnValue.toFixed(1)}万）
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 预览 -->
-                <div style="padding:10px 16px;background:#f5f8fc;border-radius:12px;margin-bottom:14px;border:1px solid #dce5ef;">
-                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;">
-                        <span style="color:#5a7a94;">📊 收入合计</span>
-                        <span style="font-weight:700;color:#1f3b53;" id="settlePreviewTotal">修炼点${pointsValue.toFixed(1)} + 书铁0 + 奖励0 = ${pointsValue.toFixed(1)}万</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;margin-top:2px;">
-                        <span style="color:#5a7a94;">💰 预期利润</span>
-                        <span style="font-weight:700;color:#2d6b2d;" id="settlePreviewProfit">${(pointsValue - stats.totalCost).toFixed(1)}万</span>
-                    </div>
-                </div>
-
-                <div style="font-size:0.75rem;color:#5a7a94;margin-bottom:12px;padding:8px 12px;background:#f5f8fc;border-radius:12px;">
-                    💡 选择完成后点击「确认结算」，系统将自动计算本轮利润
-                </div>
-
-                <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
-                    <button class="btn-cancel" id="settleFullCancel" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">取消</button>
-                    <button class="btn-confirm" id="settleFullConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 确认结算</button>
+            <!-- 修炼点价值 -->
+            <div style="margin-bottom:14px;padding:8px 14px;background:#e8f0e8;border-radius:10px;border:1px solid #5f8f5f;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">
+                    <span style="color:#1f3b53;">📈 修炼点价值</span>
+                    <span style="font-weight:700;color:#2d6b2d;">${pointsValue.toFixed(1)}万</span>
                 </div>
             </div>
-        `;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'settleFullOverlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
-        overlay.innerHTML = modalHTML;
-        document.body.appendChild(overlay);
+            <!-- 📘 书铁奖励（自动判定等级） -->
+            <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;">📘 书铁奖励</div>
+                    <div style="font-size:0.7rem;background:#1f344b;padding:2px 12px;border-radius:30px;color:#f0d060;font-weight:600;">
+                        🎯 ${autoLevelLabel}
+                    </div>
+                </div>
+                
+                <!-- 书/铁切换 -->
+                <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+                    <button class="ph-book-type-btn active" data-type="书" style="padding:4px 20px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:600;">📕 书</button>
+                    <button class="ph-book-type-btn" data-type="铁" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">📗 铁</button>
+                </div>
 
-        const levelContainer = document.getElementById('settleLevelContainer');
-        const bookNameContainer = document.getElementById('settleBookNameContainer');
-        const bookNameList = document.getElementById('settleBookNameList');
+                <!-- 书种类（仅书时显示） -->
+                <div id="settleBookNameContainer" style="margin-bottom:8px;">
+                    <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
+                        ${bookTypeList.map(t => `
+                            <button class="ph-book-name-btn" data-name="${t}" style="padding:2px 10px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.65rem;margin:2px;">${t}</button>
+                        `).join('')}
+                    </div>
+                </div>
 
-        function renderLevels(type) {
-            const levels = type === '书' ? [80, 90, 100, 110, 120, 130, 140, 150] : [80, 90, 100, 110, 120, 130, 140, 150, 160];
-            let html = '';
-            levels.forEach(l => {
-                const label = l === 160 ? '战魄' : l + '级';
-                const active = l === currentLevel ? 'active' : '';
-                const bg = l === currentLevel ? '#4CAF50' : '#f0f4f8';
-                const color = l === currentLevel ? '#fff' : '#1f3b53';
-                html += `<button class="ph-level-btn ${active}" data-level="${l}" style="padding:2px 12px;border-radius:12px;border:1px solid ${l === currentLevel ? '#4CAF50' : '#bccad9'};background:${bg};color:${color};cursor:pointer;font-size:0.7rem;margin:2px;min-width:38px;">${label}</button>`;
+                <!-- 价值输入 -->
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                    <label style="font-weight:500;font-size:0.8rem;color:#1f3b53;">💰 价值(万)</label>
+                    <input type="number" id="settleBookValue" placeholder="输入价值" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
+                </div>
+                <div style="font-size:0.65rem;color:#8ab0c8;margin-top:4px;" id="settleBookDisplay">💡 当前选择：<span id="settleBookDisplayText">${autoLevelLabel} 书</span></div>
+            </div>
+
+            <!-- 🎁 三选一 -->
+            <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
+                <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">🎁 随机奖励（三选一）</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid #4CAF50;" class="reward-option" data-value="points200">
+                        <input type="radio" name="rewardType" value="points200" checked> 200修炼点（≈${points200Value.toFixed(1)}万）
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="fruit">
+                        <input type="radio" name="rewardType" value="fruit"> 修炼果×1（${fruitValue.toFixed(1)}万）
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;padding:6px 12px;background:#eef4fa;border-radius:12px;border:2px solid transparent;" class="reward-option" data-value="furniture">
+                        <input type="radio" name="rewardType" value="furniture"> 家具图×1（${furnValue.toFixed(1)}万）
+                    </label>
+                </div>
+            </div>
+
+            <!-- 预览 -->
+            <div style="padding:10px 16px;background:#f5f8fc;border-radius:12px;margin-bottom:14px;border:1px solid #dce5ef;">
+                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;">
+                    <span style="color:#5a7a94;">📊 收入合计</span>
+                    <span style="font-weight:700;color:#1f3b53;" id="settlePreviewTotal">修炼点${pointsValue.toFixed(1)} + 书铁0 + 奖励0 = ${pointsValue.toFixed(1)}万</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;margin-top:2px;">
+                    <span style="color:#5a7a94;">💰 预期利润</span>
+                    <span style="font-weight:700;" id="settlePreviewProfit">${(pointsValue - stats.totalCost).toFixed(1)}万</span>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
+                <button class="btn-cancel" id="settleFullCancel" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">取消</button>
+                <button class="btn-confirm" id="settleFullConfirm" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#4c7a5c;color:white;">✅ 确认结算</button>
+            </div>
+        </div>
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'settleFullOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:2000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+    overlay.innerHTML = modalHTML;
+    document.body.appendChild(overlay);
+
+    // ===== 事件绑定 =====
+    const bookTypeBtns = overlay.querySelectorAll('.ph-book-type-btn');
+    const bookNameList = document.getElementById('settleBookNameList');
+    const bookNameContainer = document.getElementById('settleBookNameContainer');
+
+    // 书/铁切换
+    bookTypeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            bookTypeBtns.forEach(b => {
+                b.style.background = '#f0f4f8';
+                b.style.borderColor = '#bccad9';
+                b.style.color = '#1f3b53';
             });
-            levelContainer.innerHTML = html;
-            levelContainer.querySelectorAll('.ph-level-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    levelContainer.querySelectorAll('.ph-level-btn').forEach(b => {
-                        b.style.background = '#f0f4f8';
-                        b.style.borderColor = '#bccad9';
-                        b.style.color = '#1f3b53';
-                    });
-                    this.style.background = '#4CAF50';
-                    this.style.borderColor = '#4CAF50';
-                    this.style.color = '#fff';
-                    currentLevel = parseInt(this.dataset.level);
-                    updateDisplayText();
-                    updatePreview();
-                });
-            });
-        }
-
-        function renderBookNames() {
-            let html = '';
-            bookTypeList.forEach(t => {
-                const active = t === currentBookName ? 'active' : '';
-                const bg = t === currentBookName ? '#4CAF50' : '#f0f4f8';
-                const color = t === currentBookName ? '#fff' : '#1f3b53';
-                html += `<button class="ph-book-name-btn ${active}" data-name="${t}" style="padding:2px 10px;border-radius:12px;border:1px solid ${t === currentBookName ? '#4CAF50' : '#bccad9'};background:${bg};color:${color};cursor:pointer;font-size:0.65rem;margin:2px;">${t}</button>`;
-            });
-            bookNameList.innerHTML = html;
-            bookNameList.querySelectorAll('.ph-book-name-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    bookNameList.querySelectorAll('.ph-book-name-btn').forEach(b => {
-                        b.style.background = '#f0f4f8';
-                        b.style.borderColor = '#bccad9';
-                        b.style.color = '#1f3b53';
-                    });
-                    this.style.background = '#4CAF50';
-                    this.style.borderColor = '#4CAF50';
-                    this.style.color = '#fff';
-                    currentBookName = this.dataset.name;
-                    updateDisplayText();
-                    updatePreview();
-                });
-            });
-        }
-
-        function updateDisplayText() {
-            const typeText = currentBookType === '书' ? '📕 书' : '📗 铁';
-            let detailText = '';
-            if (currentBookType === '书') {
-                const levelLabel = currentLevel + '级';
-                const nameLabel = currentBookName || '请选择种类';
-                detailText = `${typeText} ${levelLabel} ${nameLabel}书`;
-                document.getElementById('settleBookNameContainer').style.display = 'block';
-            } else {
-                const levelLabel = currentLevel === 160 ? '战魄' : currentLevel + '级铁';
-                detailText = `${typeText} ${levelLabel}`;
-                document.getElementById('settleBookNameContainer').style.display = 'none';
-            }
-            document.getElementById('settleBookDisplayText').textContent = detailText;
-        }
-
-        document.querySelectorAll('.ph-book-type-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.ph-book-type-btn').forEach(b => {
-                    b.style.background = '#f0f4f8';
-                    b.style.borderColor = '#bccad9';
-                    b.style.color = '#1f3b53';
-                });
-                this.style.background = '#4CAF50';
-                this.style.borderColor = '#4CAF50';
-                this.style.color = '#fff';
-                currentBookType = this.dataset.type;
-                renderLevels(currentBookType);
-                if (currentBookType === '书') {
-                    document.getElementById('settleBookNameContainer').style.display = 'block';
-                    renderBookNames();
-                } else {
-                    document.getElementById('settleBookNameContainer').style.display = 'none';
-                    currentBookName = '';
-                }
-                updateDisplayText();
-                updatePreview();
-            });
+            this.style.background = '#4CAF50';
+            this.style.borderColor = '#4CAF50';
+            this.style.color = '#fff';
+            currentBookType = this.dataset.type;
+            // 铁时隐藏书种类选择
+            bookNameContainer.style.display = currentBookType === '书' ? 'block' : 'none';
+            updateDisplayText();
+            updatePreview();
         });
+    });
 
-        renderLevels('书');
-        renderBookNames();
-        updateDisplayText();
+    // 书种类点击
+    bookNameList.querySelectorAll('.ph-book-name-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            bookNameList.querySelectorAll('.ph-book-name-btn').forEach(b => {
+                b.style.background = '#f0f4f8';
+                b.style.borderColor = '#bccad9';
+                b.style.color = '#1f3b53';
+            });
+            this.style.background = '#4CAF50';
+            this.style.borderColor = '#4CAF50';
+            this.style.color = '#fff';
+            currentBookName = this.dataset.name;
+            updateDisplayText();
+            updatePreview();
+        });
+    });
 
-        const updatePreview = () => {
-            const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
-            const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
+    // 价值输入变化
+    document.getElementById('settleBookValue').addEventListener('input', updatePreview);
 
-            const pointsVal = stats.totalPoints * (fruitPrice / 170);
+    // 随机奖励变化
+    overlay.querySelectorAll('input[name="rewardType"]').forEach(el => {
+        el.addEventListener('change', updatePreview);
+    });
 
-            let rewardVal = 0;
-            let rewardLabel = '';
-            if (rewardType === 'points200') {
-                rewardVal = (200 / 170) * fruitPrice;
-                rewardLabel = '200修炼点';
-            } else if (rewardType === 'fruit') {
-                rewardVal = fruitPrice;
-                rewardLabel = '1个修炼果';
-            } else if (rewardType === 'furniture') {
-                rewardVal = furnPrice;
-                rewardLabel = '家具图×1';
-            }
+    function updateDisplayText() {
+        const typeText = currentBookType === '书' ? '📕 书' : '📗 铁';
+        let detailText = '';
+        if (currentBookType === '书') {
+            const levelLabel = autoLevel + '级';
+            const nameLabel = currentBookName || '请选择';
+            detailText = `${typeText} ${levelLabel} ${nameLabel}`;
+        } else {
+            const levelLabel = autoLevel === 160 ? '战魄' : autoLevel + '级铁';
+            detailText = `${typeText} ${levelLabel}`;
+        }
+        document.getElementById('settleBookDisplayText').textContent = detailText;
+    }
 
-            let bookDisplay = '';
-            if (currentBookType === '铁') {
-                bookDisplay = currentLevel === 160 ? '战魄' : currentLevel + '级铁';
-            } else {
-                bookDisplay = currentBookName ? currentLevel + '级' + currentBookName + '书' : '请选择书';
-            }
+    function updatePreview() {
+        const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
+        const rewardType = overlay.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
 
-            const totalIncome = pointsVal + bookValue + rewardVal;
-            const profit = totalIncome - stats.totalCost;
+        const pointsVal = stats.totalPoints * (fruitPrice / 170);
+        let rewardVal = 0, rewardLabel = '';
+        if (rewardType === 'points200') { rewardVal = (200/170)*fruitPrice; rewardLabel = '200修炼点'; }
+        else if (rewardType === 'fruit') { rewardVal = fruitPrice; rewardLabel = '修炼果'; }
+        else if (rewardType === 'furniture') { rewardVal = furnPrice; rewardLabel = '家具图'; }
 
-            document.getElementById('settlePreviewTotal').textContent =
-                `修炼点${pointsVal.toFixed(1)} + ${bookDisplay}(${bookValue}万) + ${rewardLabel}(${rewardVal.toFixed(1)}万) = ${totalIncome.toFixed(1)}万`;
-            document.getElementById('settlePreviewProfit').textContent =
-                `${profit >= 0 ? '✅' : '❌'} ${profit.toFixed(1)}万`;
-            document.getElementById('settlePreviewProfit').style.color = profit >= 0 ? '#2d6b2d' : '#c0392b';
+        const totalIncome = pointsVal + bookValue + rewardVal;
+        const profit = totalIncome - stats.totalCost;
+
+        const levelLabel = autoLevel + '级';
+        const bookLabel = currentBookType === '书' ? `${levelLabel}${currentBookName || '书'}` : `${levelLabel}铁`;
+
+        document.getElementById('settlePreviewTotal').textContent = 
+            `修炼点${pointsVal.toFixed(1)} + ${bookLabel}(${bookValue}万) + ${rewardLabel}(${rewardVal.toFixed(1)}万) = ${totalIncome.toFixed(1)}万`;
+        document.getElementById('settlePreviewProfit').textContent = `${profit >= 0 ? '✅' : '❌'} ${profit.toFixed(1)}万`;
+        document.getElementById('settlePreviewProfit').style.color = profit >= 0 ? '#2d6b2d' : '#c0392b';
+    }
+
+    // 初始化
+    updateDisplayText();
+    updatePreview();
+
+    // 取消
+    document.getElementById('settleFullCancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    // 确认结算
+    document.getElementById('settleFullConfirm').addEventListener('click', () => {
+        const bookType = currentBookType;
+        const bookLevel = autoLevel;
+        const bookNameInput = currentBookName;
+        const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
+
+        if (bookLevel <= 0) { alert('请选择书铁等级！'); return; }
+        if (bookValue <= 0) { alert('请填写书铁价值！'); return; }
+        if (bookType === '书' && !bookNameInput) { alert('请选择书种类！'); return; }
+
+        let bookDisplayName = '';
+        if (bookType === '铁') {
+            bookDisplayName = bookLevel === 160 ? '战魄' : `${bookLevel}级铁`;
+        } else {
+            bookDisplayName = `${bookLevel}级${bookNameInput}书`;
+        }
+
+        const rewardType = overlay.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
+        const pointsVal = stats.totalPoints * (fruitPrice / 170);
+
+        let rewardValue = 0, rewardLabel = '';
+        if (rewardType === 'points200') { rewardValue = (200/170)*fruitPrice; rewardLabel = '200修炼点'; }
+        else if (rewardType === 'fruit') { rewardValue = fruitPrice; rewardLabel = '1个修炼果'; }
+        else if (rewardType === 'furniture') { rewardValue = furnPrice; rewardLabel = '家具图×1'; }
+
+        const totalIncome = pointsVal + bookValue + rewardValue;
+        const profit = totalIncome - stats.totalCost;
+        const typeCount = stats.typeCount || {};
+        const rewardsDesc = `${bookDisplayName}（${bookValue}万） + ${rewardLabel}（${rewardValue.toFixed(1)}万） + 修炼点${stats.totalPoints}点（${pointsVal.toFixed(1)}万）`;
+
+        const ringsData = this.records.map(r => ({
+            taskIndex: r.taskIndex,
+            typeKey: r.typeKey,
+            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
+            cost: r.cost,
+            score: r.score,
+            ringPoints: r.ringPoints,
+            isDeduct: r.isDeduct || false,
+            isRelog: r.isRelog || false,
+            date: r.date
+        }));
+
+        const entry = {
+            date: new Date().toLocaleString(),
+            ringCount: stats.ringCount,
+            totalCost: stats.totalCost,
+            totalScore: stats.totalScore,
+            totalPoints: stats.totalPoints,
+            totalIncome: totalIncome,
+            profit: profit,
+            bookIncome: bookValue,
+            bookDisplayName: bookDisplayName,
+            bookType: bookType,
+            bookLevel: bookLevel,
+            bookName: bookNameInput,
+            furnitureIncome: rewardType === 'furniture' ? rewardValue : 0,
+            fruitIncome: rewardType === 'points200' || rewardType === 'fruit' ? rewardValue : 0,
+            pointsValue: pointsVal,
+            isComplete: true,
+            typeCount: typeCount,
+            rewards: rewardsDesc,
+            exchangeRate: this.exchangeRate,
+            rewardType: rewardType,
+            prediction20: this._prediction20 || null,
+            rings: ringsData,
+            relogCount: ringsData.filter(r => r.isRelog).length
         };
 
-        document.getElementById('settleBookValue').addEventListener('input', updatePreview);
-        document.querySelectorAll('input[name="rewardType"]').forEach(el => {
-            el.addEventListener('change', updatePreview);
-        });
+        this.history.push(entry);
+        this.records = [];
+        this.bookRewards = [];
+        this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
+        this.pendingSettle = null;
+        this.pendingRelog = false;
+        this.saveData();
 
-        setTimeout(updatePreview, 200);
+        overlay.remove();
+        this.showSettleModal(entry);
+        this.updateStats();
+        this.updateHistory();
+        this.updateAdvice();
+        this.updateBookList();
+        this.updateHistoryTable();
 
-        document.getElementById('settleFullCancel').addEventListener('click', function() {
-            overlay.remove();
-        });
-        overlay.addEventListener('click', function(e) {
-            if (e.target === overlay) overlay.remove();
-        });
-
-        document.getElementById('settleFullConfirm').addEventListener('click', () => {
-            const bookType = currentBookType;
-            const bookLevel = currentLevel;
-            const bookNameInput = currentBookName;
-            const bookValue = parseFloat(document.getElementById('settleBookValue').value) || 0;
-
-            if (bookLevel <= 0) { alert('请选择书铁等级！'); return; }
-            if (bookValue <= 0) { alert('请填写书铁价值！'); return; }
-            if (bookType === '书' && !bookNameInput) { alert('请选择书种类！'); return; }
-
-            let bookDisplayName = '';
-            if (bookType === '铁') {
-                bookDisplayName = bookLevel === 160 ? '战魄' : `${bookLevel}级铁`;
-            } else {
-                bookDisplayName = `${bookLevel}级${bookNameInput}书`;
-            }
-
-            const rewardType = document.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
-            const pointsVal = stats.totalPoints * (fruitPrice / 170);
-
-            let rewardValue = 0, rewardLabel = '';
-            if (rewardType === 'points200') {
-                rewardValue = (200 / 170) * fruitPrice;
-                rewardLabel = '200修炼点';
-            } else if (rewardType === 'fruit') {
-                rewardValue = fruitPrice;
-                rewardLabel = '1个修炼果';
-            } else if (rewardType === 'furniture') {
-                rewardValue = furnPrice;
-                rewardLabel = '家具图×1';
-            }
-
-            const totalIncome = pointsVal + bookValue + rewardValue;
-            const profit = totalIncome - stats.totalCost;
-            const typeCount = stats.typeCount || {};
-            const rewardsDesc = `${bookDisplayName}（${bookValue}万） + ${rewardLabel}（${rewardValue.toFixed(1)}万） + 修炼点${stats.totalPoints}点（${pointsVal.toFixed(1)}万）`;
-
-            // 🆕 保存 rings 详细数据
-            const ringsData = this.records.map(r => ({
-                taskIndex: r.taskIndex,
-                typeKey: r.typeKey,
-                label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey, 
-                cost: r.cost,
-                score: r.score,
-                ringPoints: r.ringPoints,
-                isDeduct: r.isDeduct || false,
-                isRelog: r.isRelog || false,
-                date: r.date
-            }));
-
-            const entry = {
-                date: new Date().toLocaleString(),
-                ringCount: stats.ringCount,
-                totalCost: stats.totalCost,
-                totalScore: stats.totalScore,
-                totalPoints: stats.totalPoints,
-                totalIncome: totalIncome,
-                profit: profit,
-                bookIncome: bookValue,
-                bookDisplayName: bookDisplayName,
-                bookType: bookType,
-                bookLevel: bookLevel,
-                bookName: bookNameInput,
-                furnitureIncome: rewardType === 'furniture' ? rewardValue : 0,
-                fruitIncome: rewardType === 'points200' || rewardType === 'fruit' ? rewardValue : 0,
-                pointsValue: pointsVal,
-                isComplete: true,
-                typeCount: typeCount,
-                rewards: rewardsDesc,
-                exchangeRate: this.exchangeRate,
-                rewardType: rewardType,
-                prediction20: this._prediction20 || null,
-                rings: ringsData,  // 🆕 保存每环详细数据
-                relogCount: ringsData.filter(r => r.isRelog).length  // 🆕 重登次数
-            };
-
-            this.history.push(entry);
-            this.records = [];
-            this.bookRewards = [];
-            this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
-            this.pendingSettle = null;
-            this.pendingRelog = false;
-            this.saveData();
-
-            overlay.remove();
-            this.showSettleModal(entry);
-            this.updateStats();
-            this.updateHistory();
-            this.updateAdvice();
-            this.updateBookList();
-            this.updateHistoryTable();
-
-            const container = document.getElementById('petRingContainer');
-            if (container) {
-                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    },
+        const container = document.getElementById('petRingContainer');
+        if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+},
 
     // ========== 结算准备 ==========
     prepareSettle() {
