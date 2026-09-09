@@ -90,7 +90,7 @@ const PetRingModule = {
     ],
 
     INITIAL_COST: 10,
-    filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', profitType: 'all' },
+   filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' },
 
     // ========== 生命周期 ==========
     init() {
@@ -765,6 +765,8 @@ showFullSettleModal(stats) {
         if (f.dateTo) { const to = new Date(f.dateTo); to.setHours(23, 59, 59); data = data.filter(h => new Date(h.date) <= to); }
         if (f.ringsMin) data = data.filter(h => h.ringCount >= parseInt(f.ringsMin));
         if (f.ringsMax) data = data.filter(h => h.ringCount <= parseInt(f.ringsMax));
+        if (f.scoreMin) data = data.filter(h => (h.totalScore || 0) >= parseInt(f.scoreMin));
+        if (f.scoreMax) data = data.filter(h => (h.totalScore || 0) <= parseInt(f.scoreMax));
         if (f.profitType === 'positive') data = data.filter(h => h.profit > 0);
         else if (f.profitType === 'negative') data = data.filter(h => h.profit < 0);
         return data;
@@ -1058,6 +1060,7 @@ showFullSettleModal(stats) {
                             <div class="filter-item"><label>📅 日期从</label><input type="date" id="prFilterDateFrom"></div>
                             <div class="filter-item"><label>到</label><input type="date" id="prFilterDateTo"></div>
                             <div class="filter-item"><label>📌 环数</label><input type="number" id="prFilterRingsMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterRingsMax" placeholder="≤" style="width:50px;"></div>
+                           <div class="filter-item"><label>⭐ 积分</label><input type="number" id="prFilterScoreMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterScoreMax" placeholder="≤" style="width:50px;"></div>
                             <div class="filter-item"><label>📈 利润</label><select id="prFilterProfitType"><option value="all">全部</option><option value="positive">盈利</option><option value="negative">亏损</option></select></div>
                             <div class="filter-item"><button class="btn-filter" id="prApplyFilterBtn">应用筛选</button><button class="btn-filter reset" id="prResetFilterBtn">重置</button></div>
                         </div>
@@ -1383,6 +1386,8 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
             this.filterState.dateTo = document.getElementById('prFilterDateTo').value || '';
             this.filterState.ringsMin = document.getElementById('prFilterRingsMin').value || '';
             this.filterState.ringsMax = document.getElementById('prFilterRingsMax').value || '';
+            this.filterState.scoreMin = document.getElementById('prFilterScoreMin').value || '';
+            this.filterState.scoreMax = document.getElementById('prFilterScoreMax').value || '';
             this.filterState.profitType = document.getElementById('prFilterProfitType').value || 'all';
             this.render();
             if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
@@ -1394,8 +1399,10 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
             document.getElementById('prFilterDateTo').value = '';
             document.getElementById('prFilterRingsMin').value = '';
             document.getElementById('prFilterRingsMax').value = '';
+            document.getElementById('prFilterScoreMin').value = '';
+            document.getElementById('prFilterScoreMax').value = '';
             document.getElementById('prFilterProfitType').value = 'all';
-            this.filterState = { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', profitType: 'all' };
+            this.filterState = { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' };
             this.render();
             if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
                 this.updateAnalysis(this.getFilteredData());
