@@ -2018,7 +2018,7 @@ updateRelogAnalysis() {
         parts.push(`${label}${count}(${pct}%)`);
     }
 
-    const startRing = lastRelogIdx + 2;
+    const startRing = lastRelogIdx + 1;
     container.innerHTML = `🔁 [${startRing}-?环] ${parts.join(' ')} (当前区间)`;
     container.style.color = '#1f3b53';
 
