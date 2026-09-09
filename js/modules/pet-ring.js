@@ -1569,7 +1569,7 @@ showRingsDetailModal(entry) {
         if (relogIndices.length > 0) {
             const intervals = [];
             for (let i = 0; i < relogIndices.length; i++) {
-                const startIdx = relogIndices[i] + 1;
+                const startIdx = relogIndices[i];
                 const endIdx = (i + 1 < relogIndices.length) ? relogIndices[i + 1] : rings.length;
                 if (startIdx < endIdx) {
                     const segment = rings.slice(startIdx, endIdx);
@@ -1591,7 +1591,7 @@ showRingsDetailModal(entry) {
             }
             if (intervals.length > 0) {
                 html += `
-                    <div style="margin-top:8px;padding:6px 10px;background:#fdf8ee;border-radius:8px;border:1px solid #f0e8d0;font-size:0.7rem;color:#dbbd7c;">
+                   <div style="margin-top:8px;padding:6px 10px;background:#fdf8ee;border-radius:8px;border:1px solid #f0e8d0;font-size:0.7rem;color:#1f3b53;">
                         🔁 重登区间分析：${intervals.join(' | ')}
                     </div>
                 `;
@@ -1965,7 +1965,7 @@ updateRelogAnalysis() {
 
     const intervals = [];
     for (let i = 0; i < relogIndices.length; i++) {
-        const startIdx = relogIndices[i] + 1;
+        const startIdx = relogIndices[i];
         const endIdx = (i + 1 < relogIndices.length) ? relogIndices[i + 1] : records.length;
         if (startIdx < endIdx) {
             const segment = records.slice(startIdx, endIdx);
@@ -2032,7 +2032,7 @@ updateRelogAnalysis() {
     }
 
     container.innerHTML = '🔁 ' + html;
-    container.style.color = '#dbbd7c';
+    container.style.color = '#1f3b53';
 },
 
     updateHistoryTable() {
