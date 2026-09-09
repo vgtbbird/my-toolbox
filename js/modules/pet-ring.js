@@ -550,6 +550,7 @@ const PetRingModule = {
             const ringsData = this.records.map(r => ({
                 taskIndex: r.taskIndex,
                 typeKey: r.typeKey,
+                label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey, 
                 cost: r.cost,
                 score: r.score,
                 ringPoints: r.ringPoints,
@@ -1568,10 +1569,21 @@ showRingsDetailModal(entry) {
 
     const typeCount = entry.typeCount || {};
     let hasTypeCount = false;
+
+    // 🔍 判断该轮次是否为旧数据（没有 medicine 字段）
+    const hasMedicine = entry.rings ? entry.rings.some(r => r.typeKey === 'medicine') : false;
+
     for (let [key, count] of Object.entries(typeCount)) {
         if (count > 0) {
             hasTypeCount = true;
-            const label = this.getTaskLabel(key);
+            let label;
+            if (key === 'cook') {
+                // 如果有 medicine 字段，说明是新数据，显示"烹饪"
+                // 否则是旧数据，显示"烹饪三药"
+                label = hasMedicine ? '烹饪' : '烹饪三药';
+            } else {
+                label = this.getTaskLabel(key);
+            }
             html += `<span style="display:inline-block;background:#f0f5fb;padding:2px 10px;border-radius:12px;margin:2px;font-size:0.7rem;">${label}: ${count}次</span>`;
         }
     }
@@ -1589,7 +1601,12 @@ showRingsDetailModal(entry) {
             <div style="max-height:300px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
         `;
         for (let r of rings) {
-            const label = this.getTaskLabel(r.typeKey);
+            // 🆕 直接使用保存的 label，如果没有则用 getTaskLabel
+            let label = r.label || this.getTaskLabel(r.typeKey);
+            // 如果是旧数据的 cook，统一显示为"烹饪三药"
+            if (r.typeKey === 'cook' && !hasMedicine) {
+                label = '烹饪三药';
+            }
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
             html += `
