@@ -951,6 +951,17 @@ showFullSettleModal(stats) {
                     <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
                 </div>
             </div>
+                        <div class="module" id="prModuleHistory">
+                <div class="module-header">
+                    <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span></div>
+                    <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
+                </div>
+                <div class="module-body" id="prHistoryBody">
+                    <div class="history-section" id="prHistoryList"><div class="empty-history">暂无记录</div></div>
+                </div>
+            </div>
+
+            
 
             <div class="module" id="prModuleAdvice">
                 <div class="module-header">
@@ -1018,15 +1029,7 @@ showFullSettleModal(stats) {
                 </div>
             </div>
 
-            <div class="module" id="prModuleHistory">
-                <div class="module-header">
-                    <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span></div>
-                    <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
-                </div>
-                <div class="module-body" id="prHistoryBody">
-                    <div class="history-section" id="prHistoryList"><div class="empty-history">暂无记录</div></div>
-                </div>
-            </div>
+
 
             <div class="flex-between">
                 <span style="font-size:0.7rem;color:#3a5f7a;">💡 点击任务按钮记录一环，满100环自动结算</span>
