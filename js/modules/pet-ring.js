@@ -629,6 +629,7 @@ const PetRingModule = {
         const ringsData = this.records.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
+            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey, 
             cost: r.cost,
             score: r.score,
             ringPoints: r.ringPoints,
