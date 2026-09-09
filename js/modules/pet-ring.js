@@ -930,8 +930,9 @@ showFullSettleModal(stats) {
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span class="hint">— 点击记录一环</span></div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button class="btn-relog" id="prMarkRelogBtn" style="background:#dbbd7c;color:#1f344b;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.7rem;">🔁 标记下线重登</button>
-                        <span id="prRelogStatus" style="font-size:0.7rem;color:#5a7a94;display:flex;align-items:center;">无待标记</span>
+<button class="btn-relog" id="prMarkRelogBtn" style="background:#dbbd7c;color:#1f344b;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.7rem;">🔁 标记下线重登</button>
+<span id="prRelogStatus" style="font-size:0.7rem;color:#5a7a94;display:flex;align-items:center;">无待标记</span>
+<button class="btn-relog" id="prCancelRelogBtn" style="background:#b45f5f;color:#fff;border:none;padding:4px 12px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.65rem;display:none;">↩️ 撤销重登</button>
                         <button class="btn-undo" id="prUndoBtn">↩️ 撤销</button>
                         <button class="toggle-btn" id="prToggleTaskBtn">👁️ 隐藏</button>
                     </div>
@@ -1181,7 +1182,21 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
     const nextIndex = PetRingModule.records.length + 1;
     document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
     document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+    document.getElementById('prCancelRelogBtn').style.display = 'inline-block';  // 🆕 加这行
     PetRingModule.updateRelogAnalysis(); 
+});
+
+        // ===== 🆕 撤销重登标记 =====
+document.getElementById('prCancelRelogBtn').addEventListener('click', function() {
+    if (!PetRingModule.pendingRelog) {
+        alert('当前没有待标记的重登');
+        return;
+    }
+    PetRingModule.pendingRelog = false;
+    document.getElementById('prRelogStatus').textContent = '无待标记';
+    document.getElementById('prRelogStatus').style.color = '#5a7a94';
+    document.getElementById('prCancelRelogBtn').style.display = 'none';
+    PetRingModule.updateRelogAnalysis();
 });
 
         // ===== 确认结算 =====
@@ -1672,6 +1687,7 @@ console.log('🔍 relogIndices:', relogIndices);
             this.pendingRelog = false;
             document.getElementById('prRelogStatus').textContent = '无待标记';
             document.getElementById('prRelogStatus').style.color = '#5a7a94';
+            document.getElementById('prCancelRelogBtn').style.display = 'none';  // 🆕 加这行
         }
 
         this.records.push({ 
@@ -1701,11 +1717,11 @@ console.log('🔍 relogIndices:', relogIndices);
         const idx = this.records.length;
         
         // 🆕 检查是否有待标记的重登
-        const isRelog = this.pendingRelog || false;
         if (this.pendingRelog) {
             this.pendingRelog = false;
             document.getElementById('prRelogStatus').textContent = '无待标记';
             document.getElementById('prRelogStatus').style.color = '#5a7a94';
+            document.getElementById('prCancelRelogBtn').style.display = 'none';  // 🆕 加这行
         }
 
         this.records.push({
@@ -1730,9 +1746,11 @@ console.log('🔍 relogIndices:', relogIndices);
             const removed = this.records.pop();
             // 如果撤销的是重登标记的环，清除待标记状态
             if (removed.isRelog) {
-                this.pendingRelog = false;
-                document.getElementById('prRelogStatus').textContent = '无待标记';
-                document.getElementById('prRelogStatus').style.color = '#5a7a94';
+                this.pendingRelog = true;
+                const nextIndex = this.records.length + 1;
+                document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
+                document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+                document.getElementById('prCancelRelogBtn').style.display = 'inline-block';  // 🆕 加这行
             }
             if (this.pendingSettle) {
                 this.pendingSettle = null;
@@ -2039,6 +2057,11 @@ updateRelogAnalysis() {
 
     container.innerHTML = '🔁 ' + html;
     container.style.color = '#1f3b53';
+     // 同步撤销按钮显示状态
+    const cancelBtn = document.getElementById('prCancelRelogBtn');
+    if (cancelBtn) {
+        cancelBtn.style.display = this.pendingRelog ? 'inline-block' : 'none';
+    }
 },
 
     updateHistoryTable() {
