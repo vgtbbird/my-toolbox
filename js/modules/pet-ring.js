@@ -115,6 +115,7 @@ const PetRingModule = {
         this.saveData();
         setTimeout(() => this.applyUISettings(), 100);
         this.checkAutoSettle();
+        this.updateRelogAnalysis();
     },
 
     // ========== 数据操作 ==========
@@ -1017,6 +1018,7 @@ showFullSettleModal(stats) {
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="prHistoryBody">
+                    <div id="prRelogAnalysis" style="font-size:0.7rem;color:#dbbd7c;padding:4px 8px;background:#fdf8ee;border-radius:8px;margin-bottom:6px;min-height:20px;border:1px solid #f0e8d0;">🔁 等待重登标记...</div>
                     <div class="history-section" id="prHistoryList"><div class="empty-history">暂无记录</div></div>
                 </div>
             </div>
@@ -1179,6 +1181,7 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
     const nextIndex = PetRingModule.records.length + 1;
     document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
     document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+    PetRingModule.updateRelogAnalysis(); 
 });
 
         // ===== 确认结算 =====
@@ -1552,8 +1555,50 @@ showRingsDetailModal(entry) {
     }
 
     html += `</div>`;
+    
 
+     // ===== 🆕 重登区间分析 =====
     const rings = entry.rings || [];
+    if (rings.length > 0) {
+        const relogIndices = [];
+        for (let i = 0; i < rings.length; i++) {
+            if (rings[i].isRelog) {
+                relogIndices.push(i);
+            }
+        }
+        if (relogIndices.length > 0) {
+            const intervals = [];
+            for (let i = 0; i < relogIndices.length; i++) {
+                const startIdx = relogIndices[i] + 1;
+                const endIdx = (i + 1 < relogIndices.length) ? relogIndices[i + 1] : rings.length;
+                if (startIdx < endIdx) {
+                    const segment = rings.slice(startIdx, endIdx);
+                    const stats = {};
+                    for (let r of segment) {
+                        const key = r.typeKey;
+                        stats[key] = (stats[key] || 0) + 1;
+                    }
+                    const total = segment.length;
+                    const parts = [];
+                    for (let [key, count] of Object.entries(stats)) {
+                        const type = this.ITEM_TYPES.find(t => t.key === key);
+                        const label = type ? type.label : key;
+                        const pct = Math.round((count / total) * 100);
+                        parts.push(`${label}${count}(${pct}%)`);
+                    }
+                    intervals.push(`[${startIdx + 1}-${endIdx}环] ${parts.join(' ')}`);
+                }
+            }
+            if (intervals.length > 0) {
+                html += `
+                    <div style="margin-top:8px;padding:6px 10px;background:#fdf8ee;border-radius:8px;border:1px solid #f0e8d0;font-size:0.7rem;color:#dbbd7c;">
+                        🔁 重登区间分析：${intervals.join(' | ')}
+                    </div>
+                `;
+            }
+        }
+    }
+
     if (rings.length > 0) {
         html += `
             <div style="margin-bottom:6px;font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
@@ -1636,6 +1681,7 @@ showRingsDetailModal(entry) {
             date: new Date().toLocaleString()
         });
         this.render();
+        this.updateRelogAnalysis();
     },
 
     addDeduct(key) {
@@ -1670,6 +1716,7 @@ showRingsDetailModal(entry) {
             date: new Date().toLocaleString()
         });
         this.render();
+        this.updateRelogAnalysis();
     },
 
     undoRecord() {
@@ -1685,6 +1732,7 @@ showRingsDetailModal(entry) {
                 this.pendingSettle = null;
             }
             this.render();
+            this.updateRelogAnalysis();
         } else {
             alert('没有可撤销的记录！');
         }
@@ -1889,6 +1937,103 @@ showRingsDetailModal(entry) {
         }
         list.innerHTML = html;
     },
+
+    // 🆕 实时分析重登区间
+updateRelogAnalysis() {
+    const container = document.getElementById('prRelogAnalysis');
+    if (!container) return;
+
+    const records = this.records;
+    if (records.length === 0) {
+        container.innerHTML = '🔁 等待重登标记...';
+        container.style.color = '#5a7a94';
+        return;
+    }
+
+    const relogIndices = [];
+    for (let i = 0; i < records.length; i++) {
+        if (records[i].isRelog) {
+            relogIndices.push(i);
+        }
+    }
+
+    if (relogIndices.length === 0) {
+        container.innerHTML = '🔁 暂无重登标记';
+        container.style.color = '#5a7a94';
+        return;
+    }
+
+    const intervals = [];
+    for (let i = 0; i < relogIndices.length; i++) {
+        const startIdx = relogIndices[i] + 1;
+        const endIdx = (i + 1 < relogIndices.length) ? relogIndices[i + 1] : records.length;
+        if (startIdx < endIdx) {
+            const segment = records.slice(startIdx, endIdx);
+            const stats = {};
+            for (let r of segment) {
+                const key = r.typeKey;
+                stats[key] = (stats[key] || 0) + 1;
+            }
+            const total = segment.length;
+            const parts = [];
+            for (let [key, count] of Object.entries(stats)) {
+                const type = this.ITEM_TYPES.find(t => t.key === key);
+                const label = type ? type.label : key;
+                const pct = Math.round((count / total) * 100);
+                parts.push(`${label}${count}(${pct}%)`);
+            }
+            intervals.push({
+                startRing: startIdx + 1,
+                endRing: endIdx,
+                total: total,
+                parts: parts.join(' ')
+            });
+        }
+    }
+
+    const lastRelogIdx = relogIndices[relogIndices.length - 1];
+    const hasPending = (lastRelogIdx + 1) < records.length;
+
+    let html = '';
+    if (intervals.length === 0 && !hasPending) {
+        container.innerHTML = '🔁 已标记重登，等待任务记录...';
+        container.style.color = '#dbbd7c';
+        return;
+    }
+
+    const maxShow = 3;
+    const showIntervals = intervals.slice(0, maxShow);
+    const intervalTexts = showIntervals.map(iv =>
+        `[${iv.startRing}-${iv.endRing}环] ${iv.parts}`
+    );
+    html = intervalTexts.join(' | ');
+
+    if (intervals.length > maxShow) {
+        html += ` | ... 等${intervals.length}个区间`;
+    }
+
+    if (hasPending) {
+        const pendingRecords = records.slice(lastRelogIdx + 1);
+        const stats = {};
+        for (let r of pendingRecords) {
+            const key = r.typeKey;
+            stats[key] = (stats[key] || 0) + 1;
+        }
+        const total = pendingRecords.length;
+        const parts = [];
+        for (let [key, count] of Object.entries(stats)) {
+            const type = this.ITEM_TYPES.find(t => t.key === key);
+            const label = type ? type.label : key;
+            const pct = Math.round((count / total) * 100);
+            parts.push(`${label}${count}(${pct}%)`);
+        }
+        html += html ? ' | ' : '';
+        html += `⏳ [${lastRelogIdx + 2}-?环] ${parts.join(' ')} (等待中...)`;
+    }
+
+    container.innerHTML = '🔁 ' + html;
+    container.style.color = '#dbbd7c';
+},
 
     updateHistoryTable() {
         const tbody = document.getElementById('prHistoryTableBody');
