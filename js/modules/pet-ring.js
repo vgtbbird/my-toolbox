@@ -1936,33 +1936,33 @@ console.log('🔍 relogIndices:', relogIndices);
         container.innerHTML = html;
     },
 
-    updateHistory() {
-        const list = document.getElementById('prHistoryList');
-        if (this.records.length === 0) {
-            list.innerHTML = '<div class="empty-history">暂无记录</div>';
-            return;
-        }
+updateHistory() {
+    const list = document.getElementById('prHistoryList');
+    if (this.records.length === 0) {
+        list.innerHTML = '<div class="empty-history">暂无记录</div>';
+        return;
+    }
 
-        let html = '';
-        const records = this.records.slice(-30).reverse();
-        for (let r of records) {
-            const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
-            const label = type ? type.label : (r.label || r.typeKey);
-            const sc = r.score < 0 ? r.score : `+${r.score}`;
-            const relogIcon = r.isRelog ? ' 🔁' : '';
-            html += `<div class="history-item">
-                <div class="info">
-                    <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}${relogIcon}</span>
-                    <span>💰${r.cost.toFixed(1)}</span>
-                    <span>⭐${sc}</span>
-                    <span>📈+${r.ringPoints}</span>
-                </div>
-            </div>`;
-        }
-        list.innerHTML = html;
-    },
+    let html = '';
+    const records = this.records.slice(-30).reverse();
+    for (let r of records) {
+        const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
+        const label = type ? type.label : (r.label || r.typeKey);
+        const sc = r.score < 0 ? r.score : `+${r.score}`;
+        const relogIcon = r.isRelog ? ' 🔁' : '';
+        html += `<div class="history-item">
+            <div class="info">
+                <span style="font-weight:600;color:#1f3b53;min-width:36px;">#${r.taskIndex}</span>
+                <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}${relogIcon}</span>
+                <span>💰${r.cost.toFixed(1)}</span>
+                <span>⭐${sc}</span>
+                <span>📈+${r.ringPoints}</span>
+            </div>
+        </div>`;
+    }
+    list.innerHTML = html;
+},
 
-    // 🆕 实时分析重登区间
 updateRelogAnalysis() {
     const container = document.getElementById('prRelogAnalysis');
     if (!container) return;
@@ -1974,12 +1974,17 @@ updateRelogAnalysis() {
         return;
     }
 
+    // 找出所有重登的索引（用 taskIndex 定位）
     const relogIndices = [];
     for (let i = 0; i < records.length; i++) {
         if (records[i].isRelog) {
-            relogIndices.push(i);
+            const idx = (records[i].taskIndex || (i + 1)) - 1;
+            if (!relogIndices.includes(idx)) {
+                relogIndices.push(idx);
+            }
         }
     }
+    relogIndices.sort((a, b) => a - b);
 
     if (relogIndices.length === 0) {
         container.innerHTML = '🔁 暂无重登标记';
@@ -1987,77 +1992,37 @@ updateRelogAnalysis() {
         return;
     }
 
-    const intervals = [];
-    for (let i = 0; i < relogIndices.length; i++) {
-        const startIdx = relogIndices[i];
-        const endIdx = (i + 1 < relogIndices.length) ? relogIndices[i + 1] : records.length;
-        if (startIdx < endIdx) {
-            const segment = records.slice(startIdx, endIdx);
-            const stats = {};
-            for (let r of segment) {
-                const key = r.typeKey;
-                stats[key] = (stats[key] || 0) + 1;
-            }
-            const total = segment.length;
-            const parts = [];
-            for (let [key, count] of Object.entries(stats)) {
-                const type = this.ITEM_TYPES.find(t => t.key === key);
-                const label = type ? type.label : key;
-                const pct = Math.round((count / total) * 100);
-                parts.push(`${label}${count}(${pct}%)`);
-            }
-            intervals.push({
-                startRing: startIdx + 1,
-                endRing: endIdx,
-                total: total,
-                parts: parts.join(' ')
-            });
-        }
-    }
-
+    // 🆕 只取最后一个重登标记，统计它之后到现在的区间
     const lastRelogIdx = relogIndices[relogIndices.length - 1];
     const hasPending = (lastRelogIdx + 1) < records.length;
 
-    let html = '';
-    if (intervals.length === 0 && !hasPending) {
-        container.innerHTML = '🔁 已标记重登，等待任务记录...';
+    if (!hasPending) {
+        container.innerHTML = `🔁 已标记第${lastRelogIdx + 1}环重登，等待任务记录...`;
         container.style.color = '#dbbd7c';
         return;
     }
 
-    const maxShow = 3;
-    const showIntervals = intervals.slice(0, maxShow);
-    const intervalTexts = showIntervals.map(iv =>
-        `[${iv.startRing}-${iv.endRing}环] ${iv.parts}`
-    );
-    html = intervalTexts.join(' | ');
-
-    if (intervals.length > maxShow) {
-        html += ` | ... 等${intervals.length}个区间`;
+    // 统计最后一个重登之后的任务
+    const pendingRecords = records.slice(lastRelogIdx + 1);
+    const stats = {};
+    for (let r of pendingRecords) {
+        const key = r.typeKey;
+        stats[key] = (stats[key] || 0) + 1;
+    }
+    const total = pendingRecords.length;
+    const parts = [];
+    for (let [key, count] of Object.entries(stats)) {
+        const type = this.ITEM_TYPES.find(t => t.key === key);
+        const label = type ? type.label : key;
+        const pct = Math.round((count / total) * 100);
+        parts.push(`${label}${count}(${pct}%)`);
     }
 
-    if (hasPending) {
-        const pendingRecords = records.slice(lastRelogIdx + 1);
-        const stats = {};
-        for (let r of pendingRecords) {
-            const key = r.typeKey;
-            stats[key] = (stats[key] || 0) + 1;
-        }
-        const total = pendingRecords.length;
-        const parts = [];
-        for (let [key, count] of Object.entries(stats)) {
-            const type = this.ITEM_TYPES.find(t => t.key === key);
-            const label = type ? type.label : key;
-            const pct = Math.round((count / total) * 100);
-            parts.push(`${label}${count}(${pct}%)`);
-        }
-        html += html ? ' | ' : '';
-        html += `⏳ [${lastRelogIdx + 2}-?环] ${parts.join(' ')} (等待中...)`;
-    }
-
-    container.innerHTML = '🔁 ' + html;
+    const startRing = lastRelogIdx + 2;
+    container.innerHTML = `🔁 [${startRing}-?环] ${parts.join(' ')} (当前区间)`;
     container.style.color = '#1f3b53';
-     // 同步撤销按钮显示状态
+
+    // 同步撤销按钮显示状态
     const cancelBtn = document.getElementById('prCancelRelogBtn');
     if (cancelBtn) {
         cancelBtn.style.display = this.pendingRelog ? 'inline-block' : 'none';
