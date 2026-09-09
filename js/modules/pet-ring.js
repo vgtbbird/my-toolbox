@@ -2019,6 +2019,7 @@ updateRelogAnalysis() {
     }
 
     const startRing = lastRelogIdx + 1;
+    container.style.fontSize = '0.85rem';
     container.innerHTML = `🔁 [${startRing}-?环] ${parts.join(' ')} (当前区间)`;
     container.style.color = '#1f3b53';
 
