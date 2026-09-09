@@ -2003,7 +2003,7 @@ updateRelogAnalysis() {
     }
 
     // 统计最后一个重登之后的任务
-    const pendingRecords = records.slice(lastRelogIdx + 1);
+   const pendingRecords = records.slice(lastRelogIdx);
     const stats = {};
     for (let r of pendingRecords) {
         const key = r.typeKey;
