@@ -161,9 +161,9 @@ const PetRingModule = {
             nextShichenEl.style.color = '#c0392b';
         }
         
-         // 系统刷新倒计时（基于跑商二刷）
-           const refreshEl = document.getElementById('prNextRefreshCountdown');
-           if (refreshEl) {
+        // 系统刷新倒计时（基于跑商二刷）
+        const refreshEl = document.getElementById('prNextRefreshCountdown');
+        if (refreshEl) {
             const refreshCountdown = this.getNextShopRefreshCountdown();
             refreshEl.textContent = this.formatCountdown(refreshCountdown);
             
@@ -190,7 +190,7 @@ const PetRingModule = {
             const shichenEl = document.getElementById('prRefreshShichen');
             if (shichenEl) {
                 const dayNight = refreshShichen.isDaytime ? '☀️' : '🌙';
-                shichenEl.textContent = `(${dayNight}${refreshShichen.name}时)`;
+                shichenEl.innerHTML = `🔄 下次刷新 <span style="color:#c0392b;font-size:inherit;font-weight:600;">${dayNight}${refreshShichen.name}时</span>`;
             }
         }
     },
@@ -1098,9 +1098,9 @@ showFullSettleModal(stats) {
                     <div class="label">⏱️ 当前时辰</div>
                 </div>
                 <div class="stat-item"><div class="num" id="prNextShichenCountdown" style="font-size:0.85rem;">--</div><div class="label">⏳ 下时辰</div></div>
-               <div class="stat-item">
+                <div class="stat-item">
                     <div class="num" id="prNextRefreshCountdown">--:--</div>
-                    <div class="label">🔄 下次刷新 <span id="prRefreshShichen" style="color:#1a1a2e;font-size:inherit;font-weight:600;"></span></div>
+                    <div class="label" id="prRefreshShichen">🔄 下次刷新</div>
                 </div>
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="prTotalScore">0</div><div class="label">⭐ 总积分</div></div>
