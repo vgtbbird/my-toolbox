@@ -1776,7 +1776,7 @@ console.log('🔍 relogIndices:', relogIndices);
             html += `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
-                    <span style="color:#1f3b53;min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
+                    <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
                     <span style="color:#b8860b;font-size:0.75rem;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${r.timeStr || ''}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
@@ -2144,10 +2144,11 @@ updateHistory() {
         }
          const timeDisplay = r.timeStr ? `<span style="color:#1a1a2e;font-size:0.65rem;">${r.timeStr}</span>` : '';
         
+        const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1a1a2e';
         html += `<div class="history-item">
             <div class="info">
                 <span style="font-weight:600;color:#1f3b53;min-width:36px;">#${r.taskIndex}</span>
-                <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}${relogIcon}</span>
+                <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;color:${labelColor};">${label}${relogIcon}</span>
                 ${shichenDisplay}
                 ${timeDisplay}
                 <span>💰${r.cost.toFixed(1)}</span>
