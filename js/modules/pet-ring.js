@@ -872,6 +872,27 @@ showFullSettleModal(stats) {
         return diff;
     },
 
+        // 🆕 时辰颜色配置
+    SHICHEN_COLORS: {
+        '子': '#4A90D9',
+        '丑': '#8E44AD',
+        '寅': '#16A085',
+        '卯': '#27AE60',
+        '辰': '#D4A017',
+        '巳': '#E67E22',
+        '午': '#C0392B',
+        '未': '#E91E63',
+        '申': '#8D6E63',
+        '酉': '#F39C12',
+        '戌': '#7F8C8D',
+        '亥': '#2C3E50'
+    },
+
+    // 🆕 获取时辰颜色
+    getShichenColor(name) {
+        return this.SHICHEN_COLORS[name] || '#B8860B';
+    },
+
 
     // ========== 时辰系统 ==========
     // 🆕 获取当前时辰信息
@@ -1888,7 +1909,8 @@ console.log('🔍 relogIndices:', relogIndices);
             let shichenDisplay = '';
             if (r.shichen) {
                 const dayNight = r.isDaytime ? '☀️' : '🌙';
-                shichenDisplay = `<span style="color:#b8860b;font-size:0.65rem;">${dayNight}${r.shichen}时</span>`;
+                const shichenColor = this.getShichenColor(r.shichen);
+                shichenDisplay = `<span style="color:${shichenColor};font-size:inherit;font-weight:600;">${dayNight}${r.shichen}时</span>`;
             }
             const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.6rem;">${r.timeStr}</span>` : '';
             
@@ -1896,7 +1918,7 @@ console.log('🔍 relogIndices:', relogIndices);
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
-                    <span style="color:#b8860b;font-size:0.75rem;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
+                    <span style="color:${r.shichen ? this.getShichenColor(r.shichen) : '#B8860B'};font-size:inherit;font-weight:600;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${(() => { if (!r.date) return r.timeStr || ''; const p = r.date.split(' ')[0].split('/'); return p.length >= 3 ? p[1] + '/' + p[2] + ' ' + (r.timeStr || '') : r.timeStr || ''; })()}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
                     ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#1a1a2e;font-size:0.75rem;">✅</span>'}
@@ -2345,7 +2367,8 @@ showAllRingsModal() {
         const sc = r.score < 0 ? r.score : `+${r.score}`;
         const relogIcon = r.isRelog ? ' 🔁' : '';
         const dayNight = r.isDaytime ? '☀️' : '🌙';
-        const shichenDisplay = r.shichen ? `${dayNight}${r.shichen}时` : '';
+        const shichenColor = r.shichen ? this.getShichenColor(r.shichen) : '#B8860B';
+        const shichenDisplay = r.shichen ? `<span style="color:${shichenColor};font-weight:600;">${dayNight}${r.shichen}时</span>` : '';
         let timeDisplay = r.timeStr || '';
         if (r.date) {
             const parts = r.date.split(' ')[0].split('/');
@@ -2360,7 +2383,7 @@ showAllRingsModal() {
             <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                 <span style="font-weight:600;color:#1f3b53;min-width:40px;">#${r.taskIndex}</span>
                 <span style="color:${labelColor};min-width:60px;">${label}${relogIcon}</span>
-                <span style="color:#b8860b;min-width:50px;">${shichenDisplay}</span>
+                <span style="min-width:50px;">${shichenDisplay}</span>
                 <span style="color:#1a1a2e;min-width:60px;">${timeDisplay}</span>
                 <span style="color:#1a1a2e;">💰${r.cost.toFixed(1)} ⭐${sc}</span>
             </div>
