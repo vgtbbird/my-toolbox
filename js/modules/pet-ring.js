@@ -1834,8 +1834,17 @@ console.log('🔍 relogIndices:', relogIndices);
 
         // 🆕 记录时辰参数
         const now = new Date();
-        const timestamp = now.getTime();
-        const shichen = this.getShichen(timestamp);
+        const nowTimestamp = now.getTime();
+        
+        // 第1环用当前时间；第2环及以后用上一环的时间
+        let recordTimestamp;
+        if (this.records.length === 0) {
+            recordTimestamp = nowTimestamp;  // 第1环
+        } else {
+            recordTimestamp = this.records[this.records.length - 1].timestamp || nowTimestamp;
+        }
+        const recordDate = new Date(recordTimestamp);
+        const shichen = this.getShichen(recordTimestamp);
 
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -1850,13 +1859,17 @@ console.log('🔍 relogIndices:', relogIndices);
             date: now.toLocaleString(),
             
             // 🆕 时辰参数
+            timestamp: recordTimestamp,
+            clickTimestamp: nowTimestamp,  // 记录点击时刻（备用）
+            
+            // 🆕 时辰参数
             timestamp: timestamp,
             shichen: shichen.name,
             shichenIndex: shichen.index,
             halfHour: shichen.halfHour,
             secondsInHalfHour: shichen.secondsInHalfHour,
             isDaytime: shichen.isDaytime,
-            timeStr: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`
         });
         this.render();
         this.updateRelogAnalysis();
@@ -1883,8 +1896,17 @@ console.log('🔍 relogIndices:', relogIndices);
 
         // 🆕 记录时辰参数
         const now = new Date();
-        const timestamp = now.getTime();
-        const shichen = this.getShichen(timestamp);
+        const nowTimestamp = now.getTime();
+        
+        // 第1环用当前时间；第2环及以后用上一环的时间
+        let recordTimestamp;
+        if (this.records.length === 0) {
+            recordTimestamp = nowTimestamp;
+        } else {
+            recordTimestamp = this.records[this.records.length - 1].timestamp || nowTimestamp;
+        }
+        const recordDate = new Date(recordTimestamp);
+        const shichen = this.getShichen(recordTimestamp);
 
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -1900,13 +1922,14 @@ console.log('🔍 relogIndices:', relogIndices);
             date: now.toLocaleString(),
             
             // 🆕 时辰参数
-            timestamp: timestamp,
+            timestamp: recordTimestamp,
+            clickTimestamp: nowTimestamp,
             shichen: shichen.name,
             shichenIndex: shichen.index,
             halfHour: shichen.halfHour,
             secondsInHalfHour: shichen.secondsInHalfHour,
             isDaytime: shichen.isDaytime,
-            timeStr: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
+            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`
         });
         this.render();
         this.updateRelogAnalysis();
