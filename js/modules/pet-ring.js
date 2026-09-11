@@ -1755,8 +1755,14 @@ showRingsDetailModal(entry) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
 
     let html = `
-        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:650px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
+            <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);resize:both;overflow:auto;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
+                <div style="display:flex;gap:4px;">
+                    <button id="ringsDetailSmaller" style="background:#dce5ef;border:none;border-radius:20px;padding:2px 10px;font-size:0.7rem;cursor:pointer;color:#1f3b53;">缩小</button>
+                    <button id="ringsDetailLarger" style="background:#6b8baa;color:#fff;border:none;border-radius:20px;padding:2px 10px;font-size:0.7rem;cursor:pointer;">放大</button>
+                </div>
+            </div>
             <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:8px;">${entry.date || '未知日期'}</div>
             
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:10px;border:1px solid #dce5ef;">
@@ -1899,6 +1905,21 @@ console.log('🔍 relogIndices:', relogIndices);
 
     overlay.innerHTML = html;
     document.body.appendChild(overlay);
+
+        // 🆕 放大/缩小按钮
+    const detailBox = document.getElementById('ringsDetailBox');
+    if (detailBox) {
+        document.getElementById('ringsDetailLarger').addEventListener('click', () => {
+            const currentMaxWidth = parseInt(detailBox.style.maxWidth) || 1200;
+            detailBox.style.maxWidth = Math.min(currentMaxWidth + 200, 1800) + 'px';
+            detailBox.style.width = Math.min(currentMaxWidth + 200, 1800) + 'px';
+        });
+        document.getElementById('ringsDetailSmaller').addEventListener('click', () => {
+            const currentMaxWidth = parseInt(detailBox.style.maxWidth) || 1200;
+            detailBox.style.maxWidth = Math.max(currentMaxWidth - 200, 500) + 'px';
+            detailBox.style.width = Math.max(currentMaxWidth - 200, 500) + 'px';
+        });
+    }
 
     document.getElementById('ringsDetailClose').addEventListener('click', () => {
         overlay.remove();
