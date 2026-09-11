@@ -1836,12 +1836,12 @@ console.log('🔍 relogIndices:', relogIndices);
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用当前时间；第2环及以后用上一环的时间
+        // 第1环用当前时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (this.records.length === 0) {
-            recordTimestamp = nowTimestamp;  // 第1环
+            recordTimestamp = nowTimestamp;  // 第1环特殊
         } else {
-            recordTimestamp = this.records[this.records.length - 1].timestamp || nowTimestamp;
+            recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
@@ -1858,9 +1858,9 @@ console.log('🔍 relogIndices:', relogIndices);
             isRelog: isRelog,
             date: recordDate.toLocaleString(),
             
-            // 🆕 时辰参数
+            // 🆕 时辰参数（当前环的生成时间）
             timestamp: recordTimestamp,
-            clickTimestamp: nowTimestamp,  // 记录点击时刻（备用）
+            clickTimestamp: nowTimestamp,
             shichen: shichen.name,
             shichenIndex: shichen.index,
             halfHour: shichen.halfHour,
@@ -1871,6 +1871,7 @@ console.log('🔍 relogIndices:', relogIndices);
         this.render();
         this.updateRelogAnalysis();
     },
+    
 
     addDeduct(key) {
         if (this.pendingSettle) {
@@ -1895,12 +1896,12 @@ console.log('🔍 relogIndices:', relogIndices);
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用当前时间；第2环及以后用上一环的时间
+        // 第1环用当前时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (this.records.length === 0) {
             recordTimestamp = nowTimestamp;
         } else {
-            recordTimestamp = this.records[this.records.length - 1].timestamp || nowTimestamp;
+            recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
