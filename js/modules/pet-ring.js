@@ -147,6 +147,15 @@ const PetRingModule = {
             shichenEl.textContent = shichen.name + '时';
             shichenEl.style.color = '#B8860B';
         }
+
+         // 🆕 当前时辰已过去的时间（正计时）
+        const elapsedEl = document.getElementById('prShichenElapsed');
+        if (elapsedEl) {
+            const elapsed = shichen.secondsInHalfHour % 150;  // 当前时辰内已经过秒数
+            const m = Math.floor(elapsed / 60);
+            const s = Math.floor(elapsed % 60);
+            elapsedEl.textContent = `(${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')})`;
+        }
         
         // 下时辰（显示具体时辰名 + 倒计时，红色）
         const nextShichenEl = document.getElementById('prNextShichenCountdown');
@@ -1027,7 +1036,10 @@ showFullSettleModal(stats) {
 
             <div class="stats-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
                 <div class="stat-item"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
-                <div class="stat-item"><div class="num" id="prCurrentShichen">--</div><div class="label">⏱️ 当前时辰</div></div>
+                <div class="stat-item">
+                    <div class="num" id="prCurrentShichen">--</div>
+                    <div class="label">⏱️ 当前时辰 <span id="prShichenElapsed" style="color:#5a7a94;font-size:0.6rem;">(00:00)</span></div>
+                </div>
                 <div class="stat-item"><div class="num" id="prNextShichenCountdown" style="font-size:0.85rem;">--</div><div class="label">⏳ 下时辰</div></div>
                 <div class="stat-item"><div class="num" id="prNextRefreshCountdown">--:--</div><div class="label">🔄 系统刷新</div></div>
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
