@@ -167,10 +167,37 @@ const PetRingModule = {
             nextShichenEl.style.color = '#c0392b';
         }
         
-        // 系统刷新倒计时
-        const refreshEl = document.getElementById('prNextRefreshCountdown');
-        if (refreshEl) {
-            refreshEl.textContent = this.formatCountdown(this.getNextRefreshCountdown());
+         // 系统刷新倒计时（基于跑商二刷）
+           const refreshEl = document.getElementById('prNextRefreshCountdown');
+           if (refreshEl) {
+            const refreshCountdown = this.getNextShopRefreshCountdown();
+            refreshEl.textContent = this.formatCountdown(refreshCountdown);
+            
+            // 🆕 计算刷新点对应的时辰
+            const config = this.getShopRefreshConfig();
+            const now2 = new Date();
+            const minute = now2.getMinutes();
+            const second = now2.getSeconds();
+            const nowSec = minute * 60 + second;
+            
+            const baseMinute = Math.floor(minute / 10) * 10;
+            let targetMinute = baseMinute + config.secondMinute;
+            let targetSec = targetMinute * 60 + config.secondSecond;
+            
+            if (targetSec < nowSec) {
+                targetMinute += 10;
+                targetSec = targetMinute * 60 + config.secondSecond;
+            }
+            
+            const targetDate = new Date(now2);
+            targetDate.setMinutes(targetMinute, config.secondSecond, 0);
+            
+            const refreshShichen = this.getShichen(targetDate.getTime());
+            const shichenEl = document.getElementById('prRefreshShichen');
+            if (shichenEl) {
+                const dayNight = refreshShichen.isDaytime ? '☀️' : '🌙';
+                shichenEl.textContent = `(${dayNight}${refreshShichen.name}时)`;
+            }
         }
     },
 
@@ -777,6 +804,42 @@ showFullSettleModal(stats) {
         document.getElementById('settleModal').classList.add('show');
     },
 
+        // 🆕 读取跑商模块的二刷配置
+    getShopRefreshConfig() {
+        try {
+            const shopData = Storage.get('shopHelper', {});
+            return {
+                secondMinute: shopData.secondMinute !== undefined ? shopData.secondMinute : 3,
+                secondSecond: shopData.secondSecond !== undefined ? shopData.secondSecond : 20
+            };
+        } catch (e) {
+            return { secondMinute: 3, secondSecond: 20 };
+        }
+    },
+
+    // 🆕 距离下次刷新倒计时（基于跑商二刷配置）
+    getNextShopRefreshCountdown() {
+        const config = this.getShopRefreshConfig();
+        const now = new Date();
+        const minute = now.getMinutes();
+        const second = now.getSeconds();
+        
+        const baseMinute = Math.floor(minute / 10) * 10;
+        let targetMinute = baseMinute + config.secondMinute;
+        let targetSecond = config.secondSecond;
+        
+        const nowSec = minute * 60 + second;
+        const targetSec = targetMinute * 60 + targetSecond;
+        
+        let diff = targetSec - nowSec;
+        if (diff < 0) {
+            diff += 600;
+        }
+        
+        return diff;
+    },
+
+
     // ========== 时辰系统 ==========
     // 🆕 获取当前时辰信息
     getShichen(timestamp) {
@@ -1041,7 +1104,10 @@ showFullSettleModal(stats) {
                     <div class="label">⏱️ 当前时辰 <span id="prShichenElapsed" style="color:#5a7a94;font-size:0.6rem;">(00:00)</span></div>
                 </div>
                 <div class="stat-item"><div class="num" id="prNextShichenCountdown" style="font-size:0.85rem;">--</div><div class="label">⏳ 下时辰</div></div>
-                <div class="stat-item"><div class="num" id="prNextRefreshCountdown">--:--</div><div class="label">🔄 系统刷新</div></div>
+               <div class="stat-item">
+                    <div class="num" id="prNextRefreshCountdown">--:--</div>
+                    <div class="label">🔄 下次刷新 <span id="prRefreshShichen" style="color:#5a7a94;font-size:0.55rem;"></span></div>
+                </div>
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="prTotalScore">0</div><div class="label">⭐ 总积分</div></div>
                 <div class="stat-item">
