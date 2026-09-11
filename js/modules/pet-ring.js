@@ -614,8 +614,17 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
-                // 🆕 记录结算时的二刷配置
+        // 🆕 记录结算时的二刷配置 + 对应时辰
         const shopConfig = this.getShopRefreshConfig();
+        // 计算二刷时刻对应的时辰
+        const nowForShichen = new Date();
+        const shopTargetMinute = Math.floor(nowForShichen.getMinutes() / 10) * 10 + shopConfig.secondMinute;
+        const shopTargetSec = shopTargetMinute * 60 + shopConfig.secondSecond;
+        const shopTargetDate = new Date(nowForShichen);
+        shopTargetDate.setMinutes(shopTargetMinute, shopConfig.secondSecond, 0);
+        const shopShichen = this.getShichen(shopTargetDate.getTime());
+        shopConfig.shichen = shopShichen.name;
+        shopConfig.isDaytime = shopShichen.isDaytime;
         const entry = {
             date: new Date().toLocaleString(),
             ringCount: stats.ringCount,
@@ -1770,7 +1779,7 @@ showRingsDetailModal(entry) {
                 <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
                 <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : '<div></div>'}
-                ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
+                ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong> ${entry.shopRefreshConfig.shichen ? `<span style="color:#B8860B;font-size:0.75rem;">(${entry.shopRefreshConfig.isDaytime ? '☀️' : '🌙'}${entry.shopRefreshConfig.shichen}时)</span>` : ''}</div>` : ''}
             </div>
 
             <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
