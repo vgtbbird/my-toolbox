@@ -131,6 +131,7 @@ const PetRingModule = {
         const now = new Date();
         const timestamp = now.getTime();
         const shichen = this.getShichen(timestamp);
+    
         
         // 当前时辰（显示时辰名 + 已过去时间）
         const shichenEl = document.getElementById('prCurrentShichen');
@@ -192,6 +193,24 @@ const PetRingModule = {
                 const dayNight = refreshShichen.isDaytime ? '☀️' : '🌙';
                 shichenEl.innerHTML = `🔄 下次刷新 <span style="color:#c0392b;font-size:inherit;font-weight:600;">${dayNight}${refreshShichen.name}时</span>`;
             }
+        }
+
+               // 🆕 本轮记录标题右侧显示当前环的序号 + 时辰
+        const currentRingShichenEl = document.getElementById('prCurrentRingShichen');
+        if (currentRingShichenEl) {
+            const currentRingIndex = this.records.length + 1;  // 即将要跑的环
+            let ringShichen;
+            if (this.records.length === 0) {
+                // 还没开始跑，用当前时辰
+                ringShichen = shichen;
+            } else {
+                // 用上一环的点击时间
+                const lastRecord = this.records[this.records.length - 1];
+                const nextShichenTimestamp = lastRecord.clickTimestamp || Date.now();
+                ringShichen = this.getShichen(nextShichenTimestamp);
+            }
+            const dayNight = ringShichen.isDaytime ? '☀️' : '🌙';
+            currentRingShichenEl.textContent = `第${currentRingIndex}环: ${dayNight}${ringShichen.name}时`;
         }
     },
 
@@ -1137,7 +1156,7 @@ showFullSettleModal(stats) {
             </div>
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
-                    <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span></div>
+                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span></div>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="prHistoryBody">
