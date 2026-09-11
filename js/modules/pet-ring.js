@@ -2184,10 +2184,11 @@ showAllRingsModal() {
         const timeDisplay = r.timeStr || '';
         const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
         
+        const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1f3b53';
         listHtml += `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                 <span style="font-weight:600;color:#1f3b53;min-width:40px;">#${r.taskIndex}</span>
-                <span style="color:#1f3b53;min-width:60px;">${label}${relogIcon}</span>
+                <span style="color:${labelColor};min-width:60px;">${label}${relogIcon}</span>
                 <span style="color:#b8860b;min-width:50px;">${shichenDisplay}</span>
                 <span style="color:#1a1a2e;min-width:60px;">${timeDisplay}</span>
                 <span style="color:#1a1a2e;">💰${r.cost.toFixed(1)} ⭐${sc}</span>
