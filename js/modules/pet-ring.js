@@ -1779,7 +1779,7 @@ console.log('🔍 relogIndices:', relogIndices);
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
                     <span style="color:#b8860b;font-size:0.75rem;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
-                    <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${r.timeStr || ''}</span>
+                    <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${(() => { if (!r.date) return r.timeStr || ''; const p = r.date.split(' ')[0].split('/'); return p.length >= 3 ? p[1] + '/' + p[2] + ' ' + (r.timeStr || '') : r.timeStr || ''; })()}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
                     ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#1a1a2e;font-size:0.75rem;">✅</span>'}
                 </div>
@@ -1856,14 +1856,11 @@ console.log('🔍 relogIndices:', relogIndices);
             ringPoints: this.getRingPoints(idx), 
             isDeduct: false,
             isRelog: isRelog,
-            date: now.toLocaleString(),
+            date: recordDate.toLocaleString(),
             
             // 🆕 时辰参数
             timestamp: recordTimestamp,
             clickTimestamp: nowTimestamp,  // 记录点击时刻（备用）
-            
-            // 🆕 时辰参数
-            timestamp: timestamp,
             shichen: shichen.name,
             shichenIndex: shichen.index,
             halfHour: shichen.halfHour,
@@ -1919,7 +1916,7 @@ console.log('🔍 relogIndices:', relogIndices);
             isDeduct: true,
             isRelog: isRelog,
             label: type ? type.label : key,
-            date: now.toLocaleString(),
+            date: recordDate.toLocaleString(),
             
             // 🆕 时辰参数
             timestamp: recordTimestamp,
@@ -2166,7 +2163,17 @@ updateHistory() {
             const dayNight = r.isDaytime ? '☀️' : '🌙';
             shichenDisplay = `<span style="color:#b8860b;font-size:0.7rem;">${dayNight}${r.shichen}时</span>`;
         }
-         const timeDisplay = r.timeStr ? `<span style="color:#1a1a2e;font-size:0.65rem;">${r.timeStr}</span>` : '';
+        let timeDisplay = '';
+        if (r.timeStr) {
+            let shortDate = '';
+            if (r.date) {
+                const parts = r.date.split(' ')[0].split('/');
+                if (parts.length >= 3) {
+                    shortDate = `${parts[1]}/${parts[2]}`;
+                }
+            }
+            timeDisplay = `<span style="color:#1a1a2e;font-size:0.65rem;">${shortDate} ${r.timeStr}</span>`;
+        }
         
         const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1a1a2e';
         html += `<div class="history-item">
@@ -2205,7 +2212,13 @@ showAllRingsModal() {
         const relogIcon = r.isRelog ? ' 🔁' : '';
         const dayNight = r.isDaytime ? '☀️' : '🌙';
         const shichenDisplay = r.shichen ? `${dayNight}${r.shichen}时` : '';
-        const timeDisplay = r.timeStr || '';
+        let timeDisplay = r.timeStr || '';
+        if (r.date) {
+            const parts = r.date.split(' ')[0].split('/');
+            if (parts.length >= 3) {
+                timeDisplay = `${parts[1]}/${parts[2]} ${timeDisplay}`;
+            }
+        }
         const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
         
         const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1f3b53';
