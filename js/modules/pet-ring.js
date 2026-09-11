@@ -1792,7 +1792,7 @@ showRingsDetailModal(entry) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
 
     let html = `
-            <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);resize:both;overflow:auto;">
+            <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
                 <div style="display:flex;gap:4px;">
@@ -1808,6 +1808,15 @@ showRingsDetailModal(entry) {
                 <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : '<div></div>'}
                 ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong> ${entry.shopRefreshConfig.shichen ? `<span style="color:#B8860B;font-size:0.75rem;">(${entry.shopRefreshConfig.isDaytime ? '☀️' : '🌙'}${entry.shopRefreshConfig.shichen}时)</span>` : ''}</div>` : ''}
+            </div>
+
+             <!-- 🆕 时辰筛选区 -->
+            <div id="ringsShichenFilter" style="margin-bottom:10px;padding:8px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
+                <div style="font-weight:700;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰筛选</div>
+                <div id="ringsShichenBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                <div id="ringsShichenStats" style="font-size:0.75rem;color:#1f3b53;padding:6px 8px;background:white;border-radius:8px;border:1px solid #e8eef5;">
+                    点击上方时辰查看该时辰的任务分布
+                </div>
             </div>
 
             <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
@@ -1893,7 +1902,7 @@ console.log('🔍 relogIndices:', relogIndices);
     if (rings.length > 0) {
         html += `
             <div style="margin-bottom:6px;font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
-            <div style="max-height:300px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+            <div style="max-height:none;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
         `;
         for (let r of rings) {
             // 🆕 直接使用保存的 label，如果没有则用 getTaskLabel
@@ -1914,8 +1923,8 @@ console.log('🔍 relogIndices:', relogIndices);
             }
             const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.6rem;">${r.timeStr}</span>` : '';
             
-            html += `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
+                 html += `
+                    <div class="ring-detail-row" data-shichen="${r.shichen || ''}" style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
                     <span style="color:${r.shichen ? this.getShichenColor(r.shichen) : '#B8860B'};font-size:inherit;font-weight:600;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
@@ -1959,12 +1968,108 @@ console.log('🔍 relogIndices:', relogIndices);
         });
     }
 
+    // 🆕 时辰筛选逻辑
+    const shichenBtnContainer = document.getElementById('ringsShichenBtns');
+    const shichenStatsContainer = document.getElementById('ringsShichenStats');
+    const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+    const SHICHEN_COLORS = this.SHICHEN_COLORS || {};
+
+    // 统计每个时辰的数据
+    function calcShichenStats(filterShichen) {
+        const stats = { total: 0, typeCount: {} };
+        for (let r of rings) {
+            if (!r.shichen) continue;
+            if (filterShichen && r.shichen !== filterShichen) continue;
+            stats.total++;
+            stats.typeCount[r.typeKey] = (stats.typeCount[r.typeKey] || 0) + 1;
+        }
+        return stats;
+    }
+
+    function renderShichenStats(filterShichen) {
+        const stats = calcShichenStats(filterShichen);
+        if (stats.total === 0) {
+            shichenStatsContainer.innerHTML = '该时辰暂无数据';
+            return;
+        }
+        
+        // 找人 vs 物品
+        const findCount = stats.typeCount['find'] || 0;
+        const findPct = Math.round((findCount / stats.total) * 100);
+        const itemCount = stats.total - findCount;
+        const itemPct = Math.round((itemCount / stats.total) * 100);
+        
+        let html = `<div style="margin-bottom:6px;font-weight:700;">共 ${stats.total} 环 | 🔍找人 ${findCount}次 (${findPct}%) | 📦物品 ${itemCount}次 (${itemPct}%)</div>`;
+        html += `<div style="display:flex;flex-wrap:wrap;gap:3px;">`;
+        
+        const sortedTypes = Object.entries(stats.typeCount).sort((a, b) => b[1] - a[1]);
+        for (let [key, count] of sortedTypes) {
+            const type = this.ITEM_TYPES.find(t => t.key === key);
+            const label = type ? type.label : key;
+            const pct = Math.round((count / stats.total) * 100);
+            html += `<span style="display:inline-block;background:#f0f5fb;padding:2px 8px;border-radius:10px;font-size:0.7rem;">${label}: ${count}次 (${pct}%)</span>`;
+        }
+        html += `</div>`;
+        
+        shichenStatsContainer.innerHTML = html;
+    }
+
+    // 渲染时辰按钮
+    let btnsHtml = `<button class="shichen-filter-btn" data-shichen="" style="padding:2px 10px;border-radius:12px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">全部</button>`;
+    for (let name of shichenNames) {
+        // 检查这个时辰有没有数据
+        const hasData = rings.some(r => r.shichen === name);
+        const color = SHICHEN_COLORS[name] || '#B8860B';
+        if (!hasData) {
+            btnsHtml += `<button disabled style="padding:2px 10px;border-radius:12px;border:1px solid #e0e0e0;background:#f5f5f5;color:#ccc;font-size:0.7rem;">${name}</button>`;
+        } else {
+            btnsHtml += `<button class="shichen-filter-btn" data-shichen="${name}" style="padding:2px 10px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;color:${color};cursor:pointer;font-size:0.7rem;font-weight:600;">${name}时</button>`;
+        }
+    }
+    shichenBtnContainer.innerHTML = btnsHtml;
+
+    // 绑定按钮事件
+    shichenBtnContainer.querySelectorAll('.shichen-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // 重置所有按钮
+            shichenBtnContainer.querySelectorAll('.shichen-filter-btn').forEach(b => {
+                const name = b.dataset.shichen;
+                const color = name ? (SHICHEN_COLORS[name] || '#B8860B') : '#4CAF50';
+                b.style.background = '#f0f4f8';
+                b.style.borderColor = '#bccad9';
+                b.style.color = color;
+            });
+            // 高亮当前按钮
+            this.style.background = '#4CAF50';
+            this.style.borderColor = '#4CAF50';
+            this.style.color = '#fff';
+            
+            const filterShichen = this.dataset.shichen || '';
+            renderShichenStats(filterShichen);
+            
+            // 🆕 如果筛选了具体时辰，下方每环详情也过滤
+            const ringRows = overlay.querySelectorAll('.ring-detail-row');
+            ringRows.forEach(row => {
+                const rowShichen = row.dataset.shichen || '';
+                if (filterShichen && rowShichen !== filterShichen) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = 'flex';
+                }
+            });
+        });
+    });
+
+    // 初始化：显示全部
+    renderShichenStats('');
+    
     document.getElementById('ringsDetailClose').addEventListener('click', () => {
         overlay.remove();
     });
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.remove();
-    });
+    // 去掉点击遮罩关闭，防止拖动时误关
+    // overlay.addEventListener('click', (e) => {
+    //     if (e.target === overlay) overlay.remove();
+    // });
 },
         
 
