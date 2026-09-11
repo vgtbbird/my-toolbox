@@ -2128,7 +2128,7 @@ updateHistory() {
             const dayNight = r.isDaytime ? '☀️' : '🌙';
             shichenDisplay = `<span style="color:#b8860b;font-size:0.7rem;">${dayNight}${r.shichen}时</span>`;
         }
-        const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.65rem;">${r.timeStr}</span>` : '';
+         const timeDisplay = r.timeStr ? `<span style="color:#1a1a2e;font-size:0.65rem;">${r.timeStr}</span>` : '';
         
         html += `<div class="history-item">
             <div class="info">
