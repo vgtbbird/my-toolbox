@@ -2245,7 +2245,7 @@ updateHistory() {
                     shortDate = `${parts[1]}/${parts[2]}`;
                 }
             }
-            timeDisplay = `<span style="color:${this.uiSettings.textColor || '#1a1a2e'} !important;font-size:0.65rem;">${shortDate} ${r.timeStr}</span>`;
+           timeDisplay = `<span style="color:#1a1a2e;font-size:0.85rem;">${shortDate} ${r.timeStr}</span>`;
         }
         
         const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1a1a2e';
