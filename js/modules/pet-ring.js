@@ -614,6 +614,8 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
+                // 🆕 记录结算时的二刷配置
+        const shopConfig = this.getShopRefreshConfig();
         const entry = {
             date: new Date().toLocaleString(),
             ringCount: stats.ringCount,
@@ -637,7 +639,8 @@ showFullSettleModal(stats) {
             rewardType: rewardType,
             prediction20: this._prediction20 || null,
             rings: ringsData,
-            relogCount: ringsData.filter(r => r.isRelog).length
+            relogCount: ringsData.filter(r => r.isRelog).length,
+            shopRefreshConfig: shopConfig  // 🆕 二刷配置
         };
 
         this.history.push(entry);
@@ -699,6 +702,9 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
+        // 🆕 记录结算时的二刷配置
+        const shopConfig = this.getShopRefreshConfig();
+
         const entry = {
             date: new Date().toLocaleString(),
             ringCount: stats.ringCount,
@@ -719,7 +725,8 @@ showFullSettleModal(stats) {
             rewardType: null,
             prediction20: this._prediction20 || null,
             rings: ringsData,  // 🆕 保存每环详细数据
-            relogCount: ringsData.filter(r => r.isRelog).length  // 🆕 重登次数
+            relogCount: ringsData.filter(r => r.isRelog).length,  // 🆕 重登次数
+            shopRefreshConfig: shopConfig  // 🆕 二刷配置
         };
         this.history.push(entry);
         this.records = [];
@@ -1757,6 +1764,7 @@ showRingsDetailModal(entry) {
                 <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
                 <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : '<div></div>'}
+                ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
             </div>
 
             <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
