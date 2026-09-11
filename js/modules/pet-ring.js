@@ -1764,9 +1764,9 @@ console.log('🔍 relogIndices:', relogIndices);
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:#1f3b53;min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
                     <span style="color:#b8860b;font-size:0.75rem;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
-                    <span style="color:#8ab0c8;font-size:0.75rem;min-width:60px;">${r.timeStr || ''}</span>
-                    <span style="color:#5a7a94;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
-                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#5a7a94;font-size:0.75rem;">✅</span>'}
+                    <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${r.timeStr || ''}</span>
+                    <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
+                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#1a1a2e;font-size:0.75rem;">✅</span>'}
                 </div>
             `;
         }
