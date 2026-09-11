@@ -1068,7 +1068,10 @@ showFullSettleModal(stats) {
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="prHistoryBody">
-                    <div class="history-section" id="prHistoryList"><div class="empty-history">暂无记录</div></div>
+                    <div class="history-section" id="prHistoryList" style="max-height:200px;overflow-y:auto;"><div class="empty-history">暂无记录</div></div>
+                    <div style="text-align:right;margin-top:4px;">
+                        <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">📋 查看全部</button>
+                    </div>
                 </div>
             </div>
 
@@ -1389,8 +1392,16 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
+        
+
         // ===== 撤销 =====
         document.getElementById('prUndoBtn').addEventListener('click', () => this.undoRecord());
+
+                // ===== 🆕 查看本轮全部记录 =====
+        const viewAllBtn = document.getElementById('prViewAllRingsBtn');
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', () => this.showAllRingsModal());
+        }
 
         // ===== 提前结束 =====
         document.getElementById('prEndBtn').addEventListener('click', () => {
@@ -2117,8 +2128,8 @@ updateHistory() {
         return;
     }
 
-     let html = '';
-    const records = this.records.slice(-30).reverse();
+    let html = '';
+    const records = this.records.slice().reverse();  // 显示全部
     for (let r of records) {
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : (r.label || r.typeKey);
@@ -2146,6 +2157,63 @@ updateHistory() {
         </div>`;
     }
     list.innerHTML = html;
+},
+
+    
+
+    // 🆕 显示本轮全部记录弹窗
+showAllRingsModal() {
+    if (this.records.length === 0) {
+        alert('暂无记录');
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+
+    let listHtml = '';
+    for (let i = 0; i < this.records.length; i++) {
+        const r = this.records[i];
+        const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
+        const label = type ? type.label : (r.label || r.typeKey);
+        const sc = r.score < 0 ? r.score : `+${r.score}`;
+        const relogIcon = r.isRelog ? ' 🔁' : '';
+        const dayNight = r.isDaytime ? '☀️' : '🌙';
+        const shichenDisplay = r.shichen ? `${dayNight}${r.shichen}时` : '';
+        const timeDisplay = r.timeStr || '';
+        const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
+        
+        listHtml += `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
+                <span style="font-weight:600;color:#1f3b53;min-width:40px;">#${r.taskIndex}</span>
+                <span style="color:#1f3b53;min-width:60px;">${label}${relogIcon}</span>
+                <span style="color:#b8860b;min-width:50px;">${shichenDisplay}</span>
+                <span style="color:#1a1a2e;min-width:60px;">${timeDisplay}</span>
+                <span style="color:#1a1a2e;">💰${r.cost.toFixed(1)} ⭐${sc}</span>
+            </div>
+        `;
+    }
+
+    overlay.innerHTML = `
+        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:650px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📋 本轮全部记录</h3>
+            <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:10px;">共 ${this.records.length} 环</div>
+            <div style="max-height:500px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+                ${listHtml}
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                <button class="btn-cancel" id="allRingsClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('allRingsClose').addEventListener('click', () => {
+        overlay.remove();
+    });
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
 },
 
 updateRelogAnalysis() {
