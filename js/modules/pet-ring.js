@@ -141,20 +141,21 @@ const PetRingModule = {
             timeEl.textContent = `${h}:${m}:${s}`;
         }
         
-        // 当前时辰
+         // 当前时辰（绿色）
         const shichenEl = document.getElementById('prCurrentShichen');
         if (shichenEl) {
             shichenEl.textContent = shichen.name + '时';
-            shichenEl.style.color = shichen.isDaytime ? '#b8860b' : '#4a6a8a';
+            shichenEl.style.color = '#2d6b2d';
         }
         
-        // 下时辰（显示具体时辰名 + 倒计时）
+        // 下时辰（显示具体时辰名 + 倒计时，红色）
         const nextShichenEl = document.getElementById('prNextShichenCountdown');
         if (nextShichenEl) {
             const nextIndex = (shichen.index + 1) % 12;
             const nextName = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][nextIndex];
             const countdown = this.formatCountdown(shichen.secondsToNextShichen);
             nextShichenEl.textContent = `${nextName}时 ${countdown}`;
+            nextShichenEl.style.color = '#c0392b';
         }
         
         // 系统刷新倒计时
