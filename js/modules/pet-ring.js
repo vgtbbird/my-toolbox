@@ -132,19 +132,13 @@ const PetRingModule = {
         const timestamp = now.getTime();
         const shichen = this.getShichen(timestamp);
         
-        // 当前时间
-        const timeEl = document.getElementById('prCurrentTime');
-        if (timeEl) {
-            const h = String(now.getHours()).padStart(2, '0');
-            const m = String(now.getMinutes()).padStart(2, '0');
-            const s = String(now.getSeconds()).padStart(2, '0');
-            timeEl.textContent = `${h}:${m}:${s}`;
-        }
-        
-         // 当前时辰（绿色）
+        // 当前时辰（显示时辰名 + 已过去时间）
         const shichenEl = document.getElementById('prCurrentShichen');
         if (shichenEl) {
-            shichenEl.textContent = shichen.name + '时';
+            const elapsed = shichen.secondsInHalfHour % 150;
+            const m = Math.floor(elapsed / 60);
+            const s = Math.floor(elapsed % 60);
+            shichenEl.textContent = `${shichen.name}时 ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             shichenEl.style.color = '#B8860B';
         }
 
@@ -1101,7 +1095,7 @@ showFullSettleModal(stats) {
                 <div class="stat-item"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
                 <div class="stat-item">
                     <div class="num" id="prCurrentShichen">--</div>
-                    <div class="label">⏱️ 当前时辰 <span id="prShichenElapsed" style="color:#1a1a2e;font-size:inherit;font-weight:600;">(00:00)</span></div>
+                    <div class="label">⏱️ 当前时辰</div>
                 </div>
                 <div class="stat-item"><div class="num" id="prNextShichenCountdown" style="font-size:0.85rem;">--</div><div class="label">⏳ 下时辰</div></div>
                <div class="stat-item">
