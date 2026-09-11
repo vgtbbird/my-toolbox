@@ -131,9 +131,17 @@ const PetRingModule = {
         const now = new Date();
         const timestamp = now.getTime();
         const shichen = this.getShichen(timestamp);
-    
         
-        // 当前时辰（显示时辰名 + 已过去时间）
+        // 当前时间
+        const timeEl = document.getElementById('prCurrentTime');
+        if (timeEl) {
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            timeEl.textContent = `${h}:${m}:${s}`;
+        }
+        
+        // 当前时辰（显示时辰名 + 已过去时间，暗金色）
         const shichenEl = document.getElementById('prCurrentShichen');
         if (shichenEl) {
             const elapsed = shichen.secondsInHalfHour % 150;
@@ -141,15 +149,6 @@ const PetRingModule = {
             const s = Math.floor(elapsed % 60);
             shichenEl.textContent = `${shichen.name}时 ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             shichenEl.style.color = '#B8860B';
-        }
-
-         // 🆕 当前时辰已过去的时间（正计时）
-        const elapsedEl = document.getElementById('prShichenElapsed');
-        if (elapsedEl) {
-            const elapsed = shichen.secondsInHalfHour % 150;  // 当前时辰内已经过秒数
-            const m = Math.floor(elapsed / 60);
-            const s = Math.floor(elapsed % 60);
-            elapsedEl.textContent = `(${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')})`;
         }
         
         // 下时辰（显示具体时辰名 + 倒计时，红色）
@@ -168,7 +167,7 @@ const PetRingModule = {
             const refreshCountdown = this.getNextShopRefreshCountdown();
             refreshEl.textContent = this.formatCountdown(refreshCountdown);
             
-            // 🆕 计算刷新点对应的时辰
+            // 计算刷新点对应的时辰
             const config = this.getShopRefreshConfig();
             const now2 = new Date();
             const minute = now2.getMinutes();
@@ -188,23 +187,21 @@ const PetRingModule = {
             targetDate.setMinutes(targetMinute, config.secondSecond, 0);
             
             const refreshShichen = this.getShichen(targetDate.getTime());
-            const shichenEl = document.getElementById('prRefreshShichen');
-            if (shichenEl) {
+            const shichenEl2 = document.getElementById('prRefreshShichen');
+            if (shichenEl2) {
                 const dayNight = refreshShichen.isDaytime ? '☀️' : '🌙';
-                shichenEl.innerHTML = `🔄 下次刷新 <span style="color:#c0392b;font-size:inherit;font-weight:600;">${dayNight}${refreshShichen.name}时</span>`;
+                shichenEl2.innerHTML = `🔄 下次刷新 <span style="color:#c0392b;font-size:inherit;font-weight:600;">${dayNight}${refreshShichen.name}时</span>`;
             }
         }
-
-               // 🆕 本轮记录标题右侧显示当前环的序号 + 时辰
+        
+        // 🆕 本轮记录标题右侧显示当前环的序号 + 时辰
         const currentRingShichenEl = document.getElementById('prCurrentRingShichen');
         if (currentRingShichenEl) {
-            const currentRingIndex = this.records.length + 1;  // 即将要跑的环
+            const currentRingIndex = this.records.length + 1;
             let ringShichen;
             if (this.records.length === 0) {
-                // 还没开始跑，用当前时辰
                 ringShichen = shichen;
             } else {
-                // 用上一环的点击时间
                 const lastRecord = this.records[this.records.length - 1];
                 const nextShichenTimestamp = lastRecord.clickTimestamp || Date.now();
                 ringShichen = this.getShichen(nextShichenTimestamp);
