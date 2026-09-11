@@ -711,8 +711,15 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
-        // 🆕 记录结算时的二刷配置
+        // 🆕 记录结算时的二刷配置 + 对应时辰
         const shopConfig = this.getShopRefreshConfig();
+        const nowForShichen = new Date();
+        const shopTargetMinute = Math.floor(nowForShichen.getMinutes() / 10) * 10 + shopConfig.secondMinute;
+        const shopTargetDate = new Date(nowForShichen);
+        shopTargetDate.setMinutes(shopTargetMinute, shopConfig.secondSecond, 0);
+        const shopShichen = this.getShichen(shopTargetDate.getTime());
+        shopConfig.shichen = shopShichen.name;
+        shopConfig.isDaytime = shopShichen.isDaytime;
 
         const entry = {
             date: new Date().toLocaleString(),
