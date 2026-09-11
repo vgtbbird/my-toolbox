@@ -1761,12 +1761,12 @@ console.log('🔍 relogIndices:', relogIndices);
             
             html += `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
-                    <span style="font-weight:600;color:#1f3b53;min-width:50px;">第${r.taskIndex}环</span>
-                    <span style="color:#1f3b53;min-width:60px;">${label}${relogIcon}</span>
-                    ${shichenDisplay}
-                    ${timeDisplay}
-                    <span style="color:#5a7a94;font-size:0.7rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
-                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.65rem;">🔁重登</span>' : '<span style="color:#5a7a94;font-size:0.65rem;">✅</span>'}
+                    <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
+                    <span style="color:#1f3b53;min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
+                    <span style="color:#b8860b;font-size:0.75rem;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
+                    <span style="color:#8ab0c8;font-size:0.75rem;min-width:60px;">${r.timeStr || ''}</span>
+                    <span style="color:#5a7a94;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
+                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#5a7a94;font-size:0.75rem;">✅</span>'}
                 </div>
             `;
         }
@@ -2114,17 +2114,28 @@ updateHistory() {
         return;
     }
 
-    let html = '';
+     let html = '';
     const records = this.records.slice(-30).reverse();
     for (let r of records) {
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : (r.label || r.typeKey);
         const sc = r.score < 0 ? r.score : `+${r.score}`;
         const relogIcon = r.isRelog ? ' 🔁' : '';
+        
+        // 🆕 时辰和时间显示
+        let shichenDisplay = '';
+        if (r.shichen) {
+            const dayNight = r.isDaytime ? '☀️' : '🌙';
+            shichenDisplay = `<span style="color:#b8860b;font-size:0.7rem;">${dayNight}${r.shichen}时</span>`;
+        }
+        const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.65rem;">${r.timeStr}</span>` : '';
+        
         html += `<div class="history-item">
             <div class="info">
                 <span style="font-weight:600;color:#1f3b53;min-width:36px;">#${r.taskIndex}</span>
                 <span style="background:${r.isRelog ? '#fdf8ee' : (r.isDeduct?'#f5d0d0':'#dce6f0')};padding:0 10px;border-radius:40px;font-size:0.7rem;">${label}${relogIcon}</span>
+                ${shichenDisplay}
+                ${timeDisplay}
                 <span>💰${r.cost.toFixed(1)}</span>
                 <span>⭐${sc}</span>
                 <span>📈+${r.ringPoints}</span>
