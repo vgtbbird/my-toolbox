@@ -1101,12 +1101,12 @@ showFullSettleModal(stats) {
                 <div class="stat-item"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
                 <div class="stat-item">
                     <div class="num" id="prCurrentShichen">--</div>
-                    <div class="label">⏱️ 当前时辰 <span id="prShichenElapsed" style="color:#5a7a94;font-size:0.6rem;">(00:00)</span></div>
+                    <div class="label">⏱️ 当前时辰 <span id="prShichenElapsed" style="color:#1a1a2e;font-size:inherit;font-weight:600;">(00:00)</span></div>
                 </div>
                 <div class="stat-item"><div class="num" id="prNextShichenCountdown" style="font-size:0.85rem;">--</div><div class="label">⏳ 下时辰</div></div>
                <div class="stat-item">
                     <div class="num" id="prNextRefreshCountdown">--:--</div>
-                    <div class="label">🔄 下次刷新 <span id="prRefreshShichen" style="color:#5a7a94;font-size:0.55rem;"></span></div>
+                    <div class="label">🔄 下次刷新 <span id="prRefreshShichen" style="color:#1a1a2e;font-size:inherit;font-weight:600;"></span></div>
                 </div>
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="prTotalScore">0</div><div class="label">⭐ 总积分</div></div>
@@ -2251,7 +2251,7 @@ updateHistory() {
                     shortDate = `${parts[1]}/${parts[2]}`;
                 }
             }
-            timeDisplay = `<span style="color:#1a1a2e;font-size:0.65rem;">${shortDate} ${r.timeStr}</span>`;
+            timeDisplay = `<span style="color:${this.uiSettings.textColor || '#1a1a2e'} !important;font-size:0.65rem;">${shortDate} ${r.timeStr}</span>`;
         }
         
         const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1a1a2e';
