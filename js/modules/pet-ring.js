@@ -2562,7 +2562,6 @@ updateRelogAnalysis() {
             </div>`;
         });
         document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
-    },
 
             // 🆕 时辰分析
         let shichenHtml = '';
@@ -2609,6 +2608,7 @@ updateRelogAnalysis() {
         if (shichenContainer) {
             shichenContainer.innerHTML = shichenHtml;
         }
+    },
 
     // ========== 导入 ==========
     importData() {
