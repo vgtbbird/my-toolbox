@@ -1975,7 +1975,7 @@ console.log('🔍 relogIndices:', relogIndices);
     const SHICHEN_COLORS = this.SHICHEN_COLORS || {};
 
     // 统计每个时辰的数据
-    function calcShichenStats(filterShichen) {
+    const calcShichenStats = (filterShichen) => {
         const stats = { total: 0, typeCount: {} };
         for (let r of rings) {
             if (!r.shichen) continue;
@@ -1984,14 +1984,14 @@ console.log('🔍 relogIndices:', relogIndices);
             stats.typeCount[r.typeKey] = (stats.typeCount[r.typeKey] || 0) + 1;
         }
         return stats;
-    }
+    };
 
-    function renderShichenStats(filterShichen) {
+      const renderShichenStats = (filterShichen) => {
         const stats = calcShichenStats(filterShichen);
         if (stats.total === 0) {
             shichenStatsContainer.innerHTML = '该时辰暂无数据';
             return;
-        }
+        };
         
         // 找人 vs 物品
         const findCount = stats.typeCount['find'] || 0;
