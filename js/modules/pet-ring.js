@@ -145,7 +145,7 @@ const PetRingModule = {
         const shichenEl = document.getElementById('prCurrentShichen');
         if (shichenEl) {
             shichenEl.textContent = shichen.name + '时';
-            shichenEl.style.color = '#2d6b2d';
+            shichenEl.style.color = '#B8860B';
         }
         
         // 下时辰（显示具体时辰名 + 倒计时，红色）
