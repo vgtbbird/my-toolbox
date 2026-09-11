@@ -100,6 +100,13 @@ const PetRingModule = {
         App.register(this);
         this.render();
         setTimeout(() => this.applyUISettings(), 150);
+        
+        // 🆕 启动时间和时辰定时器
+        if (this._timeTimer) clearInterval(this._timeTimer);
+        this._timeTimer = setInterval(() => {
+            this.updateTimeAndShichen();
+        }, 1000);
+        this.updateTimeAndShichen();
     },
 
     render() {
@@ -116,6 +123,42 @@ const PetRingModule = {
         setTimeout(() => this.applyUISettings(), 100);
         this.checkAutoSettle();
         this.updateRelogAnalysis();
+        this.updateTimeAndShichen();  
+    },
+
+        // 🆕 更新时间和时辰显示
+    updateTimeAndShichen() {
+        const now = new Date();
+        const timestamp = now.getTime();
+        const shichen = this.getShichen(timestamp);
+        
+        // 当前时间
+        const timeEl = document.getElementById('prCurrentTime');
+        if (timeEl) {
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            timeEl.textContent = `${h}:${m}:${s}`;
+        }
+        
+        // 当前时辰
+        const shichenEl = document.getElementById('prCurrentShichen');
+        if (shichenEl) {
+            shichenEl.textContent = shichen.name + '时';
+            shichenEl.style.color = shichen.isDaytime ? '#b8860b' : '#4a6a8a';
+        }
+        
+        // 下时辰倒计时
+        const nextShichenEl = document.getElementById('prNextShichenCountdown');
+        if (nextShichenEl) {
+            nextShichenEl.textContent = this.formatCountdown(shichen.secondsToNextShichen);
+        }
+        
+        // 系统刷新倒计时
+        const refreshEl = document.getElementById('prNextRefreshCountdown');
+        if (refreshEl) {
+            refreshEl.textContent = this.formatCountdown(this.getNextRefreshCountdown());
+        }
     },
 
     // ========== 数据操作 ==========
@@ -510,7 +553,15 @@ showFullSettleModal(stats) {
             ringPoints: r.ringPoints,
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
-            date: r.date
+            date: r.date,
+            // 🆕 时辰参数
+            timestamp: r.timestamp || null,
+            shichen: r.shichen || '',
+            shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
+            halfHour: r.halfHour !== undefined ? r.halfHour : -1,
+            secondsInHalfHour: r.secondsInHalfHour !== undefined ? r.secondsInHalfHour : -1,
+            isDaytime: r.isDaytime || false,
+            timeStr: r.timeStr || ''
         }));
 
         const entry = {
@@ -581,13 +632,21 @@ showFullSettleModal(stats) {
         const ringsData = this.records.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
-            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey, 
+            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
             cost: r.cost,
             score: r.score,
             ringPoints: r.ringPoints,
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
-            date: r.date
+            date: r.date,
+            // 🆕 时辰参数
+            timestamp: r.timestamp || null,
+            shichen: r.shichen || '',
+            shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
+            halfHour: r.halfHour !== undefined ? r.halfHour : -1,
+            secondsInHalfHour: r.secondsInHalfHour !== undefined ? r.secondsInHalfHour : -1,
+            isDaytime: r.isDaytime || false,
+            timeStr: r.timeStr || ''
         }));
 
         const entry = {
@@ -705,6 +764,54 @@ showFullSettleModal(stats) {
         document.getElementById('settleModal').classList.add('show');
     },
 
+    // ========== 时辰系统 ==========
+    // 🆕 获取当前时辰信息
+    getShichen(timestamp) {
+        const date = new Date(timestamp);
+        const minute = date.getMinutes();
+        const second = date.getSeconds();
+        const totalSeconds = minute * 60 + second;
+        
+        // 每半小时（1800秒）一轮12时辰
+        const halfHourIndex = Math.floor(totalSeconds / 1800);
+        const secondsInHalfHour = totalSeconds % 1800;
+        
+        // 每个时辰150秒（2.5分钟）
+        const shichenIndex = Math.floor(secondsInHalfHour / 150);
+        
+        const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+        
+        return {
+            name: shichenNames[shichenIndex],
+            index: shichenIndex,
+            halfHour: halfHourIndex,
+            secondsInHalfHour: secondsInHalfHour,
+            secondsToNextShichen: 150 - (secondsInHalfHour % 150),
+            isDaytime: shichenIndex >= 4 && shichenIndex <= 9
+        };
+    },
+
+    // 🆕 获取下次系统刷新倒计时（每10分钟一次）
+    getNextRefreshCountdown() {
+        const now = new Date();
+        const minute = now.getMinutes();
+        const second = now.getSeconds();
+        
+        const nextRefreshMinute = Math.ceil((minute + 1) / 10) * 10;
+        const minutesLeft = nextRefreshMinute - minute - 1;
+        const secondsLeft = 60 - second;
+        
+        return minutesLeft * 60 + secondsLeft;
+    },
+
+    // 🆕 格式化倒计时
+    formatCountdown(seconds) {
+        if (seconds < 0) seconds = 0;
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    },
+    
     // ========== 计算 ==========
     getRingPoints(index) {
         if (index < 9) return 3;
@@ -914,16 +1021,17 @@ showFullSettleModal(stats) {
                 </div>
             </div>
 
-            <div class="stats-grid">
+            <div class="stats-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+                <div class="stat-item"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
+                <div class="stat-item"><div class="num" id="prCurrentShichen">--</div><div class="label">⏱️ 当前时辰</div></div>
+                <div class="stat-item"><div class="num" id="prNextShichenCountdown">--:--</div><div class="label">⏳ 下时辰</div></div>
+                <div class="stat-item"><div class="num" id="prNextRefreshCountdown">--:--</div><div class="label">🔄 系统刷新</div></div>
                 <div class="stat-item"><div class="num" id="prTotalCost">10.0</div><div class="label">💰 总成本(万)</div></div>
                 <div class="stat-item"><div class="num" id="prTotalScore">0</div><div class="label">⭐ 总积分</div></div>
                 <div class="stat-item">
-                    <div class="num" id="prRingCount" style="font-size:1.2rem;font-weight:700;color:#1f3b53;">0 / 100 剩</div>
+                    <div class="num" id="prRingCount">0 / 100 剩</div>
                     <div class="label">📌 当前/剩余环数</div>
                 </div>
-                <div class="stat-item"><div class="num" id="prAvgCost">0</div><div class="label">📊 平均成本</div></div>
-                <div class="stat-item"><div class="num" id="prTotalPoints">0</div><div class="label">📈 修炼点</div></div>
-                <div class="stat-item" id="prProfitStat"><div class="num" id="prProfitDisplay">0</div><div class="label">💰 利润(万)</div></div>
             </div>
 
             <!-- 🔁 重登实时分析（放在任务类型上面） -->
@@ -1066,6 +1174,7 @@ showFullSettleModal(stats) {
                         </div>
                         <div id="prAnaPredictionCompare" style="padding:4px 0;margin:8px 0;"></div>
                         <div class="task-stats-row" id="prTaskStatsRow"></div>
+                        <div id="prShichenAnalysis"></div>
                         <div class="filter-row">
                             <div class="filter-item"><label>📅 日期从</label><input type="date" id="prFilterDateFrom"></div>
                             <div class="filter-item"><label>到</label><input type="date" id="prFilterDateTo"></div>
@@ -1641,12 +1750,23 @@ console.log('🔍 relogIndices:', relogIndices);
             }
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
+            
+            // 🆕 时辰显示
+            let shichenDisplay = '';
+            if (r.shichen) {
+                const dayNight = r.isDaytime ? '☀️' : '🌙';
+                shichenDisplay = `<span style="color:#b8860b;font-size:0.65rem;">${dayNight}${r.shichen}时</span>`;
+            }
+            const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.6rem;">${r.timeStr}</span>` : '';
+            
             html += `
-                <div style="display:flex;justify-content:space-between;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;">
-                    <span style="font-weight:600;color:#1f3b53;min-width:60px;">第${r.taskIndex}环</span>
-                    <span style="color:#1f3b53;">${label}${relogIcon}</span>
-                    <span style="color:#5a7a94;">💰${(r.cost || 0).toFixed(1)}万 ⭐${r.score || 0}</span>
-                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;">🔁 下线重登</span>' : '<span style="color:#5a7a94;">✅ 正常</span>'}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
+                    <span style="font-weight:600;color:#1f3b53;min-width:50px;">第${r.taskIndex}环</span>
+                    <span style="color:#1f3b53;min-width:60px;">${label}${relogIcon}</span>
+                    ${shichenDisplay}
+                    ${timeDisplay}
+                    <span style="color:#5a7a94;font-size:0.7rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
+                    ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.65rem;">🔁重登</span>' : '<span style="color:#5a7a94;font-size:0.65rem;">✅</span>'}
                 </div>
             `;
         }
@@ -1678,7 +1798,7 @@ console.log('🔍 relogIndices:', relogIndices);
 },
         
 
-    addRecord(key) {
+       addRecord(key) {
         if (this.pendingSettle) {
             alert('本轮已满100环，请先确认结算再继续！');
             return;
@@ -1694,8 +1814,13 @@ console.log('🔍 relogIndices:', relogIndices);
             this.pendingRelog = false;
             document.getElementById('prRelogStatus').textContent = '无待标记';
             document.getElementById('prRelogStatus').style.color = '#5a7a94';
-            document.getElementById('prCancelRelogBtn').style.display = 'none';  // 🆕 加这行
+            document.getElementById('prCancelRelogBtn').style.display = 'none';
         }
+
+        // 🆕 记录时辰参数
+        const now = new Date();
+        const timestamp = now.getTime();
+        const shichen = this.getShichen(timestamp);
 
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -1706,8 +1831,17 @@ console.log('🔍 relogIndices:', relogIndices);
             score, 
             ringPoints: this.getRingPoints(idx), 
             isDeduct: false,
-            isRelog: isRelog,  // 🆕 重登标记
-            date: new Date().toLocaleString()
+            isRelog: isRelog,
+            date: now.toLocaleString(),
+            
+            // 🆕 时辰参数
+            timestamp: timestamp,
+            shichen: shichen.name,
+            shichenIndex: shichen.index,
+            halfHour: shichen.halfHour,
+            secondsInHalfHour: shichen.secondsInHalfHour,
+            isDaytime: shichen.isDaytime,
+            timeStr: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
         });
         this.render();
         this.updateRelogAnalysis();
@@ -1724,12 +1858,18 @@ console.log('🔍 relogIndices:', relogIndices);
         const idx = this.records.length;
         
         // 🆕 检查是否有待标记的重登
+        const isRelog = this.pendingRelog || false;
         if (this.pendingRelog) {
             this.pendingRelog = false;
             document.getElementById('prRelogStatus').textContent = '无待标记';
             document.getElementById('prRelogStatus').style.color = '#5a7a94';
-            document.getElementById('prCancelRelogBtn').style.display = 'none';  // 🆕 加这行
+            document.getElementById('prCancelRelogBtn').style.display = 'none';
         }
+
+        // 🆕 记录时辰参数
+        const now = new Date();
+        const timestamp = now.getTime();
+        const shichen = this.getShichen(timestamp);
 
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -1740,9 +1880,18 @@ console.log('🔍 relogIndices:', relogIndices);
             score: -(s.deduct || 0),
             ringPoints: this.getRingPoints(idx),
             isDeduct: true,
-            isRelog: isRelog,  // 🆕 重登标记
+            isRelog: isRelog,
             label: type ? type.label : key,
-            date: new Date().toLocaleString()
+            date: now.toLocaleString(),
+            
+            // 🆕 时辰参数
+            timestamp: timestamp,
+            shichen: shichen.name,
+            shichenIndex: shichen.index,
+            halfHour: shichen.halfHour,
+            secondsInHalfHour: shichen.secondsInHalfHour,
+            isDaytime: shichen.isDaytime,
+            timeStr: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
         });
         this.render();
         this.updateRelogAnalysis();
@@ -1843,17 +1992,32 @@ console.log('🔍 relogIndices:', relogIndices);
         }
         document.getElementById('prTotalScore').textContent = stats.totalScore + diffText;
         document.getElementById('prRingCount').textContent = `${stats.ringCount} / ${stats.remaining} 剩`;
-        document.getElementById('prAvgCost').textContent = stats.avgCost.toFixed(1);
-        document.getElementById('prTotalPoints').textContent = stats.totalPoints;
-        document.getElementById('prProfitDisplay').textContent = income.profit.toFixed(1) + ` (≈${rmb.toFixed(2)}元)`;
-        document.getElementById('prProfitDisplay2').textContent = income.profit.toFixed(1);
-        document.getElementById('prTotalIncomeDisplay').textContent = income.totalIncome.toFixed(1);
-        document.getElementById('prRingInfo').textContent = `共${stats.ringCount}环`;
+        const elAvgCost = document.getElementById('prAvgCost');
+        if (elAvgCost) elAvgCost.textContent = stats.avgCost.toFixed(1);
+        
+        const elTotalPoints = document.getElementById('prTotalPoints');
+        if (elTotalPoints) elTotalPoints.textContent = stats.totalPoints;
+        
+        const elProfitDisplay = document.getElementById('prProfitDisplay');
+        if (elProfitDisplay) elProfitDisplay.textContent = income.profit.toFixed(1) + ` (≈${rmb.toFixed(2)}元)`;
+        
+        const elProfitDisplay2 = document.getElementById('prProfitDisplay2');
+        if (elProfitDisplay2) elProfitDisplay2.textContent = income.profit.toFixed(1);
+        
+        const elTotalIncomeDisplay = document.getElementById('prTotalIncomeDisplay');
+        if (elTotalIncomeDisplay) elTotalIncomeDisplay.textContent = income.totalIncome.toFixed(1);
+        
+        const elRingInfo = document.getElementById('prRingInfo');
+        if (elRingInfo) elRingInfo.textContent = `共${stats.ringCount}环`;
 
         const ps = document.getElementById('prProfitStat');
-        ps.className = 'stat-item' + (income.profit > 0 ? ' profit' : income.profit < 0 ? ' loss' : '');
+        if (ps) {
+            ps.className = 'stat-item' + (income.profit > 0 ? ' profit' : income.profit < 0 ? ' loss' : '');
+        }
         const pb = document.getElementById('prProfitBox');
-        pb.className = 'income-item' + (income.profit > 0 ? ' profit-box' : income.profit < 0 ? ' loss-box' : '');
+        if (pb) {
+            pb.className = 'income-item' + (income.profit > 0 ? ' profit-box' : income.profit < 0 ? ' loss-box' : '');
+        }
 
         const totalRings = stats.ringCount;
         document.querySelectorAll('#prTaskGrid .task-item-wrapper').forEach(w => {
@@ -2264,6 +2428,13 @@ updateRelogAnalysis() {
         let winCount = 0, loseCount = 0;
         let maxProfit = -Infinity, minProfit = Infinity;
         const taskTotals = {};
+                // 🆕 时辰统计
+        const shichenStats = {};
+        const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+        shichenNames.forEach(name => {
+            shichenStats[name] = { total: 0, find: 0, items: 0 };
+        });
+        let totalRingsWithShichen = 0;
         this.ITEM_TYPES.forEach(t => taskTotals[t.key] = 0);
 
         let predictionDiffs = [];
@@ -2282,6 +2453,23 @@ updateRelogAnalysis() {
             if (h.typeCount) {
                 for (let [key, val] of Object.entries(h.typeCount)) {
                     if (taskTotals[key] !== undefined) taskTotals[key] += val;
+                }
+            }
+
+                        // 🆕 统计时辰数据
+            if (h.rings && h.rings.length > 0) {
+                for (let r of h.rings) {
+                    if (r.shichen) {
+                        const sc = shichenStats[r.shichen];
+                        if (sc) {
+                            sc.total++;
+                            totalRingsWithShichen++;
+                            if (r.typeKey === 'find') sc.find++;
+                            else if (['ring60', 'ring70', 'ring80', 'flower', 'cook', 'medicine', 'furn1', 'furn2', 'var_common', 'var_spec'].includes(r.typeKey)) {
+                                sc.items++;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2375,6 +2563,52 @@ updateRelogAnalysis() {
         });
         document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
     },
+
+            // 🆕 时辰分析
+        let shichenHtml = '';
+        if (totalRingsWithShichen > 0) {
+            let rows = '';
+            shichenNames.forEach(name => {
+                const sc = shichenStats[name];
+                if (sc.total > 0) {
+                    const findPct = Math.round((sc.find / sc.total) * 100);
+                    const itemPct = Math.round((sc.items / sc.total) * 100);
+                    const isDay = ['辰', '巳', '午', '未', '申', '酉'].includes(name);
+                    const dayNight = isDay ? '☀️' : '🌙';
+                    rows += `<tr>
+                        <td style="padding:3px 6px;text-align:center;font-weight:600;">${dayNight}${name}时</td>
+                        <td style="padding:3px 6px;text-align:center;">${sc.total}</td>
+                        <td style="padding:3px 6px;text-align:center;color:#2d6b9e;">${sc.find} (${findPct}%)</td>
+                        <td style="padding:3px 6px;text-align:center;color:#b45a3a;">${sc.items} (${itemPct}%)</td>
+                    </tr>`;
+                }
+            });
+            
+            shichenHtml = `
+                <div style="margin-top:10px;padding:8px 10px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
+                    <div style="font-weight:700;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰分布分析 <span style="font-weight:400;font-size:0.65rem;color:#5a7a94;">— 共 ${totalRingsWithShichen} 环有数据</span></div>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.7rem;">
+                        <thead>
+                            <tr style="background:#1f344b;color:#f0ebdd;">
+                                <th style="padding:3px 6px;text-align:center;font-weight:600;">时辰</th>
+                                <th style="padding:3px 6px;text-align:center;font-weight:600;">总环数</th>
+                                <th style="padding:3px 6px;text-align:center;font-weight:600;">找人</th>
+                                <th style="padding:3px 6px;text-align:center;font-weight:600;">物品</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            shichenHtml = `<div style="margin-top:10px;padding:6px 12px;background:#f5f8fc;border-radius:8px;text-align:center;color:#6c87a0;font-size:0.7rem;">⏱️ 暂有时辰数据（仅新数据记录时辰）</div>`;
+        }
+        
+        // 插入到分析面板
+        const shichenContainer = document.getElementById('prShichenAnalysis');
+        if (shichenContainer) {
+            shichenContainer.innerHTML = shichenHtml;
+        }
 
     // ========== 导入 ==========
     importData() {
