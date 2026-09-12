@@ -627,6 +627,8 @@ showFullSettleModal(stats) {
         const shopShichen = this.getShichen(shopTargetDate.getTime());
         shopConfig.shichen = shopShichen.name;
         shopConfig.isDaytime = shopShichen.isDaytime;
+         // 🆕 结束时间用最后一环的点击时间
+        const endTs = this.records.length > 0 ? this.records[this.records.length - 1].clickTimestamp : Date.now();
         const entry = {
             date: new Date().toLocaleString(),
             ringCount: stats.ringCount,
@@ -657,9 +659,9 @@ showFullSettleModal(stats) {
             startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
             startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
             // 🆕 结束时间（时辰）
-            endTimestamp: Date.now(),
-            endShichen: this.getShichen(Date.now()).name,
-            endIsDaytime: this.getShichen(Date.now()).isDaytime
+            endTimestamp: endTs,
+            endShichen: this.getShichen(endTs).name,
+            endIsDaytime: this.getShichen(endTs).isDaytime
         };
 
         this.history.push(entry);
@@ -731,6 +733,8 @@ showFullSettleModal(stats) {
         const shopShichen = this.getShichen(shopTargetDate.getTime());
         shopConfig.shichen = shopShichen.name;
         shopConfig.isDaytime = shopShichen.isDaytime;
+        // 🆕 结束时间用最后一环的点击时间
+        const endTs = this.records.length > 0 ? this.records[this.records.length - 1].clickTimestamp : Date.now();
 
         const entry = {
             date: new Date().toLocaleString(),
@@ -759,9 +763,9 @@ showFullSettleModal(stats) {
             startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
             startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
             // 🆕 结束时间（时辰）
-            endTimestamp: Date.now(),
-            endShichen: this.getShichen(Date.now()).name,
-            endIsDaytime: this.getShichen(Date.now()).isDaytime
+            endTimestamp: endTs,
+            endShichen: this.getShichen(endTs).name,
+            endIsDaytime: this.getShichen(endTs).isDaytime
         };
         this.history.push(entry);
         this.records = [];
