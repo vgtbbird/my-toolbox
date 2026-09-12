@@ -660,6 +660,7 @@ showFullSettleModal(stats) {
         this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
         this.pendingSettle = null;
         this.pendingRelog = false;
+        this.startTimestamp = null;  // 🆕 清空开始时间
         this.saveData();
 
         overlay.remove();
@@ -753,6 +754,7 @@ showFullSettleModal(stats) {
         this.pendingSettle = null;
         this.pendingRelog = false;
         this.saveData();
+        this.startTimestamp = null;  // 🆕 清空开始时间
 
         this.updateStats();
         this.updateHistory();
@@ -1181,6 +1183,7 @@ showFullSettleModal(stats) {
                 <div class="module-header">
                     <div class="title">📋 任务类型 <span class="hint">— 点击记录一环</span></div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn-start" id="prStartRunBtn" style="background:#4c7a5c;color:#fff;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.7rem;">▶️ 开始跑环</button>
 <button class="btn-relog" id="prMarkRelogBtn" style="background:#dbbd7c;color:#1f344b;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.7rem;">🔁 标记下线重登</button>
 <span id="prRelogStatus" style="font-size:0.7rem;color:#5a7a94;display:flex;align-items:center;">无待标记</span>
 <button class="btn-relog" id="prCancelRelogBtn" style="background:#b45f5f;color:#fff;border:none;padding:4px 12px;border-radius:30px;font-weight:600;cursor:pointer;font-size:0.65rem;display:none;">↩️ 撤销重登</button>
@@ -1428,6 +1431,31 @@ showFullSettleModal(stats) {
             PetRingModule.saveData();
             PetRingModule.render();
         });
+        
+        // ===== 🆕 开始跑环 =====
+document.getElementById('prStartRunBtn').addEventListener('click', function() {
+    // 如果已有记录，提示是否重新计时
+    if (PetRingModule.records.length > 0) {
+        if (!confirm('已经跑了一些环，确定要重新计时？\n（不会删除记录，只重置首环时辰）')) return;
+    }
+    
+    PetRingModule.startTimestamp = Date.now();
+    PetRingModule.saveData();
+    
+    const shichen = PetRingModule.getShichen(PetRingModule.startTimestamp);
+    const dayNight = shichen.isDaytime ? '☀️' : '🌙';
+    const timeStr = new Date(PetRingModule.startTimestamp).toLocaleTimeString();
+    
+    // 更新按钮状态
+    const btn = document.getElementById('prStartRunBtn');
+    btn.textContent = `✅ 已开始 ${timeStr}`;
+    btn.style.background = '#8a9a8a';
+    
+    alert(`✅ 已开始跑环\n时间：${timeStr}\n时辰：${dayNight}${shichen.name}时\n\n现在可以点击任务按钮记录第1环`);
+    
+    PetRingModule.updateTimeAndShichen();
+});
+
 
 // ===== 🆕 标记下线重登 =====
 document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
@@ -1563,9 +1591,18 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
                 this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
                 this.pendingSettle = null;
                 this.pendingRelog = false;
+                this.startTimestamp = null;  // 🆕 清空开始时间
                 this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                 document.getElementById('prRelogStatus').textContent = '无待标记';
                 document.getElementById('prRelogStatus').style.color = '#5a7a94';
+                
+                // 🆕 重置开始按钮
+                const startBtn = document.getElementById('prStartRunBtn');
+                if (startBtn) {
+                    startBtn.textContent = '▶️ 开始跑环';
+                    startBtn.style.background = '#4c7a5c';
+                }
+                
                 this.saveData();
                 this.render();
             }
@@ -2080,6 +2117,11 @@ console.log('🔍 relogIndices:', relogIndices);
             alert('本轮已满100环，请先确认结算再继续！');
             return;
         }
+        // 🆕 检查是否已开始跑环
+        if (!this.startTimestamp && this.records.length === 0) {
+            alert('请先点击「▶️ 开始跑环」按钮！');
+            return;
+        }
         const price = this.prices[key] || 0;
         const type = this.ITEM_TYPES.find(t => t.key === key);
         const score = type ? type.score : 0;
@@ -2098,10 +2140,11 @@ console.log('🔍 relogIndices:', relogIndices);
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用当前时间；第2环及以后用上一环的点击时间
+        // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (this.records.length === 0) {
-            recordTimestamp = nowTimestamp;  // 第1环特殊
+            // 第1环用开始按钮的时间，如果没有则用当前时间
+            recordTimestamp = this.startTimestamp || nowTimestamp;
         } else {
             recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
         }
@@ -2140,6 +2183,11 @@ console.log('🔍 relogIndices:', relogIndices);
             alert('本轮已满100环，请先确认结算再继续！');
             return;
         }
+                // 🆕 检查是否已开始跑环
+        if (!this.startTimestamp && this.records.length === 0) {
+            alert('请先点击「▶️ 开始跑环」按钮！');
+            return;
+        }
         const s = this.deductSettings[key];
         if (!s) return;
         const type = this.DEDUCT_TYPES.find(d => d.key === key);
@@ -2158,10 +2206,11 @@ console.log('🔍 relogIndices:', relogIndices);
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用当前时间；第2环及以后用上一环的点击时间
+        // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (this.records.length === 0) {
-            recordTimestamp = nowTimestamp;
+            // 第1环用开始按钮的时间，如果没有则用当前时间
+            recordTimestamp = this.startTimestamp || nowTimestamp;
         } else {
             recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
         }
@@ -2338,6 +2387,19 @@ console.log('🔍 relogIndices:', relogIndices);
         this.buildTaskButtons();
         this.buildDeductSettings();
         this.buildPriceInputs();
+
+                // 🆕 同步开始按钮状态
+        const startBtn = document.getElementById('prStartRunBtn');
+        if (startBtn) {
+            if (this.startTimestamp) {
+                const timeStr = new Date(this.startTimestamp).toLocaleTimeString();
+                startBtn.textContent = `✅ 已开始 ${timeStr}`;
+                startBtn.style.background = '#8a9a8a';
+            } else {
+                startBtn.textContent = '▶️ 开始跑环';
+                startBtn.style.background = '#4c7a5c';
+            }
+        }
     },
 
     buildTaskButtons() {
