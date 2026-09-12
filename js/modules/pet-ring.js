@@ -651,7 +651,15 @@ showFullSettleModal(stats) {
             prediction20: this._prediction20 || null,
             rings: ringsData,
             relogCount: ringsData.filter(r => r.isRelog).length,
-            shopRefreshConfig: shopConfig  // 🆕 二刷配置
+                        shopRefreshConfig: shopConfig,
+            // 🆕 开始时间（时辰）
+            startTimestamp: this.startTimestamp || null,
+            startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
+            startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
+            // 🆕 结束时间（时辰）
+            endTimestamp: Date.now(),
+            endShichen: this.getShichen(Date.now()).name,
+            endIsDaytime: this.getShichen(Date.now()).isDaytime
         };
 
         this.history.push(entry);
@@ -745,7 +753,15 @@ showFullSettleModal(stats) {
             prediction20: this._prediction20 || null,
             rings: ringsData,  // 🆕 保存每环详细数据
             relogCount: ringsData.filter(r => r.isRelog).length,  // 🆕 重登次数
-            shopRefreshConfig: shopConfig  // 🆕 二刷配置
+            shopRefreshConfig: shopConfig,
+            // 🆕 开始时间（时辰）
+            startTimestamp: this.startTimestamp || null,
+            startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
+            startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
+            // 🆕 结束时间（时辰）
+            endTimestamp: Date.now(),
+            endShichen: this.getShichen(Date.now()).name,
+            endIsDaytime: this.getShichen(Date.now()).isDaytime
         };
         this.history.push(entry);
         this.records = [];
@@ -1847,6 +1863,8 @@ showRingsDetailModal(entry) {
                 <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : '<div></div>'}
                 ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong> ${entry.shopRefreshConfig.shichen ? `<span style="color:#B8860B;font-size:0.75rem;">(${entry.shopRefreshConfig.isDaytime ? '☀️' : '🌙'}${entry.shopRefreshConfig.shichen}时)</span>` : ''}</div>` : ''}
+                ${entry.startTimestamp ? `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(entry.startTimestamp).toLocaleTimeString()}</strong> <span style="color:${PetRingModule.getShichenColor(entry.startShichen)};font-size:0.75rem;font-weight:600;">(${entry.startIsDaytime ? '☀️' : '🌙'}${entry.startShichen}时)</span></div>` : ''}
+                ${entry.endTimestamp ? `<div><span style="color:#5a7a94;">⏹️ 结束</span> <strong>${new Date(entry.endTimestamp).toLocaleTimeString()}</strong> <span style="color:${PetRingModule.getShichenColor(entry.endShichen)};font-size:0.75rem;font-weight:600;">(${entry.endIsDaytime ? '☀️' : '🌙'}${entry.endShichen}时)</span></div>` : ''}
             </div>
 
              <!-- 🆕 时辰筛选区 -->
