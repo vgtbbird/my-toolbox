@@ -20,6 +20,7 @@ const PetRingModule = {
     exchangeRate: 0.08,
     fruitPrice: 80,
     pendingRelog: false,  // 🆕 是否有待标记的重登
+    startTimestamp: null,  // 🆕 开始跑环的时间戳
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -260,7 +261,8 @@ const PetRingModule = {
             pendingSettle: this.pendingSettle,
             exchangeRate: this.exchangeRate,
             fruitPrice: this.fruitPrice,
-            pendingRelog: this.pendingRelog
+            pendingRelog: this.pendingRelog,
+            startTimestamp: this.startTimestamp
         });
     },
 
