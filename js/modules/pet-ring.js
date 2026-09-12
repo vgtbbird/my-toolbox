@@ -378,6 +378,7 @@ showFullSettleModal(stats) {
     let currentBookType = '书';
     let currentLevel = autoLevel;  // 🆕 使用自动判定的等级
     let currentBookName = '';
+    let currentIsZhanpo = false;
 
     const modalHTML = `
         <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
@@ -412,6 +413,12 @@ showFullSettleModal(stats) {
                     <button class="ph-book-type-btn active" data-type="书" style="padding:4px 20px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:600;">📕 书</button>
                     <button class="ph-book-type-btn" data-type="铁" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">📗 铁</button>
                 </div>
+                                <!-- 🆕 战魄选项（仅150级） -->
+                ${autoLevel === 150 ? `
+                <div id="settleZhanpoRow" style="display:none;margin-bottom:10px;">
+                    <button class="ph-zhanpo-btn" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">🗡️ 战魄（160级材料）</button>
+                </div>
+                ` : ''}
 
                 <!-- 书种类（仅书时显示） -->
                 <div id="settleBookNameContainer" style="margin-bottom:8px;">
@@ -477,7 +484,6 @@ showFullSettleModal(stats) {
     const bookNameList = document.getElementById('settleBookNameList');
     const bookNameContainer = document.getElementById('settleBookNameContainer');
 
-    // 书/铁切换
     bookTypeBtns.forEach(btn => {
         btn.addEventListener('click', function() {
             bookTypeBtns.forEach(b => {
@@ -489,12 +495,41 @@ showFullSettleModal(stats) {
             this.style.borderColor = '#4CAF50';
             this.style.color = '#fff';
             currentBookType = this.dataset.type;
+            currentIsZhanpo = false;  // 🆕 切换时重置战魄
             // 铁时隐藏书种类选择
             bookNameContainer.style.display = currentBookType === '书' ? 'block' : 'none';
+            // 🆕 控制战魄按钮显示
+            const zhanpoRow = document.getElementById('settleZhanpoRow');
+            if (zhanpoRow) {
+                zhanpoRow.style.display = (currentBookType === '铁' && autoLevel === 150) ? 'block' : 'none';
+                const zb = zhanpoRow.querySelector('.ph-zhanpo-btn');
+                zb.style.background = '#f0f4f8';
+                zb.style.borderColor = '#bccad9';
+                zb.style.color = '#1f3b53';
+            }
             updateDisplayText();
             updatePreview();
         });
     });
+
+        // 🆕 战魄按钮
+    const zhanpoBtn = overlay.querySelector('.ph-zhanpo-btn');
+    if (zhanpoBtn) {
+        zhanpoBtn.addEventListener('click', function() {
+            currentIsZhanpo = !currentIsZhanpo;
+            if (currentIsZhanpo) {
+                this.style.background = '#4CAF50';
+                this.style.borderColor = '#4CAF50';
+                this.style.color = '#fff';
+            } else {
+                this.style.background = '#f0f4f8';
+                this.style.borderColor = '#bccad9';
+                this.style.color = '#1f3b53';
+            }
+            updateDisplayText();
+            updatePreview();
+        });
+    }
 
     // 书种类点击
     bookNameList.querySelectorAll('.ph-book-name-btn').forEach(btn => {
@@ -529,8 +564,11 @@ showFullSettleModal(stats) {
             const nameLabel = currentBookName || '请选择';
             detailText = `${typeText} ${levelLabel} ${nameLabel}`;
         } else {
-            const levelLabel = autoLevel === 160 ? '战魄' : autoLevel + '级铁';
-            detailText = `${typeText} ${levelLabel}`;
+            if (currentIsZhanpo) {
+                detailText = `${typeText} 战魄`;
+            } else {
+                detailText = `${typeText} ${autoLevel}级铁`;
+            }
         }
         document.getElementById('settleBookDisplayText').textContent = detailText;
     }
@@ -548,8 +586,12 @@ showFullSettleModal(stats) {
         const totalIncome = pointsVal + bookValue + rewardVal;
         const profit = totalIncome - stats.totalCost;
 
-        const levelLabel = autoLevel + '级';
-        const bookLabel = currentBookType === '书' ? `${levelLabel}${currentBookName || '书'}` : `${levelLabel}铁`;
+        let bookLabel = '';
+        if (currentBookType === '书') {
+            bookLabel = `${autoLevel}级${currentBookName || '书'}`;
+        } else {
+            bookLabel = currentIsZhanpo ? '战魄' : `${autoLevel}级铁`;
+        }
 
         document.getElementById('settlePreviewTotal').textContent = 
             `修炼点${pointsVal.toFixed(1)} + ${bookLabel}(${bookValue}万) + ${rewardLabel}(${rewardVal.toFixed(1)}万) = ${totalIncome.toFixed(1)}万`;
@@ -578,7 +620,11 @@ showFullSettleModal(stats) {
 
         let bookDisplayName = '';
         if (bookType === '铁') {
-            bookDisplayName = bookLevel === 160 ? '战魄' : `${bookLevel}级铁`;
+            if (currentIsZhanpo) {
+                bookDisplayName = '战魄';
+            } else {
+                bookDisplayName = `${bookLevel}级铁`;
+            }
         } else {
             bookDisplayName = `${bookLevel}级${bookNameInput}书`;
         }
