@@ -132,20 +132,34 @@ const GitHubSync = {
         const localV3 = localData.__sync_v3 || { history: [], records: [], _meta: {} };
         const cloudV3 = cloudData.__sync_v3 || { history: [], records: [], _meta: {} };
         
-        // ===== 1. 合并历史（按 _id 去重，永不丢失） =====
+        // ===== 1. 合并历史（按 _id + 日期去重，永不丢失） =====
         const historyMap = new Map();
+        const historyDates = new Set();  // 🆕 用日期做辅助去重
+        
         // 先放云端的
         (cloudV3.history || []).forEach(h => {
-            if (h._id) historyMap.set(h._id, h);
+            if (h._id) {
+                historyMap.set(h._id, h);
+                const d = (h.payload || h).date;
+                if (d) historyDates.add(d);
+            }
         });
-        // 再放本地的（如果有相同的 _id，取 _createdAt 更新的）
+        
+        // 再放本地的（如果有相同的 _id 或相同的日期，跳过）
         (localV3.history || []).forEach(h => {
             if (!h._id) return;
+            const d = (h.payload || h).date;
+            
+            // 🆕 如果日期已经存在，跳过（防止重复）
+            if (d && historyDates.has(d)) return;
+            
             const existing = historyMap.get(h._id);
             if (!existing || (h._createdAt > existing._createdAt)) {
                 historyMap.set(h._id, h);
+                if (d) historyDates.add(d);
             }
         });
+        
         const mergedHistory = Array.from(historyMap.values());
         // 按时间倒序（最新在前）
         mergedHistory.sort((a, b) => {
