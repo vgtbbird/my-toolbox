@@ -60,7 +60,7 @@ const Storage = {
                         // 如果已经有 _id，直接放进去
                         if (h._id && existingIds.has(h._id)) return;
                         
-                        const newId = h._id || `${moduleKey}_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`;
+                       const newId = h._id || `${moduleKey}_hist_${h.date || Date.now()}_${idx}`;
                         v3.history.push({
                             _id: newId,
                             _createdAt: h._createdAt || h.date || new Date().toISOString(),
@@ -89,7 +89,7 @@ const Storage = {
                     const existingIds = new Set((v3.records || []).map(r => r._id));
                     
                     data.records.forEach((r, idx) => {
-                        const newId = r.id || r._id || `${moduleKey}_rec_${r.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`;
+                       const newId = r.id || r._id || `${moduleKey}_rec_${r.date || Date.now()}_${idx}`;
                         if (existingIds.has(newId)) return;
                         
                         v3.records.push({
