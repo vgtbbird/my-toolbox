@@ -85,7 +85,7 @@ const GitHubSync = {
             data.history.forEach((h, idx) => {
                 if (h.date && existingDates.has(h.date)) return;
                 v3.history.push({
-                    _id: h._id || `${moduleKey}_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                    _id: h._id || `${moduleKey}_hist_${h.date || Date.now()}_${idx}`,
                     _createdAt: h._createdAt || h.date || new Date().toISOString(),
                     payload: h
                 });
