@@ -197,7 +197,7 @@ const Storage = {
             return { _id: item._id, _createdAt: item._createdAt, payload: item };
         }
         return {
-            _id: item._id || `${moduleKey}_hist_${item.date || Date.now()}_${index}_${Math.random().toString(36).substr(2,6)}`,
+            _id: item._id || `${moduleKey}_hist_${item.date || Date.now()}_${index}`,
             _createdAt: item._createdAt || item.date || new Date().toISOString(),
             payload: item
         };
@@ -217,7 +217,7 @@ const Storage = {
             };
         }
         return {
-            _id: item.id || item._id || `${moduleKey}_rec_${Date.now()}_${index}_${Math.random().toString(36).substr(2,6)}`,
+           _id: item.id || item._id || `${moduleKey}_rec_${Date.now()}_${index}`,
             _index: item.taskIndex || index + 1,
             _createdAt: item._createdAt || item.date || new Date().toISOString(),
             runId: item.runId || runId || 'unknown_run',
