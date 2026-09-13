@@ -200,15 +200,20 @@ const PetRingModule = {
         if (currentRingShichenEl) {
             const currentRingIndex = this.records.length + 1;
             let ringShichen;
+            let ringTimestamp;
             if (this.records.length === 0) {
                 ringShichen = shichen;
+                ringTimestamp = this.startTimestamp || Date.now();
             } else {
                 const lastRecord = this.records[this.records.length - 1];
                 const nextShichenTimestamp = lastRecord.clickTimestamp || Date.now();
                 ringShichen = this.getShichen(nextShichenTimestamp);
+                ringTimestamp = nextShichenTimestamp;
             }
             const dayNight = ringShichen.isDaytime ? '☀️' : '🌙';
-            currentRingShichenEl.textContent = `第${currentRingIndex}环: ${dayNight}${ringShichen.name}时`;
+            const d = new Date(ringTimestamp);
+            const ringTimeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+            currentRingShichenEl.textContent = `第${currentRingIndex}环: ${dayNight}${ringShichen.name}时 ${ringTimeStr}`;
         }
     },
 
