@@ -120,13 +120,34 @@ const PetHuntModule = {
     },
 
     saveData() {
+        // 🆕 生成 V3 记录锚点
+        const recordsV3 = this.records.map((r, idx) => ({
+            _id: r.id || r._id || `petHunt_rec_${r.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+            _index: idx + 1,
+            _createdAt: r._createdAt || r.date || new Date().toISOString(),
+            runId: 'petHunt_records',
+            payload: r
+        }));
+        
         Storage.set(this.storageKey, {
             records: this.records,
             petLibrary: this.petLibrary,
             customScenes: this.customScenes,
             uiSettings: this.uiSettings,
             filterState: this.filterState,
-            sortState: this.sortState
+            sortState: this.sortState,
+            // 🆕 V3 结构
+            __sync_v3: {
+                history: [],
+                records: recordsV3,
+                _meta: {
+                    version: '3.0',
+                    lastUpdated: Date.now(),
+                    recordsLastUpdated: this.records.length > 0 
+                        ? new Date(this.records[this.records.length - 1].date || 0).getTime() || Date.now()
+                        : 0
+                }
+            }
         });
     },
 
