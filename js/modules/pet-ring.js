@@ -249,39 +249,62 @@ const PetRingModule = {
         });
     },
 
-saveData() {
-    // 🆕 生成 V3 历史锚点（用于同步合并）
-    const historyV3 = this.history.map((h, idx) => {
-        // 如果历史记录本身没有 _id，就用日期+索引生成
-        const existingId = h._id;
-        return {
-            _id: existingId || `petRing_hist_${h.date || Date.now()}_${idx}`,
-            _createdAt: h._createdAt || h.date || new Date().toISOString(),
-            payload: h
-        };
-    });
-    
-    Storage.set(this.storageKey, {
-        records: this.records,
-        history: this.history,
-        prices: this.prices,
-        deductSettings: this.deductSettings,
-        bookRewards: this.bookRewards,
-        extraRewards: this.extraRewards,
-        uiSettings: this.uiSettings,
-        pendingSettle: this.pendingSettle,
-        exchangeRate: this.exchangeRate,
-        fruitPrice: this.fruitPrice,
-        pendingRelog: this.pendingRelog,
-        startTimestamp: this.startTimestamp,
-        // 🆕 V3 结构（用于同步）
-        __sync_v3: {
-            history: historyV3,
-            records: [],
-            _meta: { version: '3.0', lastUpdated: Date.now() }
-        }
-    });
-},
+    saveData() {
+        // 🆕 生成 V3 历史锚点（供同步合并用）
+        const historyV3 = this.history.map((h, idx) => {
+            // 如果历史记录本身已经有 _id，直接沿用
+            if (h._id && h._createdAt) {
+                return { _id: h._id, _createdAt: h._createdAt, payload: h };
+            }
+            // 否则生成新的
+            return {
+                _id: `petRing_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                _createdAt: h._createdAt || h.date || new Date().toISOString(),
+                payload: h
+            };
+        });
+        
+        // 🆕 生成 V3 当前轮次锚点
+        const recordsV3 = this.records.map((r, idx) => ({
+            _id: r.id || r._id || `${this.currentRunId}_rec_${idx}`,
+            _index: r.taskIndex || idx + 1,
+            _createdAt: r._createdAt || r.date || new Date().toISOString(),
+            runId: r.runId || this.currentRunId || 'unknown_run',
+            payload: r
+        }));
+        
+        // 🆕 当前轮次的最新时间（用于同步时判断新旧）
+        const recordsLastUpdated = this.records.length > 0
+            ? (this.records[this.records.length - 1].clickTimestamp 
+               || new Date(this.records[this.records.length - 1].date).getTime() 
+               || Date.now())
+            : 0;
+        
+        Storage.set(this.storageKey, {
+            records: this.records,
+            history: this.history,
+            prices: this.prices,
+            deductSettings: this.deductSettings,
+            bookRewards: this.bookRewards,
+            extraRewards: this.extraRewards,
+            uiSettings: this.uiSettings,
+            pendingSettle: this.pendingSettle,
+            exchangeRate: this.exchangeRate,
+            fruitPrice: this.fruitPrice,
+            pendingRelog: this.pendingRelog,
+            startTimestamp: this.startTimestamp,
+            // 🆕 V3 结构
+            __sync_v3: {
+                history: historyV3,
+                records: recordsV3,
+                _meta: {
+                    version: '3.0',
+                    lastUpdated: Date.now(),
+                    recordsLastUpdated: recordsLastUpdated
+                }
+            }
+        });
+    },
 
     // ========== 应用UI设置 ==========
     applyUISettings() {
