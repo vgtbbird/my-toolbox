@@ -168,22 +168,52 @@ const GitHubSync = {
             return tb - ta;
         });
         
-        // ===== 2. 合并当前轮次（按 recordsLastUpdated 取最新） =====
+        // ===== 2. 合并当前轮次（带 runId 过滤 + 本地空保护） =====
+        
+        // 🆕 收集所有已结算的 runId（从两边 history 里取）
+        const settledRunIds = new Set();
+        for (let h of mergedHistory) {
+            const payload = h.payload || h;
+            if (payload.runId) settledRunIds.add(payload.runId);
+            if (Array.isArray(payload.rings)) {
+                for (let r of payload.rings) {
+                    if (r.runId) settledRunIds.add(r.runId);
+                }
+            }
+        }
+        
+        // 🆕 过滤掉已结算的 records
+        const localRecs = (localV3.records || []).filter(r => {
+            const rid = r.runId || r.payload?.runId;
+            return !settledRunIds.has(rid);
+        });
+        const cloudRecs = (cloudV3.records || []).filter(r => {
+            const rid = r.runId || r.payload?.runId;
+            return !settledRunIds.has(rid);
+        });
+        
         const localRecTime = localV3._meta?.recordsLastUpdated || 0;
         const cloudRecTime = cloudV3._meta?.recordsLastUpdated || 0;
         
         let mergedRecords;
-        if (cloudRecTime > localRecTime) {
-            // 云端的更新
-            mergedRecords = cloudV3.records || [];
+        
+        if (localRecs.length === 0 && cloudRecs.length > 0) {
+            // 🆕 本地 records 为空 → 本机没有正在跑的轮次
+            const localHistTime = localV3._meta?.lastUpdated || 0;
+            const cloudHistTime = cloudV3._meta?.lastUpdated || 0;
+            if (localHistTime >= cloudHistTime) {
+                mergedRecords = [];
+            } else {
+                mergedRecords = cloudRecs;
+            }
+        } else if (cloudRecs.length === 0 && localRecs.length > 0) {
+            mergedRecords = localRecs;
+        } else if (cloudRecTime > localRecTime) {
+            mergedRecords = cloudRecs;
         } else if (localRecTime > cloudRecTime) {
-            // 本地的更新
-            mergedRecords = localV3.records || [];
+            mergedRecords = localRecs;
         } else {
-            // 一样新，取更长的那份
-            mergedRecords = (cloudV3.records || []).length > (localV3.records || []).length
-                ? cloudV3.records
-                : localV3.records;
+            mergedRecords = cloudRecs.length > localRecs.length ? cloudRecs : localRecs;
         }
         
         // ===== 3. 生成顶层 history（供模块直接用） =====
