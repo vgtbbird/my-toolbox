@@ -66,14 +66,50 @@ const SoulTaskModule = {
     },
 
     saveData() {
+        // 🆕 生成 V3 历史锚点
+        const historyV3 = this.history.map((h, idx) => {
+            if (h._id && h._createdAt) {
+                return { _id: h._id, _createdAt: h._createdAt, payload: h };
+            }
+            return {
+                _id: `soulTask_hist_${(h.payload?.date || h.date || Date.now())}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                _createdAt: h._createdAt || h.payload?.date || h.date || new Date().toISOString(),
+                payload: h
+            };
+        });
+        
+        // 🆕 生成 V3 当前轮次锚点
+        const recordsV3 = this.records.map((r, idx) => ({
+            _id: r.id || r._id || `${this.currentRunId}_rec_${idx}`,
+            _index: r.taskIndex || idx + 1,
+            _createdAt: r._createdAt || r.date || new Date().toISOString(),
+            runId: r.runId || this.currentRunId || 'unknown_run',
+            payload: r
+        }));
+        
+        const recordsLastUpdated = this.records.length > 0
+            ? (this.records[this.records.length - 1].clickTimestamp 
+               || new Date(this.records[this.records.length - 1].date).getTime() 
+               || Date.now())
+            : 0;
+        
         Storage.set(this.storageKey, {
-            records: this.records,
-            history: this.history,
+            records: this.records, 
+            history: this.history, 
             prices: this.prices,
-            currentRunId: this.currentRunId,
+            currentRunId: this.currentRunId, 
             milestoneIncome: this.milestoneIncome,
             milestoneDetails: this.milestoneDetails,
-            uiSettings: this.uiSettings
+            // 🆕 V3 结构
+            __sync_v3: {
+                history: historyV3,
+                records: recordsV3,
+                _meta: {
+                    version: '3.0',
+                    lastUpdated: Date.now(),
+                    recordsLastUpdated: recordsLastUpdated
+                }
+            }
         });
     },
 
