@@ -258,7 +258,7 @@ const PetRingModule = {
             }
             // 否则生成新的
             return {
-                _id: `petRing_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                _id: `petRing_hist_${h.date || Date.now()}_${idx}`,
                 _createdAt: h._createdAt || h.date || new Date().toISOString(),
                 payload: h
             };
