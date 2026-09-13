@@ -249,22 +249,39 @@ const PetRingModule = {
         });
     },
 
-    saveData() {
-        Storage.set(this.storageKey, {
-            records: this.records,
-            history: this.history,
-            prices: this.prices,
-            deductSettings: this.deductSettings,
-            bookRewards: this.bookRewards,
-            extraRewards: this.extraRewards,
-            uiSettings: this.uiSettings,
-            pendingSettle: this.pendingSettle,
-            exchangeRate: this.exchangeRate,
-            fruitPrice: this.fruitPrice,
-            pendingRelog: this.pendingRelog,
-            startTimestamp: this.startTimestamp
-        });
-    },
+saveData() {
+    // 🆕 生成 V3 历史锚点（用于同步合并）
+    const historyV3 = this.history.map((h, idx) => {
+        // 如果历史记录本身没有 _id，就用日期+索引生成
+        const existingId = h._id;
+        return {
+            _id: existingId || `petRing_hist_${h.date || Date.now()}_${idx}`,
+            _createdAt: h._createdAt || h.date || new Date().toISOString(),
+            payload: h
+        };
+    });
+    
+    Storage.set(this.storageKey, {
+        records: this.records,
+        history: this.history,
+        prices: this.prices,
+        deductSettings: this.deductSettings,
+        bookRewards: this.bookRewards,
+        extraRewards: this.extraRewards,
+        uiSettings: this.uiSettings,
+        pendingSettle: this.pendingSettle,
+        exchangeRate: this.exchangeRate,
+        fruitPrice: this.fruitPrice,
+        pendingRelog: this.pendingRelog,
+        startTimestamp: this.startTimestamp,
+        // 🆕 V3 结构（用于同步）
+        __sync_v3: {
+            history: historyV3,
+            records: [],
+            _meta: { version: '3.0', lastUpdated: Date.now() }
+        }
+    });
+},
 
     // ========== 应用UI设置 ==========
     applyUISettings() {
