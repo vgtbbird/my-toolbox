@@ -224,10 +224,10 @@ const GitHubSync = {
         
         // ===== 5. 合成最终数据 =====
         return {
-            // 保留本地所有字段（防止某些模块特有字段丢失）
-            ...localData,
-            // 云端字段覆盖（配置类同步）
+            // 🆕 先放云端（会被本地覆盖）
             ...cloudData,
+            // 🆕 再放本地（配置以本地为准）
+            ...localData,
             // 🆕 合并后的顶层数据
             history: mergedTopHistory,
             records: mergedTopRecords,
