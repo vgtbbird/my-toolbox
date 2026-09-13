@@ -134,19 +134,40 @@ const TreePlantModule = {
     },
 
     saveData() {
+        // 🆕 生成 V3 历史锚点
+        const historyV3 = this.history.map((h, idx) => {
+            if (h._id && h._createdAt) {
+                return { _id: h._id, _createdAt: h._createdAt, payload: h };
+            }
+            return {
+                _id: `treePlant_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                _createdAt: h._createdAt || h.date || new Date().toISOString(),
+                payload: h
+            };
+        });
+        
         Storage.set(this.storageKey, {
             history: this.history,
             prices: this.prices,
             current: this.current,
             uiSettings: this.uiSettings,
             exchangeRate: this.exchangeRate,
-            // 🆕 保存种树提醒状态
             treeStartTime: this.treeStartTime,
             treeStage: this.treeStage,
             treeAlerts: this.treeAlerts,
             careCount: this.careCount,
             shakeReady: this.shakeReady,
-            hasEarlyRipen: this.hasEarlyRipen
+            hasEarlyRipen: this.hasEarlyRipen,
+            // 🆕 V3 结构
+            __sync_v3: {
+                history: historyV3,
+                records: [],
+                _meta: {
+                    version: '3.0',
+                    lastUpdated: Date.now(),
+                    recordsLastUpdated: 0
+                }
+            }
         });
     },
 
