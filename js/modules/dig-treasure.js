@@ -91,12 +91,47 @@ const DigTreasureModule = {
     },
 
     saveData() {
+        // 🆕 生成 V3 记录锚点（挖图的历史是按天的，存在 records 里）
+        const recordsV3 = this.records.map((r, idx) => ({
+            _id: r._id || `digTreasure_rec_${r.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+            _index: idx + 1,
+            _createdAt: r._createdAt || r.date || new Date().toISOString(),
+            runId: 'digTreasure_records',
+            payload: r
+        }));
+        
+        // 🆕 今日记录也算当前轮次
+        const todayV3 = [];
+        if (this.todayRecords) {
+            for (let type of ['normal', 'advanced', 'super']) {
+                if (this.todayRecords[type] && this.todayRecords[type].count > 0) {
+                    todayV3.push({
+                        _id: `digTreasure_today_${type}_${Date.now()}`,
+                        _index: todayV3.length + 1,
+                        _createdAt: new Date().toISOString(),
+                        runId: 'digTreasure_today',
+                        payload: { type, ...this.todayRecords[type] }
+                    });
+                }
+            }
+        }
+        
         Storage.set(this.storageKey, {
             records: this.records,
             todayRecords: this.todayRecords,
             uiSettings: this.uiSettings,
             currentMapType: this.currentMapType,
-            presetItems: this.presetItems
+            presetItems: this.presetItems,
+            // 🆕 V3 结构
+            __sync_v3: {
+                history: recordsV3,  // 挖图的历史按天存，用 history 装
+                records: todayV3,     // 今日记录算当前轮次
+                _meta: {
+                    version: '3.0',
+                    lastUpdated: Date.now(),
+                    recordsLastUpdated: todayV3.length > 0 ? Date.now() : 0
+                }
+            }
         });
     },
 
