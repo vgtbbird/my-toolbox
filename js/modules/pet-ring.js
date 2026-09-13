@@ -221,6 +221,16 @@ const PetRingModule = {
     loadData() {
         const data = Storage.get(this.storageKey, {});
         this.currentRunId = data.currentRunId || null;
+        
+        // 🆕 如果 records 里已有数据，沿用它的 runId（防止从云端拉取后换新ID）
+        if (this.records.length > 0) {
+            const existingRunId = this.records[0].runId || this.records[0].payload?.runId;
+            if (existingRunId) {
+                this.currentRunId = existingRunId;
+            }
+        }
+        
+        // 如果还是没有，才新生成
         if (!this.currentRunId) {
             this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
@@ -268,6 +278,7 @@ const PetRingModule = {
                 payload: h
             };
         });
+         const settledRunIds = this.history.map(h => h.runId || h.payload?.runId).filter(Boolean);
         
         // 🆕 生成 V3 当前轮次锚点
         const recordsV3 = this.records.map((r, idx) => ({
@@ -298,10 +309,12 @@ const PetRingModule = {
             fruitPrice: this.fruitPrice,
             pendingRelog: this.pendingRelog,
             startTimestamp: this.startTimestamp,
+            currentRunId: this.currentRunId, 
             // 🆕 V3 结构
             __sync_v3: {
                 history: historyV3,
                 records: recordsV3,
+                settledRunIds: settledRunIds,
                 _meta: {
                     version: '3.0',
                     lastUpdated: Date.now(),
@@ -722,6 +735,7 @@ showFullSettleModal(stats) {
         const endTs = this.records.length > 0 ? this.records[this.records.length - 1].clickTimestamp : Date.now();
         const entry = {
             date: new Date().toLocaleString(),
+            runId: this.currentRunId,
             ringCount: stats.ringCount,
             totalCost: stats.totalCost,
             totalScore: stats.totalScore,
@@ -829,6 +843,7 @@ showFullSettleModal(stats) {
 
         const entry = {
             date: new Date().toLocaleString(),
+            runId: this.currentRunId,
             ringCount: stats.ringCount,
             totalCost: stats.totalCost,
             totalScore: stats.totalScore,
