@@ -2671,7 +2671,7 @@ updateHistory() {
                 ${timeDisplay}
                 <span>💰${r.cost.toFixed(1)}</span>
                 <span>⭐${sc}</span>
-                <span style="color:#5a7a94;font-size:0.7rem;">累计${pointsMap[r.taskIndex] || 0}</span>
+                <span>累计${pointsMap[r.taskIndex] || 0}</span>
                 <span>📈+${r.ringPoints}</span>
             </div>
         </div>`;
