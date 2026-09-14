@@ -573,6 +573,7 @@ const DigTreasureModule = {
         this.saveData();
         this.updateStats();
         this.updateTypeStatsLabels();
+        this.renderHistoryTable();
         alert('✅ 今日已结算！');
     }
 };
