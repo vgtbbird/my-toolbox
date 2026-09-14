@@ -198,13 +198,19 @@ const GitHubSync = {
         let mergedRecords;
         
         if (localRecs.length === 0 && cloudRecs.length > 0) {
-            // 🆕 本地 records 为空 → 本机没有正在跑的轮次
-            const localHistTime = localV3._meta?.lastUpdated || 0;
-            const cloudHistTime = cloudV3._meta?.lastUpdated || 0;
-            if (localHistTime >= cloudHistTime) {
-                mergedRecords = [];
-            } else {
+            // 🆕 本地 records 为空时，先看本地 history 是否也为空
+            // 本地 history 也为空 → 全新设备/清空过 → 直接用云端
+            if (mergedHistory.length === 0) {
                 mergedRecords = cloudRecs;
+            } else {
+                // 本地有历史 → 可能是刚结算完 → 看时间决定
+                const localHistTime = localV3._meta?.lastUpdated || 0;
+                const cloudHistTime = cloudV3._meta?.lastUpdated || 0;
+                if (localHistTime >= cloudHistTime) {
+                    mergedRecords = [];
+                } else {
+                    mergedRecords = cloudRecs;
+                }
             }
         } else if (cloudRecs.length === 0 && localRecs.length > 0) {
             mergedRecords = localRecs;
