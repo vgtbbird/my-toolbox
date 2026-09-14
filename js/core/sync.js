@@ -1,11 +1,11 @@
 // ============================================================
-//  ☁️ 同步核心 - V4 安全合并架构（防丢失）
+//  ☁️ 同步核心 - 精简版（按 runId + 环次 id 合并）
 //  核心逻辑：
-//    1. 历史轮次：按 _id 合并去重，永不丢失
-//    2. 当前轮次：按 recordsLastUpdated 整体取最新
-//    3. 配置类模块：按 lastUpdated 取最新
-//    4. 拉取时：本地 + 云端合并，不覆盖
-//    5. 兼容旧数据：通过 Storage.get 自动迁移
+//    1. history：按 _id 取并集，同 _id 取 _createdAt 新的
+//    2. records：过滤已结算 runId → 按 runId 分组 → 组内按 id 去重 → 过滤 deleted
+//    3. config：按 configLastUpdated 取新
+//    4. 上传：只上传本地数据，不写回本地
+//    5. 拉取：合并本地和云端，写回本地
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -13,7 +13,7 @@ const GitHubSync = {
     repoName: 'my-data',
     filePath: 'db.json',
 
-    // 🆕 配置类模块（只有配置，没有历史，直接取最新）
+    // 🆕 配置类模块（只有配置，无历史）
     CONFIG_MODULES: ['shopHelper', 'equipmentQuery', 'petEquipmentQuery'],
 
     config(options) {
@@ -64,113 +64,44 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  归一化：确保数据有完整的 V3 结构
-    //  把顶层 history/records 同步到 __sync_v3
+    //  合并：配置类模块（只有配置，按 configLastUpdated 取新）
     // ============================================================
-    normalizeToV3(moduleKey, data) {
-        if (!data) return data;
-        
-        if (!data.__sync_v3) {
-            data.__sync_v3 = { history: [], records: [], _meta: {} };
-        }
-        const v3 = data.__sync_v3;
-        
-        if (!v3._meta) v3._meta = {};
-        if (!v3._meta.version) v3._meta.version = '3.0';
-        if (!v3._meta.lastUpdated) v3._meta.lastUpdated = Date.now();
-        
-        // 顶层 history → V3 history
-        if (Array.isArray(data.history) && data.history.length > 0) {
-            const existingDates = new Set((v3.history || []).map(h => (h.payload || h).date));
-            data.history.forEach((h, idx) => {
-                if (h.date && existingDates.has(h.date)) return;
-                v3.history.push({
-                    _id: h._id || `${moduleKey}_hist_${h.date || Date.now()}_${idx}`,
-                    _createdAt: h._createdAt || h.date || new Date().toISOString(),
-                    payload: h
-                });
-            });
-        }
-        
-        // 顶层 records → V3 records
-        if (Array.isArray(data.records) && data.records.length > 0) {
-            const existingIds = new Set((v3.records || []).map(r => r._id));
-            data.records.forEach((r, idx) => {
-                const newId = r.id || r._id || `${moduleKey}_rec_${Date.now()}_${idx}`;
-                if (existingIds.has(newId)) return;
-                v3.records.push({
-                    _id: newId,
-                    _index: r.taskIndex || idx + 1,
-                    _createdAt: r._createdAt || r.date || new Date().toISOString(),
-                    runId: r.runId || data.currentRunId || 'unknown_run',
-                    payload: r
-                });
-            });
-        }
-        
-        // 补全 recordsLastUpdated
-        if (v3._meta.recordsLastUpdated === undefined) {
-            const recs = v3.records || [];
-            if (recs.length > 0) {
-                const lastRec = recs[recs.length - 1];
-                v3._meta.recordsLastUpdated = new Date(lastRec._createdAt || 0).getTime() || 0;
-            } else {
-                v3._meta.recordsLastUpdated = 0;
-            }
-        }
-        
-        return data;
+    mergeConfigModule(localData, cloudData) {
+        const localTime = localData?.configLastUpdated || localData?.__sync_v3?._meta?.lastUpdated || 0;
+        const cloudTime = cloudData?.configLastUpdated || cloudData?.__sync_v3?._meta?.lastUpdated || 0;
+        return (cloudTime > localTime) ? cloudData : localData;
     },
 
     // ============================================================
-    //  核心合并函数：数据类模块（有历史轮次）
+    //  合并：数据类模块（有 history + records）
     // ============================================================
     mergeDataModule(moduleKey, localData, cloudData) {
-        localData = this.normalizeToV3(moduleKey, localData || {});
-        cloudData = this.normalizeToV3(moduleKey, cloudData || {});
+        localData = localData || {};
+        cloudData = cloudData || {};
         
-        const localV3 = localData.__sync_v3 || { history: [], records: [], _meta: {} };
-        const cloudV3 = cloudData.__sync_v3 || { history: [], records: [], _meta: {} };
+        const localV3 = localData.__sync_v3 || { history: [], records: [] };
+        const cloudV3 = cloudData.__sync_v3 || { history: [], records: [] };
         
-        // ===== 1. 合并历史（按 _id + 日期去重，永不丢失） =====
+        // ===== 1. 合并 history（按 _id 去重） =====
         const historyMap = new Map();
-        const historyDates = new Set();  // 🆕 用日期做辅助去重
-        
-        // 先放云端的
-        (cloudV3.history || []).forEach(h => {
-            if (h._id) {
-                historyMap.set(h._id, h);
-                const d = (h.payload || h).date;
-                if (d) historyDates.add(d);
-            }
-        });
-        
-        // 再放本地的（如果有相同的 _id 或相同的日期，跳过）
-        (localV3.history || []).forEach(h => {
-            if (!h._id) return;
-            const d = (h.payload || h).date;
-            
-            // 🆕 如果日期已经存在，跳过（防止重复）
-            if (d && historyDates.has(d)) return;
-            
+        for (let h of cloudV3.history || []) {
+            if (h._id) historyMap.set(h._id, h);
+        }
+        for (let h of localV3.history || []) {
+            if (!h._id) continue;
             const existing = historyMap.get(h._id);
-            if (!existing || (h._createdAt > existing._createdAt)) {
+            if (!existing || (h._createdAt || '') > (existing._createdAt || '')) {
                 historyMap.set(h._id, h);
-                if (d) historyDates.add(d);
             }
-        });
-        
+        }
         const mergedHistory = Array.from(historyMap.values());
-        // 按时间倒序（最新在前）
         mergedHistory.sort((a, b) => {
             const ta = new Date(a._createdAt || 0).getTime();
             const tb = new Date(b._createdAt || 0).getTime();
             return tb - ta;
         });
         
-        // ===== 2. 合并当前轮次（带 runId 过滤 + 本地空保护） =====
-        
-        // 🆕 收集所有已结算的 runId（从两边 history 里取）
+        // ===== 2. 收集已结算的 runId =====
         const settledRunIds = new Set();
         for (let h of mergedHistory) {
             const payload = h.payload || h;
@@ -182,83 +113,88 @@ const GitHubSync = {
             }
         }
         
-        // 🆕 过滤掉已结算的 records
+        // ===== 3. 过滤 records 中已结算的 runId =====
         const localRecs = (localV3.records || []).filter(r => {
             const rid = r.runId || r.payload?.runId;
-            return !settledRunIds.has(rid);
+            return rid && !settledRunIds.has(rid);
         });
         const cloudRecs = (cloudV3.records || []).filter(r => {
             const rid = r.runId || r.payload?.runId;
-            return !settledRunIds.has(rid);
+            return rid && !settledRunIds.has(rid);
         });
         
-        const localRecTime = localV3._meta?.recordsLastUpdated || 0;
-        const cloudRecTime = cloudV3._meta?.recordsLastUpdated || 0;
-        
-        let mergedRecords;
-        
-        if (localRecs.length === 0 && cloudRecs.length > 0) {
-            // 🆕 本地 records 为空时，先看本地 history 是否也为空
-            // 本地 history 也为空 → 全新设备/清空过 → 直接用云端
-            if (mergedHistory.length === 0) {
-                mergedRecords = cloudRecs;
-            } else {
-                // 本地有历史 → 可能是刚结算完 → 看时间决定
-                const localHistTime = localV3._meta?.lastUpdated || 0;
-                const cloudHistTime = cloudV3._meta?.lastUpdated || 0;
-                if (localHistTime >= cloudHistTime) {
-                    mergedRecords = [];
-                } else {
-                    mergedRecords = cloudRecs;
-                }
-            }
-        } else if (cloudRecs.length === 0 && localRecs.length > 0) {
-            mergedRecords = localRecs;
-        } else if (cloudRecTime > localRecTime) {
-            mergedRecords = cloudRecs;
-        } else if (localRecTime > cloudRecTime) {
-            mergedRecords = localRecs;
-        } else {
-            mergedRecords = cloudRecs.length > localRecs.length ? cloudRecs : localRecs;
+        // ===== 4. 按 runId 分组 =====
+        const localByRun = {};
+        const cloudByRun = {};
+        for (let r of localRecs) {
+            const rid = r.runId || r.payload?.runId;
+            if (!localByRun[rid]) localByRun[rid] = [];
+            localByRun[rid].push(r);
+        }
+        for (let r of cloudRecs) {
+            const rid = r.runId || r.payload?.runId;
+            if (!cloudByRun[rid]) cloudByRun[rid] = [];
+            cloudByRun[rid].push(r);
         }
         
-        // ===== 3. 生成顶层 history（供模块直接用） =====
-        const mergedTopHistory = mergedHistory.map(h => h.payload || h).filter(Boolean);
+        // ===== 5. 每个 runId 组内按 id 合并 =====
+        const allRunIds = new Set([...Object.keys(localByRun), ...Object.keys(cloudByRun)]);
+        const mergedRecords = [];
+        for (let runId of allRunIds) {
+            const localList = localByRun[runId] || [];
+            const cloudList = cloudByRun[runId] || [];
+            
+            const idMap = new Map();
+            // 先放云端的
+            for (let r of cloudList) {
+                const id = r._id || r.id || r.payload?.id;
+                if (id) idMap.set(id, r);
+            }
+            // 再放本地的，同 id 取 deletedAt/createdAt 更新的
+            for (let r of localList) {
+                const id = r._id || r.id || r.payload?.id;
+                if (!id) continue;
+                const existing = idMap.get(id);
+                if (!existing) {
+                    idMap.set(id, r);
+                } else {
+                    const tNew = r.deletedAt || r._createdAt || r.createdAt || 0;
+                    const tOld = existing.deletedAt || existing._createdAt || existing.createdAt || 0;
+                    if (tNew > tOld) idMap.set(id, r);
+                }
+            }
+            
+            const list = Array.from(idMap.values());
+            list.sort((a, b) => {
+                const ia = a._index || a.taskIndex || a.payload?.taskIndex || 0;
+                const ib = b._index || b.taskIndex || b.payload?.taskIndex || 0;
+                return ia - ib;
+            });
+            mergedRecords.push(...list);
+        }
         
-        // ===== 4. 生成顶层 records（供模块直接用） =====
+        // ===== 6. 生成顶层数据 =====
+        const mergedTopHistory = mergedHistory.map(h => h.payload || h).filter(Boolean);
         const mergedTopRecords = mergedRecords.map(r => r.payload || r).filter(Boolean);
         
-        // ===== 5. 合成最终数据 =====
         return {
-            // 🆕 先放云端（会被本地覆盖）
             ...cloudData,
-            // 🆕 再放本地（配置以本地为准）
             ...localData,
-            // 🆕 合并后的顶层数据
             history: mergedTopHistory,
             records: mergedTopRecords,
-            // 🆕 合并后的 V3 数据
             __sync_v3: {
                 history: mergedHistory,
                 records: mergedRecords,
                 _meta: {
                     version: '3.0',
                     lastUpdated: Date.now(),
-                    recordsLastUpdated: Math.max(localRecTime, cloudRecTime)
+                    recordsLastUpdated: Math.max(
+                        localV3._meta?.recordsLastUpdated || 0,
+                        cloudV3._meta?.recordsLastUpdated || 0
+                    )
                 }
             }
         };
-    },
-
-    // ============================================================
-    //  核心合并函数：配置类模块（只有配置，无历史）
-    // ============================================================
-    mergeConfigModule(localData, cloudData) {
-        const localTime = localData?.__sync_v3?._meta?.lastUpdated || 0;
-        const cloudTime = cloudData?.__sync_v3?._meta?.lastUpdated || 0;
-        
-        // 取最新的
-        return (cloudTime > localTime) ? cloudData : localData;
     },
 
     // ============================================================
@@ -328,37 +264,18 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  同步上传（安全合并后上传）
+    //  同步上传（只上传本地数据，不合并，不写回本地）
     // ============================================================
     async syncToCloud() {
         const token = this.getToken();
         if (!token) return { success: false, message: '❌ 请先设置 Gitee Token' };
 
-        // 1. 获取本地所有数据（Storage.get 会自动迁移）
+        // 1. 获取本地所有数据
         const localModules = Storage.getAllForSync();
         
-        // 2. 获取云端数据
-        let cloudModules = {};
-        try {
-            const res = await fetch(this.getApiUrl(), {
-                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.content) {
-                    cloudModules = JSON.parse(this.decodeBase64(data.content)).modules || {};
-                }
-            }
-        } catch (e) { console.log('🔍 云端无数据'); }
-
-        // 3. 合并每个模块
-        const finalModules = {};
-        for (let [moduleKey, localData] of Object.entries(localModules)) {
-            const cloudData = cloudModules[moduleKey] || {};
-            finalModules[moduleKey] = this.mergeModule(moduleKey, localData, cloudData);
-        }
+        // 2. 直接上传本地数据
+        const finalModules = { ...localModules };
         
-        // 4. 上传
         const payload = {
             version: '3.0',
             timestamp: new Date().toISOString(),
@@ -384,18 +301,14 @@ const GitHubSync = {
                     'Content-Type': 'application/json' 
                 },
                 body: JSON.stringify({
-                    message: `同步 - ${new Date().toLocaleString()} (V4安全合并)`,
+                    message: `同步 - ${new Date().toLocaleString()}`,
                     content: this.encodeBase64(JSON.stringify(payload, null, 2)),
                     sha: sha
                 })
             });
 
             if (putRes.ok) {
-                // 上传成功后，把合并后的数据写回本地
-                for (let [moduleKey, mergedData] of Object.entries(finalModules)) {
-                    localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(mergedData));
-                }
-                return { success: true, message: `✅ 同步成功！数据已合并` };
+                return { success: true, message: `✅ 同步成功！数据已上传` };
             } else {
                 const err = await putRes.json();
                 return { success: false, message: '❌ 同步失败：' + (err.message || '未知错误') };
@@ -406,7 +319,7 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  从云端拉取（安全合并，不覆盖本地）
+    //  从云端拉取（合并本地和云端，写回本地）
     // ============================================================
     async syncFromCloud() {
         const token = this.getToken();
@@ -428,12 +341,11 @@ const GitHubSync = {
             const content = JSON.parse(this.decodeBase64(data.content));
             if (!content.modules) return { success: false, message: '❌ 云端格式错误' };
 
-            console.log('☁️ 开始安全拉取（合并模式）...');
+            console.log('☁️ 开始拉取（合并模式）...');
             let mergedCount = 0;
             let addedHistoryCount = 0;
 
             for (let [moduleKey, cloudData] of Object.entries(content.modules)) {
-                // 读取本地数据（Storage.get 会自动迁移）
                 const localData = Storage.get(moduleKey, {});
                 
                 // 如果本地为空，直接用云端
