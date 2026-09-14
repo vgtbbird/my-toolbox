@@ -2635,7 +2635,7 @@ updateHistory() {
     let cumulativePoints = 0;
     const pointsMap = {};
     for (let r of visibleRecords) {
-        cumulativePoints += r.ringPoints || 0;
+        cumulativePoints += r.score || 0;
         pointsMap[r.taskIndex] = cumulativePoints;
     }
     for (let r of records) {
