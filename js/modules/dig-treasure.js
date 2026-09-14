@@ -226,6 +226,7 @@ const DigTreasureModule = {
                                     <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">💰 总成本</th>
                                     <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📊 总产出</th>
                                     <th style="min-width:60px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📈 利润</th>
+                                    <th style="min-width:50px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">📊 详情</th>
                                     <th style="min-width:50px;background:#1f344b;color:#f0ebdd;padding:8px 6px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;font-size:0.7rem;">⚙️</th>
                                 </tr>
                             </thead>
@@ -318,6 +319,9 @@ const DigTreasureModule = {
                 <td style="padding:6px 4px;text-align:center;">${cost.toFixed(1)}万</td>
                 <td style="padding:6px 4px;text-align:center;">${income.toFixed(1)}万</td>
                 <td style="padding:6px 4px;text-align:center;font-weight:700;" class="${pc}">${profit >= 0 ? '+' : ''}${profit.toFixed(1)}万</td>
+               <td style="padding:6px 4px;text-align:center;">
+                    <button class="dt-detail-btn" data-idx="${i}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#1f3b53;font-weight:600;">📊</button>
+                </td>
                 <td style="padding:6px 4px;text-align:center;">
                     <button class="dt-del-history" data-idx="${i}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
                 </td>
@@ -522,6 +526,15 @@ const DigTreasureModule = {
                 }
             }
         });
+       
+                document.getElementById('dtHistoryBodyTable').addEventListener('click', function(e) {
+            const btn = e.target.closest('.dt-detail-btn');
+            if (btn) {
+                const idx = parseInt(btn.dataset.idx);
+                const r = DigTreasureModule.records.slice().reverse()[idx];
+                if (r) DigTreasureModule.showDetailModal(r);
+            }
+        });
     },
 
     updateTypeStatsLabels() {
@@ -555,6 +568,40 @@ const DigTreasureModule = {
         const ps = document.getElementById('dtProfitStat');
         ps.className = 'stat-item' + (profit > 0 ? ' profit' : profit < 0 ? ' loss' : '');
     },
+
+    showDetailModal(record) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+    
+    const renderItems = (type, label, items) => {
+        if (!items || items.length === 0) return '';
+        let html = `<div style="margin-bottom:8px;"><div style="font-weight:700;color:#1f3b53;font-size:0.85rem;margin-bottom:4px;">${label}</div><div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+        for (let item of items) {
+            html += `<span style="background:#f0f5fb;padding:2px 10px;border-radius:12px;font-size:0.7rem;border:1px solid #dce5ef;">${item.name} (${item.price}万)</span>`;
+        }
+        html += `</div></div>`;
+        return html;
+    };
+    
+    overlay.innerHTML = `
+        <div style="background:#f8faff;border-radius:24px;padding:24px 28px 28px;max-width:560px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.1rem;">📊 ${record.date} 挖图详情</h3>
+            <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:12px;">总成本 ${(record.totalCost||0).toFixed(1)}万 | 总产出 ${(record.totalIncome||0).toFixed(1)}万 | 利润 ${(record.profit||0).toFixed(1)}万</div>
+            <div style="border-top:1px solid #eef2f7;padding-top:10px;">
+                ${renderItems('normal', '🗺️ 普通藏宝图', record.normal?.items)}
+                ${renderItems('advanced', '🔥 高级藏宝图', record.advanced?.items)}
+                ${renderItems('super', '💎 超级藏宝图', record.super?.items)}
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+                <button id="dtDetailClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('dtDetailClose').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+},
+
 
     saveDay() {
         const today = new Date().toISOString().slice(0, 10);
