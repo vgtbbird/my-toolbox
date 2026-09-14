@@ -2631,6 +2631,13 @@ updateHistory() {
 
     let html = '';
     const records = visibleRecords.slice().reverse();
+    // 🆕 累计积分
+    let cumulativePoints = 0;
+    const pointsMap = {};
+    for (let r of visibleRecords) {
+        cumulativePoints += r.ringPoints || 0;
+        pointsMap[r.taskIndex] = cumulativePoints;
+    }
     for (let r of records) {
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : (r.label || r.typeKey);
@@ -2664,6 +2671,7 @@ updateHistory() {
                 ${timeDisplay}
                 <span>💰${r.cost.toFixed(1)}</span>
                 <span>⭐${sc}</span>
+                <span style="color:#5a7a94;font-size:0.7rem;">累计${pointsMap[r.taskIndex] || 0}</span>
                 <span>📈+${r.ringPoints}</span>
             </div>
         </div>`;
