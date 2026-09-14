@@ -224,14 +224,14 @@ const PetRingModule = {
         this.currentRunId = data.currentRunId || null;
         
         // 🆕 如果 records 里有有效的环次，沿用它的 runId
-        const validRecords = this.records.filter(r => !r.deleted);
+        const validRecords = (data.records || []).filter(r => !r.deleted);
         if (validRecords.length > 0) {
             const existingRunId = validRecords[0].runId || validRecords[0].payload?.runId;
             if (existingRunId) this.currentRunId = existingRunId;
         }
-        
+    
         // 🆕 如果 currentRunId 已在 history 里（已结算），换新的
-        if (this.currentRunId && this.history.some(h => h.runId === this.currentRunId)) {
+        if (this.currentRunId && (data.history || []).some(h => h.runId === this.currentRunId)) {
             this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
         
