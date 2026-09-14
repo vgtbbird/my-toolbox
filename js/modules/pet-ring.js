@@ -198,14 +198,15 @@ const PetRingModule = {
         // 🆕 本轮记录标题右侧显示当前环的序号 + 时辰
         const currentRingShichenEl = document.getElementById('prCurrentRingShichen');
         if (currentRingShichenEl) {
-            const currentRingIndex = this.records.length + 1;
+            const visibleRecords = this.records.filter(r => !r.deleted);
+            const currentRingIndex = visibleRecords.length + 1;
             let ringShichen;
             let ringTimestamp;
-            if (this.records.length === 0) {
+            if (visibleRecords.length === 0) {
                 ringShichen = shichen;
                 ringTimestamp = this.startTimestamp || Date.now();
             } else {
-                const lastRecord = this.records[this.records.length - 1];
+                const lastRecord = visibleRecords[visibleRecords.length - 1];
                 const nextShichenTimestamp = lastRecord.clickTimestamp || Date.now();
                 ringShichen = this.getShichen(nextShichenTimestamp);
                 ringTimestamp = nextShichenTimestamp;
@@ -222,12 +223,16 @@ const PetRingModule = {
         const data = Storage.get(this.storageKey, {});
         this.currentRunId = data.currentRunId || null;
         
-        // 🆕 如果 records 里已有数据，沿用它的 runId（防止从云端拉取后换新ID）
-        if (this.records.length > 0) {
-            const existingRunId = this.records[0].runId || this.records[0].payload?.runId;
-            if (existingRunId) {
-                this.currentRunId = existingRunId;
-            }
+        // 🆕 如果 records 里有有效的环次，沿用它的 runId
+        const validRecords = this.records.filter(r => !r.deleted);
+        if (validRecords.length > 0) {
+            const existingRunId = validRecords[0].runId || validRecords[0].payload?.runId;
+            if (existingRunId) this.currentRunId = existingRunId;
+        }
+        
+        // 🆕 如果 currentRunId 已在 history 里（已结算），换新的
+        if (this.currentRunId && this.history.some(h => h.runId === this.currentRunId)) {
+            this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
         
         // 如果还是没有，才新生成
@@ -265,15 +270,10 @@ const PetRingModule = {
     },
 
     saveData() {
-        // 🆕 生成 V3 历史锚点（供同步合并用）
+        // 🆕 生成 V3 历史锚点（_id 用 runId，跨设备一致）
         const historyV3 = this.history.map((h, idx) => {
-            // 如果历史记录本身已经有 _id，直接沿用
-            if (h._id && h._createdAt) {
-                return { _id: h._id, _createdAt: h._createdAt, payload: h };
-            }
-            // 否则生成新的
             return {
-                _id: `petRing_hist_${h.date || Date.now()}_${idx}`,
+                _id: h.runId ? `petRing_run_${h.runId}` : `petRing_hist_${Date.now()}_${idx}`,
                 _createdAt: h._createdAt || h.date || new Date().toISOString(),
                 payload: h
             };
@@ -700,7 +700,8 @@ showFullSettleModal(stats) {
         const typeCount = stats.typeCount || {};
         const rewardsDesc = `${bookDisplayName}（${bookValue}万） + ${rewardLabel}（${rewardValue.toFixed(1)}万） + 修炼点${stats.totalPoints}点（${pointsVal.toFixed(1)}万）`;
 
-        const ringsData = this.records.map(r => ({
+        const visibleRecords = this.records.filter(r => !r.deleted);
+        const ringsData = visibleRecords.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
             label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
@@ -808,8 +809,9 @@ showFullSettleModal(stats) {
         const pointsValue = stats.totalPoints * (fruitPrice / 170);
         const rewards = this.bookRewards.map(b => `${b.name}(${b.value}万)`).join(' + ');
 
-        // 🆕 保存 rings 详细数据
-        const ringsData = this.records.map(r => ({
+       // 🆕 保存 rings 详细数据（只保存有效环次）
+        const visibleRecords = this.records.filter(r => !r.deleted);
+        const ringsData = visibleRecords.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
             label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
@@ -879,6 +881,7 @@ showFullSettleModal(stats) {
         this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
         this.pendingSettle = null;
         this.pendingRelog = false;
+        this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6); 
         this.saveData();
         this.startTimestamp = null;  // 🆕 清空开始时间
 
@@ -1087,21 +1090,23 @@ showFullSettleModal(stats) {
         return 13;
     },
 
-    calcStats() {
-        let totalCost = this.INITIAL_COST, totalScore = 0, totalPoints = 0;
-        const typeCount = {};
-        this.ITEM_TYPES.forEach(t => typeCount[t.key] = 0);
-        this.DEDUCT_TYPES.forEach(d => typeCount[d.key] = 0);
+calcStats() {
+    let totalCost = this.INITIAL_COST, totalScore = 0, totalPoints = 0;
+    const typeCount = {};
+    this.ITEM_TYPES.forEach(t => typeCount[t.key] = 0);
+    this.DEDUCT_TYPES.forEach(d => typeCount[d.key] = 0);
 
-        for (let r of this.records) {
-            totalCost += r.cost;
-            totalScore += r.score;
-            totalPoints += r.ringPoints;
-            if (typeCount[r.typeKey] !== undefined) typeCount[r.typeKey]++;
-            else typeCount[r.typeKey] = 1;
-        }
+    const visibleRecords = this.records.filter(r => !r.deleted);
 
-        const count = this.records.length;
+    for (let r of visibleRecords) {
+        totalCost += r.cost;
+        totalScore += r.score;
+        totalPoints += r.ringPoints;
+        if (typeCount[r.typeKey] !== undefined) typeCount[r.typeKey]++;
+        else typeCount[r.typeKey] = 1;
+    }
+
+    const count = visibleRecords.length;
         let totalPointsAll = totalPoints + this.extraRewards.points + this.extraRewards.fruits * 170;
 
         return {
@@ -1717,6 +1722,7 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
                 this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
                 this.pendingSettle = null;
                 this.pendingRelog = false;
+                this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6); 
                 this.startTimestamp = null;  // 🆕 清空开始时间
                 this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                 document.getElementById('prRelogStatus').textContent = '无待标记';
@@ -2253,7 +2259,8 @@ console.log('🔍 relogIndices:', relogIndices);
         const price = this.prices[key] || 0;
         const type = this.ITEM_TYPES.find(t => t.key === key);
         const score = type ? type.score : 0;
-        const idx = this.records.length;
+        const visibleRecords = this.records.filter(r => !r.deleted);
+        const idx = visibleRecords.length;
         
         // 🆕 检查是否有待标记的重登
         const isRelog = this.pendingRelog || false;
@@ -2270,11 +2277,10 @@ console.log('🔍 relogIndices:', relogIndices);
         
         // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
-        if (this.records.length === 0) {
-            // 第1环用开始按钮的时间，如果没有则用当前时间
+        if (visibleRecords.length === 0) {
             recordTimestamp = this.startTimestamp || nowTimestamp;
         } else {
-            recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
+            recordTimestamp = visibleRecords[visibleRecords.length - 1].clickTimestamp || nowTimestamp;
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
@@ -2282,7 +2288,7 @@ console.log('🔍 relogIndices:', relogIndices);
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
             runId: this.currentRunId, 
-            taskIndex: this.records.length + 1,
+            taskIndex: visibleRecords.length + 1,
             typeKey: key, 
             cost: price, 
             score, 
@@ -2319,7 +2325,8 @@ console.log('🔍 relogIndices:', relogIndices);
         const s = this.deductSettings[key];
         if (!s) return;
         const type = this.DEDUCT_TYPES.find(d => d.key === key);
-        const idx = this.records.length;
+        const visibleRecords = this.records.filter(r => !r.deleted);
+        const idx = visibleRecords.length;
         
         // 🆕 检查是否有待标记的重登
         const isRelog = this.pendingRelog || false;
@@ -2336,11 +2343,10 @@ console.log('🔍 relogIndices:', relogIndices);
         
         // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
-        if (this.records.length === 0) {
-            // 第1环用开始按钮的时间，如果没有则用当前时间
+        if (visibleRecords.length === 0) {
             recordTimestamp = this.startTimestamp || nowTimestamp;
         } else {
-            recordTimestamp = this.records[this.records.length - 1].clickTimestamp || nowTimestamp;
+            recordTimestamp = visibleRecords[visibleRecords.length - 1].clickTimestamp || nowTimestamp;
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
@@ -2348,7 +2354,7 @@ console.log('🔍 relogIndices:', relogIndices);
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
             runId: this.currentRunId, 
-            taskIndex: this.records.length + 1,
+            taskIndex: visibleRecords.length + 1,
             typeKey: key,
             cost: s.cost || 0,
             score: -(s.deduct || 0),
@@ -2372,26 +2378,39 @@ console.log('🔍 relogIndices:', relogIndices);
         this.updateRelogAnalysis();
     },
 
-    undoRecord() {
-        if (this.records.length > 0) {
-            const removed = this.records.pop();
-            // 如果撤销的是重登标记的环，清除待标记状态
-            if (removed.isRelog) {
-                this.pendingRelog = true;
-                const nextIndex = this.records.length + 1;
-                document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
-                document.getElementById('prRelogStatus').style.color = '#dbbd7c';
-                document.getElementById('prCancelRelogBtn').style.display = 'inline-block';  // 🆕 加这行
-            }
-            if (this.pendingSettle) {
-                this.pendingSettle = null;
-            }
-            this.render();
-            this.updateRelogAnalysis();
-        } else {
-            alert('没有可撤销的记录！');
-        }
-    },
+undoRecord() {
+    // 🆕 用 visibleRecords 找最后一条有效记录
+    const visibleRecords = this.records.filter(r => !r.deleted);
+    if (visibleRecords.length === 0) {
+        alert('没有可撤销的记录！');
+        return;
+    }
+
+    const lastVisible = visibleRecords[visibleRecords.length - 1];
+    // 🆕 在 this.records 里找到它并标记删除
+    const idx = this.records.findIndex(r => r.id === lastVisible.id);
+    if (idx >= 0) {
+        this.records[idx].deleted = true;
+        this.records[idx].deletedAt = Date.now();
+    }
+
+    // 如果撤销的是重登标记的环，恢复待标记状态
+    if (lastVisible.isRelog) {
+        this.pendingRelog = true;
+        const nextIndex = visibleRecords.length;
+        document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
+        document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+        document.getElementById('prCancelRelogBtn').style.display = 'inline-block';
+    }
+
+    if (this.pendingSettle) {
+        this.pendingSettle = null;
+    }
+
+    this.saveData();
+    this.render();
+    this.updateRelogAnalysis();
+},
 
     // ========== 更新书铁列表 ==========
     updateBookList() {
@@ -2597,13 +2616,14 @@ console.log('🔍 relogIndices:', relogIndices);
 
 updateHistory() {
     const list = document.getElementById('prHistoryList');
-    if (this.records.length === 0) {
+    const visibleRecords = this.records.filter(r => !r.deleted);
+    if (visibleRecords.length === 0) {
         list.innerHTML = '<div class="empty-history">暂无记录</div>';
         return;
     }
 
     let html = '';
-    const records = this.records.slice().reverse();  // 显示全部
+    const records = visibleRecords.slice().reverse();
     for (let r of records) {
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : (r.label || r.typeKey);
@@ -2648,7 +2668,8 @@ updateHistory() {
 
     // 🆕 显示本轮全部记录弹窗
 showAllRingsModal() {
-    if (this.records.length === 0) {
+    const visibleRecords = this.records.filter(r => !r.deleted);
+    if (visibleRecords.length === 0) {
         alert('暂无记录');
         return;
     }
@@ -2657,8 +2678,8 @@ showAllRingsModal() {
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
 
     let listHtml = '';
-    for (let i = 0; i < this.records.length; i++) {
-        const r = this.records[i];
+    for (let i = 0; i < visibleRecords.length; i++) {
+        const r = visibleRecords[i];
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : (r.label || r.typeKey);
         const sc = r.score < 0 ? r.score : `+${r.score}`;
@@ -2713,7 +2734,7 @@ updateRelogAnalysis() {
     const container = document.getElementById('prRelogAnalysis');
     if (!container) return;
 
-    const records = this.records;
+    const records = this.records.filter(r => !r.deleted);
     if (records.length === 0) {
         container.innerHTML = '🔁 等待重登标记...';
         container.style.color = '#5a7a94';
@@ -3239,6 +3260,7 @@ updateRelogAnalysis() {
 
         const entry = {
             date,
+            runId: this.currentRunId || `import_${Date.now()}`,
             ringCount,
             totalCost,
             totalScore,
