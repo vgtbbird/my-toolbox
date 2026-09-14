@@ -1965,7 +1965,10 @@ showRingsDetailModal(entry) {
     let html = `
             <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
               <div style="display:flex;justify-content:space-between;align-items:center;">
-                <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
+               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <h3 style="color:#1f3b53;margin:0;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
+                    <button id="ringsDetailTopClose" style="padding:6px 20px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.8rem;background:#dce5ef;color:#1f3b53;">关闭</button>
+                </div>
                 <div style="display:flex;gap:4px;">
                     <button id="ringsDetailSmaller" style="background:#dce5ef;border:none;border-radius:20px;padding:2px 10px;font-size:0.7rem;cursor:pointer;color:#1f3b53;">缩小</button>
                     <button id="ringsDetailLarger" style="background:#6b8baa;color:#fff;border:none;border-radius:20px;padding:2px 10px;font-size:0.7rem;cursor:pointer;">放大</button>
@@ -2239,6 +2242,10 @@ console.log('🔍 relogIndices:', relogIndices);
     document.getElementById('ringsDetailClose').addEventListener('click', () => {
         overlay.remove();
     });
+    
+    document.getElementById('ringsDetailTopClose').addEventListener('click', () => {
+    overlay.remove();
+});
     // 去掉点击遮罩关闭，防止拖动时误关
     // overlay.addEventListener('click', (e) => {
     //     if (e.target === overlay) overlay.remove();
@@ -2709,10 +2716,10 @@ showAllRingsModal() {
     }
 
     overlay.innerHTML = `
-        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:650px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+       <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
             <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📋 本轮全部记录</h3>
             <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:10px;">共 ${this.records.length} 环</div>
-            <div style="max-height:500px;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+            <div style="max-height:70vh;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
                 ${listHtml}
             </div>
             <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
