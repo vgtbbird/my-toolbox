@@ -66,12 +66,19 @@ const GitHubSync = {
     // ============================================================
     //  合并：配置类模块（只有配置，按 configLastUpdated 取新）
     // ============================================================
-    mergeConfigModule(localData, cloudData) {
+    mergeConfigModule(moduleKey, localData, cloudData) {
+        // 🆕 跑商：以云端为主（实时协作看价格）
+        if (moduleKey === 'shopHelper') {
+            if (!cloudData || Object.keys(cloudData).length === 0) {
+                return localData;
+            }
+            return cloudData;
+        }
+        // 其他配置类模块：按 configLastUpdated 取新，没有则取本地
         const localTime = localData?.configLastUpdated || localData?.__sync_v3?._meta?.lastUpdated || 0;
         const cloudTime = cloudData?.configLastUpdated || cloudData?.__sync_v3?._meta?.lastUpdated || 0;
         return (cloudTime > localTime) ? cloudData : localData;
     },
-
     // ============================================================
     //  合并：数据类模块（有 history + records）
     // ============================================================
@@ -202,7 +209,7 @@ const GitHubSync = {
     // ============================================================
     mergeModule(moduleKey, localData, cloudData) {
         if (this.isConfigModule(moduleKey)) {
-            return this.mergeConfigModule(localData, cloudData);
+            return this.mergeConfigModule(moduleKey, localData, cloudData);
         }
         return this.mergeDataModule(moduleKey, localData, cloudData);
     },
