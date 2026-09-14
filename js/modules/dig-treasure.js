@@ -566,7 +566,8 @@ const DigTreasureModule = {
 
         if (totalCost === 0 && totalIncome === 0) { alert('今日还没有记录！'); return; }
 
-        const summary = { date: today, normal: { count: normal.count, items: normal.items }, advanced: { count: advanced.count, items: advanced.items }, super: { count: superRec.count, items: superRec.items }, totalCost, totalIncome, profit };
+        
+        const summary = { _id: 'dig_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6), _createdAt: new Date().toISOString(), date: today, normal: { count: normal.count, items: normal.items }, advanced: { count: advanced.count, items: advanced.items }, super: { count: superRec.count, items: superRec.items }, totalCost, totalIncome, profit };
         this.records.push(summary);
         this.todayRecords = { normal: { count: 0, cost: 0, items: [] }, advanced: { count: 0, cost: 0, items: [] }, super: { count: 0, cost: 0, items: [] } };
         this.saveData();
