@@ -2080,6 +2080,12 @@ console.log('🔍 relogIndices:', relogIndices);
             <div style="margin-bottom:6px;font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
             <div style="max-height:none;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
         `;
+        let cumulativePoints = 0;
+        const pointsMap = {};
+        for (let r of rings) {
+            cumulativePoints += r.score || 0;
+            pointsMap[r.taskIndex] = cumulativePoints;
+        }
         for (let r of rings) {
             // 🆕 直接使用保存的 label，如果没有则用 getTaskLabel
             let label = r.label || this.getTaskLabel(r.typeKey);
@@ -2105,7 +2111,7 @@ console.log('🔍 relogIndices:', relogIndices);
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
                     <span style="color:${r.shichen ? this.getShichenColor(r.shichen) : '#B8860B'};font-size:inherit;font-weight:600;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${(() => { if (!r.date) return r.timeStr || ''; const p = r.date.split(' ')[0].split('/'); return p.length >= 3 ? p[1] + '/' + p[2] + ' ' + (r.timeStr || '') : r.timeStr || ''; })()}</span>
-                    <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0}</span>
+                    <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0} 累计${pointsMap[r.taskIndex] || 0}</span>
                     ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#1a1a2e;font-size:0.75rem;">✅</span>'}
                 </div>
             `;
