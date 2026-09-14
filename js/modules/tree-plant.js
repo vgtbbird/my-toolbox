@@ -134,13 +134,14 @@ const TreePlantModule = {
     },
 
     saveData() {
-        // 🆕 生成 V3 历史锚点
         const historyV3 = this.history.map((h, idx) => {
+            // 🆕 优先用 entry 自带的 _id
             if (h._id && h._createdAt) {
                 return { _id: h._id, _createdAt: h._createdAt, payload: h };
             }
+            // 兜底：旧数据没有 _id 的，生成一个（但只生成一次，之后 save 会沿用）
             return {
-                _id: `treePlant_hist_${h.date || Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
+                _id: h._id || `treePlant_hist_${Date.now()}_${idx}_${Math.random().toString(36).substr(2,6)}`,
                 _createdAt: h._createdAt || h.date || new Date().toISOString(),
                 payload: h
             };
@@ -1148,6 +1149,8 @@ addEvent(evt) {
         }
 
         const entry = {
+            _id: 'tree_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            _createdAt: new Date().toISOString(),
             date: new Date().toLocaleString(),
             cost: this.current.seedCost,
             income: income.total,
