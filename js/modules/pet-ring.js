@@ -777,6 +777,7 @@ showFullSettleModal(stats) {
         this.pendingSettle = null;
         this.pendingRelog = false;
         this.startTimestamp = null;  // 🆕 清空开始时间
+        this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         this.saveData();
 
         overlay.remove();
