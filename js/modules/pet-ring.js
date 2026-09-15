@@ -2262,8 +2262,8 @@ console.log('🔍 relogIndices:', relogIndices);
         
 
        addRecord(key) {
-        if (this.pendingSettle) {
-            alert('本轮已满100环，请先确认结算再继续！');
+        if (this.records.filter(r => !r.deleted).length >= 100) {
+            alert('本轮已满100环，请先结算！');
             return;
         }
         // 🆕 检查是否已开始跑环
@@ -2328,8 +2328,8 @@ console.log('🔍 relogIndices:', relogIndices);
     
 
     addDeduct(key) {
-        if (this.pendingSettle) {
-            alert('本轮已满100环，请先确认结算再继续！');
+        if (this.records.filter(r => !r.deleted).length >= 100) {
+            alert('本轮已满100环，请先结算！');
             return;
         }
                 // 🆕 检查是否已开始跑环
