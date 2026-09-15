@@ -1368,10 +1368,10 @@ calcStats() {
                 <div class="module-body" id="prPriceBody">
                     <div class="price-row" id="prPriceInputs"></div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:6px;border-top:1px solid #dce5ef;">
-                        <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;">💱 1万梦幻币 = </label>
-                        <input type="number" step="0.001" min="0" id="prExchangeRate" value="${this.exchangeRate}" style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:20px;font-size:0.8rem;text-align:center;">
-                        <span style="font-size:0.8rem;color:#1f3b53;">元 RMB</span>
-                        <span style="font-size:0.65rem;color:#5a7a94;margin-left:8px;">💡 例：0.08 = 1万梦幻币=0.08元</span>
+                        <label style="font-weight:600;font-size:0.8rem;color:#1f3b53;">💱 1元RMB = </label>
+                        <input type="number" step="0.1" min="0" id="prExchangeRate" value="${this.exchangeRate ? (1 / this.exchangeRate).toFixed(1) : 12.5}"style="width:70px;padding:4px 6px;border:1px solid #bccad9;border-radius:20px;font-size:0.8rem;text-align:center;">
+                        <span style="font-size:0.8rem;color:#1f3b53;">万梦幻币</span>
+                        <span style="font-size:0.65rem;color:#5a7a94;margin-left:8px;">💡 例：12.5 = 1元=12.5万梦幻币</span>
                     </div>
                 </div>
             </div>
@@ -1558,7 +1558,8 @@ calcStats() {
         // ===== 汇率变化 =====
         document.getElementById('prExchangeRate').addEventListener('input', function() {
             const val = parseFloat(this.value) || 0;
-            PetRingModule.exchangeRate = val;
+            // 🆕 输入的是「1元=?万」，内部存的是「1万=?元」
+            PetRingModule.exchangeRate = val > 0 ? (1 / val) : 0;
             PetRingModule.saveData();
             PetRingModule.render();
         });
