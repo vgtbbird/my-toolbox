@@ -831,20 +831,45 @@
         // ============================================================
         //  清空本地
         // ============================================================
-        document.getElementById('clearLocalBtn').addEventListener('click', function() {
-            if (confirm('⚠️ 确定要清空本地所有数据吗？\n（不会影响云端数据，Token 会保留）')) {
-                const keys = Object.keys(localStorage);
-                let count = 0;
-                for (let key of keys) {
-                    if (key.startsWith('toolbox_')) {
-                        localStorage.removeItem(key);
-                        count++;
+document.getElementById('clearLocalBtn').addEventListener('click', function() {
+    if (confirm('⚠️ 确定要清空本地所有数据吗？\n（配置会保留，Token 会保留）')) {
+        const keepByModule = {
+            petRing: ['prices', 'deductSettings', 'exchangeRate', 'fruitPrice', 'uiSettings', 'configLastUpdated'],
+            treePlant: ['prices', 'exchangeRate', 'uiSettings'],
+            petHunt: ['petLibrary', 'customScenes', 'uiSettings', 'exchangeRate'],
+            shopHelper: ['travelTimes', 'goodsList', 'goodsRefPrices', 'uiSettings', 'firstOffset', 'secondMinute', 'secondSecond', 'guildMaintenanceTime'],
+            digTreasure: ['presetItems', 'uiSettings'],
+            soulTask: ['prices', 'uiSettings'],
+            alchemy: ['uiSettings'],
+            equipmentQuery: ['uiSettings'],
+            petEquipmentQuery: ['uiSettings']
+        };
+        
+        let count = 0;
+        
+        for (let key of Object.keys(localStorage)) {
+            if (key.startsWith('toolbox_')) {
+                const moduleKey = key.replace('toolbox_', '');
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    const kept = {};
+                    const keepFields = keepByModule[moduleKey] || ['uiSettings'];
+                    for (let f of keepFields) {
+                        if (data[f] !== undefined) kept[f] = data[f];
                     }
+                    localStorage.setItem(key, JSON.stringify(kept));
+                    count++;
+                } catch (e) {
+                    localStorage.removeItem(key);
+                    count++;
                 }
-                alert(`✅ 已清空 ${count} 条本地数据！\nToken 已保留，页面将刷新。`);
-                location.reload();
             }
-        });
+        }
+        
+        alert(`✅ 已清空 ${count} 个模块的数据！\n配置已保留，页面将刷新。`);
+        location.reload();
+    }
+});
 
         // ============================================================
         //  清空云端
