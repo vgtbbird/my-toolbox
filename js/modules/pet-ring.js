@@ -1559,7 +1559,7 @@ calcStats() {
         // ===== 汇率变化 =====
         document.getElementById('prExchangeRate').addEventListener('input', function() {
             const val = parseFloat(this.value) || 0;
-            // 🆕 输入的是「1元=?万」，内部存的是「1万=?元」
+            // 🆕 输入的是「1元=?万」，内部存「1万=?元」
             PetRingModule.exchangeRate = val > 0 ? (1 / val) : 0;
             PetRingModule.saveData();
             PetRingModule.render();
