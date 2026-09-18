@@ -1336,7 +1336,7 @@ calcStats() {
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span> <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;margin-left:6px;">📋 查看全部</button></div>
-                  <span id="prTopShichenHint" style="margin-left:8px;font-size:inherit;font-weight:700;color:#2d6b2d;"></span>
+                  <span id="prTopShichenHint" style="margin-left:8px;font-size:inherit;font-weight:700;color:#1f3b53;"></span>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
     <div class="module-body" id="prHistoryBody">
@@ -2849,7 +2849,17 @@ showAllRingsModal() {
         if (top4.length === 0) {
             hintEl.textContent = '';
         } else {
-            hintEl.textContent = '⭐ ' + top4.map((t, i) => `${i + 1}.${t.name}`).join('  ');
+            // 取当前时辰
+            const nowShichen = this.getShichen(Date.now()).name;
+            // 逐个渲染
+            let parts = [];
+            for (let i = 0; i < top4.length; i++) {
+                const t = top4[i];
+                const isCurrent = (t.name === nowShichen);
+                const color = isCurrent ? '#2d6b2d' : '#1f3b53';
+                parts.push(`<span style="color:${color};">${i + 1}.${t.name}</span>`);
+            }
+            hintEl.innerHTML = '⭐ ' + parts.join('  ');
         }
     }
 },
