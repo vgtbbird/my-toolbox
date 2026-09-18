@@ -124,6 +124,7 @@ const PetRingModule = {
         setTimeout(() => this.applyUISettings(), 100);
         this.checkAutoSettle();
         this.updateRelogAnalysis();
+        this.renderShichenWeights();
         this.updateTimeAndShichen();  
     },
 
@@ -1337,12 +1338,33 @@ calcStats() {
                    <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span></div>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
-                <div class="module-body" id="prHistoryBody">
-                    <div class="history-section" id="prHistoryList" style="max-height:200px;overflow-y:auto;"><div class="empty-history">暂无记录</div></div>
-                    <div style="text-align:right;margin-top:4px;">
-                        <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">📋 查看全部</button>
-                    </div>
+    <div class="module-body" id="prHistoryBody">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <!-- 左侧：本轮记录 -->
+            <div style="flex:1;min-width:0;">
+                <div class="history-section" id="prHistoryList" style="max-height:200px;overflow-y:auto;"><div class="empty-history">暂无记录</div></div>
+                <div style="text-align:right;margin-top:4px;">
+                    <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">📋 查看全部</button>
                 </div>
+            </div>
+            <!-- 右侧：时辰权重表 -->
+            <div style="width:260px;flex-shrink:0;">
+                <div style="background:#f8faff;border-radius:12px;padding:10px 12px;font-size:0.75rem;border:1px solid #dce5ef;">
+                    <div style="font-weight:700;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰权重表</div>
+                    <div style="margin-bottom:6px;display:flex;align-items:center;gap:4px;">
+                        <label style="font-size:0.65rem;color:#5a7a94;">范围：</label>
+                        <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
+                            <option value="all">全部</option>
+                            <option value="7">最近 7 天</option>
+                            <option value="3">最近 3 天</option>
+                            <option value="1">最近 1 天</option>
+                        </select>
+                    </div>
+                    <div id="prWeightList" style="max-height:200px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
             </div>
 
             
@@ -1949,7 +1971,13 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
                 }
             }
         });
-
+        
+const weightRangeEl = document.getElementById('prWeightRange');
+if (weightRangeEl) {
+    weightRangeEl.addEventListener('change', function() {
+        PetRingModule.renderShichenWeights();
+    });
+}
         // ===== 排序按钮 =====
         document.getElementById('prSortHeader')?.addEventListener('click', function() {
             PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
@@ -2751,6 +2779,63 @@ showAllRingsModal() {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.remove();
     });
+},
+
+    renderShichenWeights() {
+    const rangeEl = document.getElementById('prWeightRange');
+    if (!rangeEl) return;
+    const range = rangeEl.value || 'all';
+    const now = Date.now();
+    let cutoff = 0;
+    if (range === '7') cutoff = now - 7 * 24 * 3600 * 1000;
+    else if (range === '3') cutoff = now - 3 * 24 * 3600 * 1000;
+    else if (range === '1') cutoff = now - 24 * 3600 * 1000;
+
+    const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+    const stats = {};
+    shichenNames.forEach(n => stats[n] = { total: 0, find: 0 });
+
+    // 遍历历史每一轮的 rings
+    for (let h of this.history) {
+        const histTime = new Date(h.date).getTime();
+        if (cutoff && histTime < cutoff) continue;
+        for (let r of h.rings || []) {
+            if (!r.shichen) continue;
+            if (!stats[r.shichen]) continue;
+            stats[r.shichen].total++;
+            if (r.typeKey === 'find') stats[r.shichen].find++;
+        }
+    }
+
+    // 本轮 records 也统计进去（当前正在跑的，也实时反映）
+    for (let r of this.records) {
+        if (r.deleted) continue;
+        if (!r.shichen) continue;
+        if (!stats[r.shichen]) continue;
+        stats[r.shichen].total++;
+        if (r.typeKey === 'find') stats[r.shichen].find++;
+    }
+
+    let html = '';
+    for (let n of shichenNames) {
+        const s = stats[n];
+        if (s.total === 0) {
+            html += `<div style="display:flex;justify-content:space-between;padding:2px 0;color:#c0ccd8;">
+                <span style="min-width:36px;">${n}时</span>
+                <span>—</span>
+                <span style="font-size:0.6rem;">0环</span>
+            </div>`;
+            continue;
+        }
+        const rate = s.find / s.total * 100;
+        const color = rate < 33 ? '#2d6b2d' : rate < 45 ? '#b48b3a' : '#c0392b';
+        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #eef2f7;">
+            <span style="min-width:36px;color:#1f3b53;">${n}时</span>
+            <span style="color:${color};font-weight:700;min-width:40px;text-align:right;">${rate.toFixed(0)}%</span>
+            <span style="color:#8ab0c8;font-size:0.6rem;min-width:40px;text-align:right;">${s.total}环</span>
+        </div>`;
+    }
+    document.getElementById('prWeightList').innerHTML = html;
 },
 
 updateRelogAnalysis() {
