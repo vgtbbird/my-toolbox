@@ -1335,7 +1335,7 @@ calcStats() {
             </div>
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
-                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span></div>
+                  <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span> <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;margin-left:6px;">📋 查看全部</button></div>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
     <div class="module-body" id="prHistoryBody">
@@ -1343,12 +1343,9 @@ calcStats() {
             <!-- 左侧：本轮记录 -->
             <div style="flex:1;min-width:0;">
                 <div class="history-section" id="prHistoryList" style="max-height:200px;overflow-y:auto;"><div class="empty-history">暂无记录</div></div>
-                <div style="text-align:right;margin-top:4px;">
-                    <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;">📋 查看全部</button>
-                </div>
             </div>
             <!-- 右侧：时辰权重表 -->
-            <div style="width:260px;flex-shrink:0;">
+               <div style="flex:1;min-width:0;">
                 <div style="background:#f8faff;border-radius:12px;padding:10px 12px;font-size:0.75rem;border:1px solid #dce5ef;">
                     <div style="font-weight:700;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰权重表</div>
                     <div style="margin-bottom:6px;display:flex;align-items:center;gap:4px;">
@@ -1360,7 +1357,7 @@ calcStats() {
                             <option value="1">最近 1 天</option>
                         </select>
                     </div>
-                    <div id="prWeightList" style="max-height:200px;overflow-y:auto;"></div>
+                   <div id="prWeightList" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px;"></div>
                 </div>
             </div>
         </div>
