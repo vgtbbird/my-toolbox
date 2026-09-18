@@ -1336,7 +1336,7 @@ calcStats() {
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span> <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;margin-left:6px;">📋 查看全部</button></div>
-                  <span id="prTopShichenHint" style="margin-left:8px;font-size:0.7rem;font-weight:700;color:#2d6b2d;"></span>
+                  <span id="prTopShichenHint" style="margin-left:8px;font-size:inherit;font-weight:700;color:#2d6b2d;"></span>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
     <div class="module-body" id="prHistoryBody">
