@@ -2857,8 +2857,9 @@ showAllRingsModal() {
             for (let i = 0; i < top4.length; i++) {
                 const t = top4[i];
                 const isCurrent = (t.name === nowShichen);
-                const color = isCurrent ? '#2d6b2d' : '#1f3b53';
-                parts.push(`<span style="color:${color};">${i + 1}.${t.name}</span>`);
+                const color = isCurrent ? '#c0392b' : '#1f3b53';
+                const weight = isCurrent ? '900' : '700';
+                parts.push(`<span style="color:${color};font-weight:${weight};">${i + 1}.${t.name}</span>`);
             }
             hintEl.innerHTML = '⭐ ' + parts.join('  ');
         }
