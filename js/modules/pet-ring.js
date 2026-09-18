@@ -141,6 +141,7 @@ const PetRingModule = {
             const m = String(now.getMinutes()).padStart(2, '0');
             const s = String(now.getSeconds()).padStart(2, '0');
             timeEl.textContent = `${h}:${m}:${s}`;
+            this.renderShichenWeights();
         }
         
         // 当前时辰（显示时辰名 + 已过去时间，暗金色）
