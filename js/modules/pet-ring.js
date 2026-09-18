@@ -1336,6 +1336,7 @@ calcStats() {
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span> <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;margin-left:6px;">📋 查看全部</button></div>
+                  <span id="prTopShichenHint" style="margin-left:8px;font-size:0.7rem;font-weight:700;color:#2d6b2d;"></span>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
     <div class="module-body" id="prHistoryBody">
@@ -2833,6 +2834,24 @@ showAllRingsModal() {
         </div>`;
     }
     document.getElementById('prWeightList').innerHTML = html;
+            // 🆕 计算最低权重的前 4 个时辰
+    const shichenArr = [];
+    for (let n of shichenNames) {
+        const s = stats[n];
+        if (s.total === 0) continue;
+        shichenArr.push({ name: n, rate: s.find / s.total });
+    }
+    shichenArr.sort((a, b) => a.rate - b.rate);
+    const top4 = shichenArr.slice(0, 4);
+    
+    const hintEl = document.getElementById('prTopShichenHint');
+    if (hintEl) {
+        if (top4.length === 0) {
+            hintEl.textContent = '';
+        } else {
+            hintEl.textContent = '⭐ ' + top4.map((t, i) => `${i + 1}.${t.name}`).join('  ');
+        }
+    }
 },
 
 updateRelogAnalysis() {
