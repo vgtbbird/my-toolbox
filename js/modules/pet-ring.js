@@ -3182,7 +3182,7 @@ updateRelogAnalysis() {
                     <button class="detail-toggle" data-idx="${idx}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#1f3b53;font-weight:600;">
                         ${hasRings ? '📊' : '📊'}
                     </button>
-                    ${relogDisplay !== '-' ? `<span style="font-size:0.6rem;color:#dbbd7c;display:block;">${relogDisplay}</span>` : ''}
+                    <span style="font-size:0.7rem;color:#c0392b;font-weight:700;margin-left:4px;">${h.typeCount?.find || 0}</span>
                 </td>
                 <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
             </tr>`;
