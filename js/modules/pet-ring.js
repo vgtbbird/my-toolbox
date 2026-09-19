@@ -2808,22 +2808,14 @@ renderRealtimeWindow() {
 
     const toSec = (h, m) => h * 3600 + m * 60;
 
-    // 收集所有环
-    const allRings = [];
-    for (let h of this.history) {
-        for (let r of h.rings || []) {
-            const ts = r.timestamp || r.clickTimestamp;
-            if (!ts) continue;
-            allRings.push({ ts, isFind: r.typeKey === 'find' });
-        }
-    }
-    for (let r of this.records) {
-        if (r.deleted) continue;
-        const ts = r.timestamp || r.clickTimestamp;
-        if (!ts) continue;
-        allRings.push({ ts, isFind: r.typeKey === 'find' });
-    }
-
+// 只统计当前本轮记录
+const allRings = [];
+for (let r of this.records) {
+    if (r.deleted) continue;
+    const ts = r.clickTimestamp || r.timestamp;
+    if (!ts) continue;
+    allRings.push({ ts, isFind: r.typeKey === 'find' });
+}
     // 统一统计函数
     const statRange = (startMin, endMin) => {
         const s = toSec(nowHour, startMin);
