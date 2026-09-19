@@ -2920,8 +2920,6 @@ renderRealtimeWindow() {
     return { w10: build(10), w30: build(30) };
 },
     
-    return { w10: build(10), w30: build(30) };
-},
     
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
