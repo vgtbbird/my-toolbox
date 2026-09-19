@@ -1352,15 +1352,15 @@ calcStats() {
             <!-- 右侧：时辰权重表 -->
                <div style="flex:1;min-width:0;">
                 <div style="background:#f8faff;border-radius:12px;padding:10px 12px;font-size:0.75rem;border:1px solid #dce5ef;">
-                    <div style="font-weight:700;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰权重表</div>
-                    <div style="margin-bottom:6px;display:flex;align-items:center;gap:4px;">
-                        <label style="font-size:0.65rem;color:#5a7a94;">范围：</label>
-                        <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
-                            <option value="all">全部</option>
-                            <option value="7">最近 7 天</option>
-                            <option value="3">最近 3 天</option>
-                            <option value="1">最近 1 天</option>
-                        </select>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
+                            <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
+                                <option value="all">全部</option>
+                                <option value="7">最近 7 天</option>
+                                <option value="3">最近 3 天</option>
+                                <option value="1">最近 1 天</option>
+                            </select>
+                        </div>
                     </div>
                    <div id="prWeightList" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px;"></div>
                 </div>
