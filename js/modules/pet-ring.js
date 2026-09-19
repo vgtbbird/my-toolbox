@@ -2791,20 +2791,22 @@ renderRealtimeWindow() {
     const nowHour = now.getHours();
 
     // 上一个整 10 分钟段
-    const cur10 = Math.floor(nowMinute / 10) * 10;
-    const prev10StartMin = cur10 - 10;
-    const prev10EndMin = cur10;
+    const prev10StartMin = Math.floor(nowMinute / 10) * 10 - 10;
+    const prev10EndMin = prev10StartMin + 10;
+
+    // 本 10 分钟段
+    const cur10StartMin = Math.floor(nowMinute / 10) * 10;
+    const cur10EndMin = cur10StartMin + 10;
 
     // 上一个整 30 分钟段
-    const cur30 = Math.floor(nowMinute / 30) * 30;
-    const prev30StartMin = cur30 - 30;
-    const prev30EndMin = cur30;
+    const prev30StartMin = Math.floor(nowMinute / 30) * 30 - 30;
+    const prev30EndMin = prev30StartMin + 30;
+
+    // 本 30 分钟段
+    const cur30StartMin = Math.floor(nowMinute / 30) * 30;
+    const cur30EndMin = cur30StartMin + 30;
 
     const toSec = (h, m) => h * 3600 + m * 60;
-    const win10Start = toSec(nowHour, prev10StartMin);
-    const win10End   = toSec(nowHour, prev10EndMin);
-    const win30Start = toSec(nowHour, prev30StartMin);
-    const win30End   = toSec(nowHour, prev30EndMin);
 
     // 收集所有环
     const allRings = [];
@@ -2822,54 +2824,60 @@ renderRealtimeWindow() {
         allRings.push({ ts, isFind: r.typeKey === 'find' });
     }
 
-    // 统计
-    const win10 = { total: 0, find: 0 };
-    const win30 = { total: 0, find: 0 };
-    for (let r of allRings) {
-        const d = new Date(r.ts);
-        const sec = toSec(d.getHours(), d.getMinutes());
-        if (sec >= win10Start && sec < win10End) {
-            win10.total++;
-            if (r.isFind) win10.find++;
+    // 统一统计函数
+    const statRange = (startMin, endMin) => {
+        const s = toSec(nowHour, startMin);
+        const e = toSec(nowHour, endMin);
+        const r = { total: 0, find: 0 };
+        for (let x of allRings) {
+            const d = new Date(x.ts);
+            const sec = toSec(d.getHours(), d.getMinutes());
+            if (sec >= s && sec < e) {
+                r.total++;
+                if (x.isFind) r.find++;
+            }
         }
-        if (sec >= win30Start && sec < win30End) {
-            win30.total++;
-            if (r.isFind) win30.find++;
-        }
-    }
+        return r;
+    };
 
-    const rate10 = win10.total > 0 ? (win10.find / win10.total * 100) : null;
-    const rate30 = win30.total > 0 ? (win30.find / win30.total * 100) : null;
+    const prev10 = statRange(prev10StartMin, prev10EndMin);
+    const cur10  = statRange(cur10StartMin,  cur10EndMin);
+    const prev30 = statRange(prev30StartMin, prev30EndMin);
+    const cur30  = statRange(cur30StartMin,  cur30EndMin);
 
-    const colorOf = (r) => {
-        if (r === null) return '#8ab0c8';
-        if (r < 33) return '#2d6b2d';
-        if (r < 45) return '#b48b3a';
+    const rateOf = (r) => r.total > 0 ? (r.find / r.total * 100) : null;
+
+    const colorOf = (rate) => {
+        if (rate === null) return '#8ab0c8';
+        if (rate < 33) return '#2d6b2d';
+        if (rate < 45) return '#b48b3a';
         return '#c0392b';
     };
 
-    const fmt = (rate, total) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmtHM = (h, m) => {
+        if (m < 0) { h = (h - 1 + 24) % 24; m += 60; }
+        if (m >= 60) { h = (h + 1) % 24; m -= 60; }
+        return `${pad(h)}:${pad(m)}`;
+    };
+
+    const fmtRate = (rate, total) => {
         if (rate === null) return '—';
         return `${rate.toFixed(0)}% (${total}环)`;
     };
 
-const pad = (n) => String(n).padStart(2, '0');
-const fmtHM = (h, m) => {
-    if (m < 0) { h = (h - 1 + 24) % 24; m += 60; }
-    return `${pad(h)}:${pad(m)}`;
-};
-const t10Start = fmtHM(nowHour, prev10StartMin);
-const t10End   = fmtHM(nowHour, prev10EndMin);
-const t30Start = fmtHM(nowHour, prev30StartMin);
-const t30End   = fmtHM(nowHour, prev30EndMin);
+    const ratePrev10 = rateOf(prev10);
+    const rateCur10  = rateOf(cur10);
+    const ratePrev30 = rateOf(prev30);
+    const rateCur30  = rateOf(cur30);
 
-el.innerHTML = `
-    上10分(${t10Start}~${t10End}): <span style="color:${colorOf(rate10)};">${fmt(rate10, win10.total)}</span>
-    &nbsp;
-    上30分(${t30Start}~${t30End}): <span style="color:${colorOf(rate30)};">${fmt(rate30, win30.total)}</span>
-`;
+    el.innerHTML = `
+        <span>上10分(${fmtHM(nowHour, prev10StartMin)}~${fmtHM(nowHour, prev10EndMin)}): <span style="color:${colorOf(ratePrev10)};">${fmtRate(ratePrev10, prev10.total)}</span></span>
+        <span style="margin-left:8px;">本10分(${fmtHM(nowHour, cur10StartMin)}~${fmtHM(nowHour, cur10EndMin)}): <span style="color:${colorOf(rateCur10)};">${fmtRate(rateCur10, cur10.total)}</span></span>
+        <span style="margin-left:8px;">上30分(${fmtHM(nowHour, prev30StartMin)}~${fmtHM(nowHour, prev30EndMin)}): <span style="color:${colorOf(ratePrev30)};">${fmtRate(ratePrev30, prev30.total)}</span></span>
+        <span style="margin-left:8px;">本30分(${fmtHM(nowHour, cur30StartMin)}~${fmtHM(nowHour, cur30EndMin)}): <span style="color:${colorOf(rateCur30)};">${fmtRate(rateCur30, cur30.total)}</span></span>
+    `;
 },
-
     
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
