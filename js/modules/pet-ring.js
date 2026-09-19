@@ -1331,7 +1331,7 @@ calcStats() {
                     <div class="task-grid" id="prTaskGrid"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
                         <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;white-space:nowrap;">⚙️ 扣分设置</span>
-                       <span id="prRealtimeWindow" style="margin-left:10px;font-size:0.65rem;font-weight:700;color:#1f3b53;white-space:nowrap;"></span>
+                        <span id="prRealtimeWindow" style="margin-left:10px;font-size:0.75rem;font-weight:700;color:#1f3b53;white-space:nowrap;"></span>
                         <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
                     </div>
                     <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
