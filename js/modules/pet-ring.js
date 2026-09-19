@@ -1356,9 +1356,12 @@ calcStats() {
                             <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
                             <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
                                 <option value="all">全部</option>
-                                <option value="7">最近 7 天</option>
-                                <option value="3">最近 3 天</option>
-                                <option value="1">最近 1 天</option>
+                                <option value="1">1天</option>
+                                <option value="2">2天</option>
+                                <option value="3">3天</option>
+                                <option value="4">4天</option>
+                                <option value="5">5天</option>
+                                <option value="6">6天</option>
                             </select>
                         </div>
                     </div>
@@ -2969,9 +2972,12 @@ renderRealtimeWindow() {
     const range = rangeEl.value || 'all';
     const now = Date.now();
     let cutoff = 0;
-    if (range === '7') cutoff = now - 7 * 24 * 3600 * 1000;
-    else if (range === '3') cutoff = now - 3 * 24 * 3600 * 1000;
-    else if (range === '1') cutoff = now - 24 * 3600 * 1000;
+    if (range !== 'all') {
+        const days = parseInt(range);
+        if (!isNaN(days) && days > 0) {
+            cutoff = now - days * 24 * 3600 * 1000;
+        }
+    }
 
     const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
     const stats = {};
