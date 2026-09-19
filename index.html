@@ -682,42 +682,47 @@
         // ============================================================
         document.getElementById('syncToCloudBtn').addEventListener('click', async function() {
      // 🆕 同步前强制从所有输入框读取最新值
-    if (typeof PetRingModule !== 'undefined' && PetRingModule.prices) {
-        document.querySelectorAll('#prPriceInputs input').forEach(input => {
-            const key = input.dataset.key;
-            const val = parseFloat(input.value);
-            if (!isNaN(val) && val >= 0) {
-                PetRingModule.prices[key] = val;
-            }
-        });
-        // 扣分设置
-        document.querySelectorAll('#prDeductSettings input').forEach(input => {
-            const key = input.dataset.key;
-            const type = input.dataset.type;
-            const val = parseFloat(input.value);
-            if (!isNaN(val) && val >= 0) {
-                if (!PetRingModule.deductSettings[key]) {
-                    PetRingModule.deductSettings[key] = { deduct: 0, cost: 0 };
-                }
-                if (type === 'deduct') PetRingModule.deductSettings[key].deduct = val;
-                else if (type === 'cost') PetRingModule.deductSettings[key].cost = val;
-            }
-        });
-        // 汇率
-        const rateInput = document.getElementById('prExchangeRate');
-        if (rateInput) {
-            const r = parseFloat(rateInput.value);
-            if (!isNaN(r) && r >= 0) PetRingModule.exchangeRate = r;
+if (typeof PetRingModule !== 'undefined' && PetRingModule.prices) {
+    document.querySelectorAll('#prPriceInputs input').forEach(input => {
+        const key = input.dataset.key;
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val >= 0) {
+            PetRingModule.prices[key] = val;
         }
-        // 修炼果单价
-        const fruitInput = document.getElementById('prFruitPrice');
-        if (fruitInput) {
-            const f = parseFloat(fruitInput.value);
-            if (!isNaN(f) && f >= 0) PetRingModule.fruitPrice = f;
+    });
+    document.querySelectorAll('#prDeductSettings input').forEach(input => {
+        const key = input.dataset.key;
+        const type = input.dataset.type;
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val >= 0) {
+            if (!PetRingModule.deductSettings[key]) {
+                PetRingModule.deductSettings[key] = { deduct: 0, cost: 0 };
+            }
+            if (type === 'deduct') PetRingModule.deductSettings[key].deduct = val;
+            else if (type === 'cost') PetRingModule.deductSettings[key].cost = val;
         }
-        // 保存
-        PetRingModule.saveData();
+    });
+
+    // 🆕 汇率：输入框是「1元=?万」，存的是「1万=?元」，必须取倒数
+    const rateInput = document.getElementById('prExchangeRate');
+    if (rateInput) {
+        const r = parseFloat(rateInput.value);
+        if (!isNaN(r) && r > 0) {
+            PetRingModule.exchangeRate = 1 / r;
+        }
     }
+
+    // 修炼果单价
+    const fruitInput = document.getElementById('prFruitPrice');
+    if (fruitInput) {
+        const f = parseFloat(fruitInput.value);
+        if (!isNaN(f) && f >= 0) {
+            PetRingModule.fruitPrice = f;
+        }
+    }
+
+    PetRingModule.saveData();
+}
             if (!GitHubSync.hasToken()) {
                 const token = prompt('🔑 请先输入 Gitee Token：');
                 if (token && token.trim()) {
