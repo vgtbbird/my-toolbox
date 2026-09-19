@@ -2015,7 +2015,12 @@ showRingsDetailModal(entry) {
                 <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : ''}
                 ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
-                ${entry.startTimestamp ? `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(entry.startTimestamp).toLocaleTimeString()}</strong></div>` : ''}
+                ${(() => {
+                    // 🆕 兜底：startTimestamp 没了就用首环 timestamp
+                    const st = entry.startTimestamp || (entry.rings?.[0]?.timestamp) || null;
+                    if (!st) return '';
+                    return `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(st).toLocaleTimeString()}</strong></div>`;
+                })()}
                 ${entry.endTimestamp ? `<div><span style="color:#5a7a94;">⏹️ 结束</span> <strong>${new Date(entry.endTimestamp).toLocaleTimeString()}</strong></div>` : ''}
             </div>
 
