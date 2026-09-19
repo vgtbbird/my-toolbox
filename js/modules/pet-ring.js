@@ -1351,7 +1351,7 @@ calcStats() {
             </div>
             <!-- 右侧：时辰权重表 -->
                <div style="flex:1;min-width:0;">
-                <div style="background:#f8faff;border-radius:12px;padding:10px 12px;font-size:0.75rem;border:1px solid #dce5ef;">
+               <div style="background:#f8faff;border-radius:12px;padding:6px 10px;font-size:0.75rem;border:1px solid #dce5ef;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                             <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
                             <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
