@@ -2812,7 +2812,7 @@ renderRealtimeWindow() {
 const allRings = [];
 for (let r of this.records) {
     if (r.deleted) continue;
-    const ts = r.clickTimestamp || r.timestamp;
+    const ts = r.timestamp || r.clickTimestamp;
     if (!ts) continue;
     allRings.push({ ts, isFind: r.typeKey === 'find' });
 }
