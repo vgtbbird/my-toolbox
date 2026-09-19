@@ -2900,7 +2900,23 @@ renderRealtimeWindow() {
             if (r.typeKey === 'find') map[key].find++;
         }
         const result = [];
-        for (let k of Object.keys(map).sort()) {
+        // 🆕 按日期时间排序（跨天时，零点后的排在后面）
+        const sortedKeys = Object.keys(map).sort((a, b) => {
+            // 如果跨越了 0 点，比较逻辑：
+            // 如果 a 是 0~6 点，b 是 20~23 点，说明 a 是第二天的，应该排在后面
+            const [ah, am] = a.split(':').map(Number);
+            const [bh, bm] = b.split(':').map(Number);
+            const aMin = ah * 60 + am;
+            const bMin = bh * 60 + bm;
+            // 假设跨天时，0~6 点是第二天
+            const aIsNextDay = ah < 6;
+            const bIsNextDay = bh < 6;
+            if (aIsNextDay !== bIsNextDay) {
+                return aIsNextDay ? 1 : -1;
+            }
+            return aMin - bMin;
+        });
+        for (let k of sortedKeys) {
             const w = map[k];
             const [hh, mm] = w.start.split(':').map(Number);
             const endMin = mm + stepMin;
