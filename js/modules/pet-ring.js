@@ -125,6 +125,7 @@ const PetRingModule = {
         this.checkAutoSettle();
         this.updateRelogAnalysis();
         this.renderShichenWeights();
+        this.renderRealtimeWindow();
         this.updateTimeAndShichen();  
     },
 
@@ -142,6 +143,7 @@ const PetRingModule = {
             const s = String(now.getSeconds()).padStart(2, '0');
             timeEl.textContent = `${h}:${m}:${s}`;
             this.renderShichenWeights();
+            this.renderRealtimeWindow();
         }
         
         // 当前时辰（显示时辰名 + 已过去时间，暗金色）
@@ -1329,6 +1331,7 @@ calcStats() {
                     <div class="task-grid" id="prTaskGrid"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
                         <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚙️ 扣分设置</span>
+                        <span id="prRealtimeWindow" style="margin-left:10px;font-size:inherit;font-weight:700;color:#1f3b53;"></span>
                         <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
                     </div>
                     <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
@@ -2778,7 +2781,82 @@ showAllRingsModal() {
         if (e.target === overlay) overlay.remove();
     });
 },
+    
+renderRealtimeWindow() {
+    const el = document.getElementById('prRealtimeWindow');
+    if (!el) return;
 
+    const now = new Date();
+    const nowMinute = now.getMinutes();
+    const nowHour = now.getHours();
+
+    // 上一个整 10 分钟段
+    const cur10 = Math.floor(nowMinute / 10) * 10;
+    const prev10StartMin = cur10 - 10;
+    const prev10EndMin = cur10;
+
+    // 上一个整 30 分钟段
+    const cur30 = Math.floor(nowMinute / 30) * 30;
+    const prev30StartMin = cur30 - 30;
+    const prev30EndMin = cur30;
+
+    const toSec = (h, m) => h * 3600 + m * 60;
+    const win10Start = toSec(nowHour, prev10StartMin);
+    const win10End   = toSec(nowHour, prev10EndMin);
+    const win30Start = toSec(nowHour, prev30StartMin);
+    const win30End   = toSec(nowHour, prev30EndMin);
+
+    // 收集所有环
+    const allRings = [];
+    for (let h of this.history) {
+        for (let r of h.rings || []) {
+            const ts = r.timestamp || r.clickTimestamp;
+            if (!ts) continue;
+            allRings.push({ ts, isFind: r.typeKey === 'find' });
+        }
+    }
+    for (let r of this.records) {
+        if (r.deleted) continue;
+        const ts = r.timestamp || r.clickTimestamp;
+        if (!ts) continue;
+        allRings.push({ ts, isFind: r.typeKey === 'find' });
+    }
+
+    // 统计
+    const win10 = { total: 0, find: 0 };
+    const win30 = { total: 0, find: 0 };
+    for (let r of allRings) {
+        const d = new Date(r.ts);
+        const sec = toSec(d.getHours(), d.getMinutes());
+        if (sec >= win10Start && sec < win10End) {
+            win10.total++;
+            if (r.isFind) win10.find++;
+        }
+        if (sec >= win30Start && sec < win30End) {
+            win30.total++;
+            if (r.isFind) win30.find++;
+        }
+    }
+
+    const rate10 = win10.total > 0 ? (win10.find / win10.total * 100) : null;
+    const rate30 = win30.total > 0 ? (win30.find / win30.total * 100) : null;
+
+    const colorOf = (r) => {
+        if (r === null) return '#8ab0c8';
+        if (r < 33) return '#2d6b2d';
+        if (r < 45) return '#b48b3a';
+        return '#c0392b';
+    };
+
+    const fmt = (rate, total) => {
+        if (rate === null) return '—';
+        return `${rate.toFixed(0)}% (${total}环)`;
+    };
+
+    el.innerHTML = `上10分: <span style="color:${colorOf(rate10)};">${fmt(rate10, win10.total)}</span> &nbsp; 上30分: <span style="color:${colorOf(rate30)};">${fmt(rate30, win30.total)}</span>`;
+},
+
+    
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
