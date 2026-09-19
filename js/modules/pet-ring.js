@@ -282,7 +282,7 @@ const PetRingModule = {
                 payload: h
             };
         });
-         const settledRunIds = this.history.map(h => h.runId || h.payload?.runId).filter(Boolean);
+        const settledRunIds = [...new Set(this.history.map(h => h.runId || h.payload?.runId).filter(Boolean))];
         
         // 🆕 生成 V3 当前轮次锚点
         const recordsV3 = this.records.map((r, idx) => ({
@@ -1351,7 +1351,7 @@ calcStats() {
             </div>
             <!-- 右侧：时辰权重表 -->
                <div style="flex:1;min-width:0;">
-               <div style="background:#f8faff;border-radius:12px;padding:padding:4px 8px;font-size:0.75rem;border:1px solid #dce5ef;">
+               <div style="background:#f8faff;border-radius:12px;padding:4px 8px;font-size:0.75rem;border:1px solid #dce5ef;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                             <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
                             <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
@@ -2028,7 +2028,7 @@ showRingsDetailModal(entry) {
             </div>
             
             ${(() => {
-    const t = (entry.windowTimeline || this.calcWindowTimeline());
+    const t = this.calcWindowTimeline(entry.rings || []);
     const buildRow = (list, label) => {
         if (!list || list.length === 0) return '';
         return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
@@ -2348,6 +2348,7 @@ console.log('🔍 relogIndices:', relogIndices);
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
+        const winState = this.calcRealtimeWindow();
 
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -2369,7 +2370,8 @@ console.log('🔍 relogIndices:', relogIndices);
             halfHour: shichen.halfHour,
             secondsInHalfHour: shichen.secondsInHalfHour,
             isDaytime: shichen.isDaytime,
-            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`
+            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`,
+            winState: winState
         });
         this.render();
         this.updateRelogAnalysis();
@@ -2414,6 +2416,7 @@ console.log('🔍 relogIndices:', relogIndices);
         }
         const recordDate = new Date(recordTimestamp);
         const shichen = this.getShichen(recordTimestamp);
+        const winState = this.calcRealtimeWindow();
 
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -2436,7 +2439,8 @@ console.log('🔍 relogIndices:', relogIndices);
             halfHour: shichen.halfHour,
             secondsInHalfHour: shichen.secondsInHalfHour,
             isDaytime: shichen.isDaytime,
-            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`
+            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`,
+            winState: winState
         });
         this.render();
         this.updateRelogAnalysis();
@@ -2800,63 +2804,55 @@ showAllRingsModal() {
         if (e.target === overlay) overlay.remove();
     });
 },
+
+    calcRealtimeWindow() {
+    const nowD = new Date();
+    const nowM = nowD.getMinutes();
+    const nowH2 = nowD.getHours();
+    const cur10Start = Math.floor(nowM / 10) * 10;
+    const cur30Start = Math.floor(nowM / 30) * 30;
+    const prev10Start = cur10Start - 10;
+    const prev30Start = cur30Start - 30;
+
+    const calcWin = (startMin, endMin) => {
+        const s = nowH2 * 3600 + startMin * 60;
+        const e = nowH2 * 3600 + endMin * 60;
+        let total = 0, find = 0;
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            const ts = r.timestamp;
+            if (!ts) continue;
+            const d = new Date(ts);
+            const sec = d.getHours() * 3600 + d.getMinutes() * 60;
+            if (sec >= s && sec < e) {
+                total++;
+                if (r.typeKey === 'find') find++;
+            }
+        }
+        return { total, find, rate: total > 0 ? Math.round(find / total * 100) : null };
+    };
+
+    return {
+        prev10: calcWin(prev10Start, prev10Start + 10),
+        cur10:  calcWin(cur10Start,  cur10Start + 10),
+        prev30: calcWin(prev30Start, prev30Start + 30),
+        cur30:  calcWin(cur30Start,  cur30Start + 30)
+    };
+},
     
 renderRealtimeWindow() {
     const el = document.getElementById('prRealtimeWindow');
     if (!el) return;
 
-    const now = new Date();
-    const nowMinute = now.getMinutes();
-    const nowHour = now.getHours();
+    const nowD = new Date();
+    const nowM = nowD.getMinutes();
+    const nowH = nowD.getHours();
+    const cur10Start = Math.floor(nowM / 10) * 10;
+    const cur30Start = Math.floor(nowM / 30) * 30;
+    const prev10Start = cur10Start - 10;
+    const prev30Start = cur30Start - 30;
 
-    // 上一个整 10 分钟段
-    const prev10StartMin = Math.floor(nowMinute / 10) * 10 - 10;
-    const prev10EndMin = prev10StartMin + 10;
-
-    // 本 10 分钟段
-    const cur10StartMin = Math.floor(nowMinute / 10) * 10;
-    const cur10EndMin = cur10StartMin + 10;
-
-    // 上一个整 30 分钟段
-    const prev30StartMin = Math.floor(nowMinute / 30) * 30 - 30;
-    const prev30EndMin = prev30StartMin + 30;
-
-    // 本 30 分钟段
-    const cur30StartMin = Math.floor(nowMinute / 30) * 30;
-    const cur30EndMin = cur30StartMin + 30;
-
-    const toSec = (h, m) => h * 3600 + m * 60;
-
-// 只统计当前本轮记录
-const allRings = [];
-for (let r of this.records) {
-    if (r.deleted) continue;
-    const ts = r.timestamp || r.clickTimestamp;
-    if (!ts) continue;
-    allRings.push({ ts, isFind: r.typeKey === 'find' });
-}
-    // 统一统计函数
-    const statRange = (startMin, endMin) => {
-        const s = toSec(nowHour, startMin);
-        const e = toSec(nowHour, endMin);
-        const r = { total: 0, find: 0 };
-        for (let x of allRings) {
-            const d = new Date(x.ts);
-            const sec = toSec(d.getHours(), d.getMinutes());
-            if (sec >= s && sec < e) {
-                r.total++;
-                if (x.isFind) r.find++;
-            }
-        }
-        return r;
-    };
-
-    const prev10 = statRange(prev10StartMin, prev10EndMin);
-    const cur10  = statRange(cur10StartMin,  cur10EndMin);
-    const prev30 = statRange(prev30StartMin, prev30EndMin);
-    const cur30  = statRange(cur30StartMin,  cur30EndMin);
-
-    const rateOf = (r) => r.total > 0 ? (r.find / r.total * 100) : null;
+    const win = this.calcRealtimeWindow();
 
     const colorOf = (rate) => {
         if (rate === null) return '#8ab0c8';
@@ -2872,30 +2868,25 @@ for (let r of this.records) {
         return `${pad(h)}:${pad(m)}`;
     };
 
-    const fmtRate = (rate, total) => {
-        if (rate === null) return '—';
-        return `${rate.toFixed(0)}% (${total}环)`;
+    const fmtRate = (r) => {
+        if (r.rate === null) return '—';
+        return `${r.rate}% (${r.total}环)`;
     };
 
-    const ratePrev10 = rateOf(prev10);
-    const rateCur10  = rateOf(cur10);
-    const ratePrev30 = rateOf(prev30);
-    const rateCur30  = rateOf(cur30);
-
     el.innerHTML = `
-        <span>上10分(${fmtHM(nowHour, prev10StartMin)}~${fmtHM(nowHour, prev10EndMin)}): <span style="color:${colorOf(ratePrev10)};">${fmtRate(ratePrev10, prev10.total)}</span></span>
-        <span style="margin-left:4px;">本10分(${fmtHM(nowHour, cur10StartMin)}~${fmtHM(nowHour, cur10EndMin)}): <span style="color:${colorOf(rateCur10)};">${fmtRate(rateCur10, cur10.total)}</span></span>
-        <span style="margin-left:4px;">上30分(${fmtHM(nowHour, prev30StartMin)}~${fmtHM(nowHour, prev30EndMin)}): <span style="color:${colorOf(ratePrev30)};">${fmtRate(ratePrev30, prev30.total)}</span></span>
-        <span style="margin-left:4px;">本30分(${fmtHM(nowHour, cur30StartMin)}~${fmtHM(nowHour, cur30EndMin)}): <span style="color:${colorOf(rateCur30)};">${fmtRate(rateCur30, cur30.total)}</span></span>
+        <span>上10分(${fmtHM(nowH, prev10Start)}~${fmtHM(nowH, prev10Start + 10)}): <span style="color:${colorOf(win.prev10.rate)};">${fmtRate(win.prev10)}</span></span>
+        <span style="margin-left:4px;">本10分(${fmtHM(nowH, cur10Start)}~${fmtHM(nowH, cur10Start + 10)}): <span style="color:${colorOf(win.cur10.rate)};">${fmtRate(win.cur10)}</span></span>
+        <span style="margin-left:4px;">上30分(${fmtHM(nowH, prev30Start)}~${fmtHM(nowH, prev30Start + 30)}): <span style="color:${colorOf(win.prev30.rate)};">${fmtRate(win.prev30)}</span></span>
+        <span style="margin-left:4px;">本30分(${fmtHM(nowH, cur30Start)}~${fmtHM(nowH, cur30Start + 30)}): <span style="color:${colorOf(win.cur30.rate)};">${fmtRate(win.cur30)}</span></span>
     `;
 },
 
-    calcWindowTimeline() {
-    if (this.records.length === 0) return { w10: [], w30: [] };
+    calcWindowTimeline(rings) {
+    if (!rings || rings.length === 0) return { w10: [], w30: [] };
     
     const build = (stepMin) => {
         const map = {};
-        for (let r of this.records) {
+        for (let r of rings) {
             if (r.deleted) continue;
             const ts = r.timestamp;
             if (!ts) continue;
@@ -2925,6 +2916,9 @@ for (let r of this.records) {
         }
         return result;
     };
+    
+    return { w10: build(10), w30: build(30) };
+},
     
     return { w10: build(10), w30: build(30) };
 },
