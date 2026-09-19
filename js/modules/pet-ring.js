@@ -1330,8 +1330,8 @@ calcStats() {
                 <div class="module-body" id="prTaskBody">
                     <div class="task-grid" id="prTaskGrid"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid #dce5ef;">
-                        <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;">⚙️ 扣分设置</span>
-                        <span id="prRealtimeWindow" style="margin-left:10px;font-size:inherit;font-weight:700;color:#1f3b53;"></span>
+                        <span style="font-weight:600;font-size:0.75rem;color:#1f3b53;white-space:nowrap;">⚙️ 扣分设置</span>
+                       <span id="prRealtimeWindow" style="margin-left:10px;font-size:0.65rem;font-weight:700;color:#1f3b53;white-space:nowrap;"></span>
                         <button class="toggle-btn" id="prToggleDeductBtn" style="background:#dce5ef;border:1px solid #bccad9;border-radius:30px;padding:1px 12px;font-size:0.6rem;cursor:pointer;font-weight:600;color:#1f3b53;">👁️ 隐藏</button>
                     </div>
                     <div class="deduct-settings-inline" id="prDeductSettings" style="margin-top:4px;"></div>
@@ -2873,9 +2873,9 @@ renderRealtimeWindow() {
 
     el.innerHTML = `
         <span>上10分(${fmtHM(nowHour, prev10StartMin)}~${fmtHM(nowHour, prev10EndMin)}): <span style="color:${colorOf(ratePrev10)};">${fmtRate(ratePrev10, prev10.total)}</span></span>
-        <span style="margin-left:8px;">本10分(${fmtHM(nowHour, cur10StartMin)}~${fmtHM(nowHour, cur10EndMin)}): <span style="color:${colorOf(rateCur10)};">${fmtRate(rateCur10, cur10.total)}</span></span>
-        <span style="margin-left:8px;">上30分(${fmtHM(nowHour, prev30StartMin)}~${fmtHM(nowHour, prev30EndMin)}): <span style="color:${colorOf(ratePrev30)};">${fmtRate(ratePrev30, prev30.total)}</span></span>
-        <span style="margin-left:8px;">本30分(${fmtHM(nowHour, cur30StartMin)}~${fmtHM(nowHour, cur30EndMin)}): <span style="color:${colorOf(rateCur30)};">${fmtRate(rateCur30, cur30.total)}</span></span>
+        <span style="margin-left:4px;">本10分(${fmtHM(nowHour, cur10StartMin)}~${fmtHM(nowHour, cur10EndMin)}): <span style="color:${colorOf(rateCur10)};">${fmtRate(rateCur10, cur10.total)}</span></span>
+        <span style="margin-left:4px;">上30分(${fmtHM(nowHour, prev30StartMin)}~${fmtHM(nowHour, prev30EndMin)}): <span style="color:${colorOf(ratePrev30)};">${fmtRate(ratePrev30, prev30.total)}</span></span>
+        <span style="margin-left:4px;">本30分(${fmtHM(nowHour, cur30StartMin)}~${fmtHM(nowHour, cur30EndMin)}): <span style="color:${colorOf(rateCur30)};">${fmtRate(rateCur30, cur30.total)}</span></span>
     `;
 },
     
