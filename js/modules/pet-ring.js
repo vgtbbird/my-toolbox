@@ -2784,10 +2784,30 @@ showAllRingsModal() {
         `;
     }
 
+    // 🆕 时间段分析（照搬详情弹窗）
+const timeline = this.calcWindowTimeline(visibleRecords);
+const buildTimelineRow = (list, label) => {
+    if (!list || list.length === 0) return '';
+    return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
+        <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;margin-bottom:4px;">${label}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${list.map(w => {
+                const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
+                return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;">
+                    ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
+                </span>`;
+            }).join('')}
+        </div>
+    </div>`;
+};
+const timelineHtml = buildTimelineRow(timeline.w10, '📊 10分钟段找人率变化')
+                   + buildTimelineRow(timeline.w30, '📊 30分钟段找人率变化');
+
     overlay.innerHTML = `
        <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
             <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📋 本轮全部记录</h3>
             <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:10px;">共 ${this.records.length} 环</div>
+            ${timelineHtml}
             <div style="max-height:70vh;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
                 ${listHtml}
             </div>
