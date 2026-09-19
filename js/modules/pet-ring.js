@@ -2853,7 +2853,21 @@ renderRealtimeWindow() {
         return `${rate.toFixed(0)}% (${total}环)`;
     };
 
-    el.innerHTML = `上10分: <span style="color:${colorOf(rate10)};">${fmt(rate10, win10.total)}</span> &nbsp; 上30分: <span style="color:${colorOf(rate30)};">${fmt(rate30, win30.total)}</span>`;
+const pad = (n) => String(n).padStart(2, '0');
+const fmtHM = (h, m) => {
+    if (m < 0) { h = (h - 1 + 24) % 24; m += 60; }
+    return `${pad(h)}:${pad(m)}`;
+};
+const t10Start = fmtHM(nowHour, prev10StartMin);
+const t10End   = fmtHM(nowHour, prev10EndMin);
+const t30Start = fmtHM(nowHour, prev30StartMin);
+const t30End   = fmtHM(nowHour, prev30EndMin);
+
+el.innerHTML = `
+    上10分(${t10Start}~${t10End}): <span style="color:${colorOf(rate10)};">${fmt(rate10, win10.total)}</span>
+    &nbsp;
+    上30分(${t30Start}~${t30End}): <span style="color:${colorOf(rate30)};">${fmt(rate30, win30.total)}</span>
+`;
 },
 
     
