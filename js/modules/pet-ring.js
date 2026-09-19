@@ -2026,6 +2026,25 @@ showRingsDetailModal(entry) {
                     点击上方时辰查看该时辰的任务分布
                 </div>
             </div>
+            
+            ${(() => {
+    const t = (entry.windowTimeline || this.calcWindowTimeline());
+    const buildRow = (list, label) => {
+        if (!list || list.length === 0) return '';
+        return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
+            <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;margin-bottom:4px;">${label}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${list.map(w => {
+                    const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
+                    return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;">
+                        ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
+                    </span>`;
+                }).join('')}
+            </div>
+        </div>`;
+    };
+    return buildRow(t.w10, '📊 10分钟段找人率变化') + buildRow(t.w30, '📊 30分钟段找人率变化');
+})()}
 
             <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
             <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px;">
@@ -2869,6 +2888,45 @@ for (let r of this.records) {
         <span style="margin-left:4px;">上30分(${fmtHM(nowHour, prev30StartMin)}~${fmtHM(nowHour, prev30EndMin)}): <span style="color:${colorOf(ratePrev30)};">${fmtRate(ratePrev30, prev30.total)}</span></span>
         <span style="margin-left:4px;">本30分(${fmtHM(nowHour, cur30StartMin)}~${fmtHM(nowHour, cur30EndMin)}): <span style="color:${colorOf(rateCur30)};">${fmtRate(rateCur30, cur30.total)}</span></span>
     `;
+},
+
+    calcWindowTimeline() {
+    if (this.records.length === 0) return { w10: [], w30: [] };
+    
+    const build = (stepMin) => {
+        const map = {};
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            const ts = r.timestamp;
+            if (!ts) continue;
+            const d = new Date(ts);
+            const h = d.getHours();
+            const m = d.getMinutes();
+            const startMin = Math.floor(m / stepMin) * stepMin;
+            const key = `${String(h).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+            if (!map[key]) map[key] = { start: key, total: 0, find: 0 };
+            map[key].total++;
+            if (r.typeKey === 'find') map[key].find++;
+        }
+        const result = [];
+        for (let k of Object.keys(map).sort()) {
+            const w = map[k];
+            const [hh, mm] = w.start.split(':').map(Number);
+            const endMin = mm + stepMin;
+            const endH = Math.floor(endMin / 60) + hh;
+            const endM = endMin % 60;
+            result.push({
+                start: w.start,
+                end: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
+                total: w.total,
+                find: w.find,
+                rate: w.total > 0 ? Math.round(w.find / w.total * 100) : null
+            });
+        }
+        return result;
+    };
+    
+    return { w10: build(10), w30: build(30) };
 },
     
     renderShichenWeights() {
