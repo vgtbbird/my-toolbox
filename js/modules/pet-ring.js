@@ -2,6 +2,7 @@
 //  🏃 跑宠环模块 - 完整版（烹饪/三药拆分 + 历史详情弹窗 + 重登标记）
 //  功能：跑环记录 + 期望值计算 + 策略建议 + 100环结算弹窗 + 修炼点价值计入
 //  新增：烹饪/三药拆分 | 历史详情弹窗显示每环数据 | 重登标记
+//  本次改动：详情弹窗 & 全部记录弹窗 → 上半部分固定，只滚环列表
 // ============================================================
 const PetRingModule = {
     id: 'petRing',
@@ -19,8 +20,8 @@ const PetRingModule = {
     pendingSettle: null,
     exchangeRate: 0.08,
     fruitPrice: 80,
-    pendingRelog: false,  // 🆕 是否有待标记的重登
-    startTimestamp: null,  // 🆕 开始跑环的时间戳
+    pendingRelog: false,
+    startTimestamp: null,
 
     uiSettings: {
         bgColor: '#eef2f7',
@@ -39,8 +40,8 @@ const PetRingModule = {
         ring70: 0.05,
         ring80: 0.05,
         flower: 0.04,
-        cook: 0.08,       // 🆕 均分
-        medicine: 0.08,   // 🆕 新增
+        cook: 0.08,
+        medicine: 0.08,
         furn1: 0.07,
         furn2: 0.05,
         var_spec: 0.01
@@ -91,7 +92,7 @@ const PetRingModule = {
     ],
 
     INITIAL_COST: 10,
-   filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' },
+    filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' },
 
     // ========== 生命周期 ==========
     init() {
@@ -102,7 +103,6 @@ const PetRingModule = {
         this.render();
         setTimeout(() => this.applyUISettings(), 150);
         
-        // 🆕 启动时间和时辰定时器
         if (this._timeTimer) clearInterval(this._timeTimer);
         this._timeTimer = setInterval(() => {
             this.updateTimeAndShichen();
@@ -129,13 +129,11 @@ const PetRingModule = {
         this.updateTimeAndShichen();  
     },
 
-        // 🆕 更新时间和时辰显示
     updateTimeAndShichen() {
         const now = new Date();
         const timestamp = now.getTime();
         const shichen = this.getShichen(timestamp);
         
-        // 当前时间
         const timeEl = document.getElementById('prCurrentTime');
         if (timeEl) {
             const h = String(now.getHours()).padStart(2, '0');
@@ -146,7 +144,6 @@ const PetRingModule = {
             this.renderRealtimeWindow();
         }
         
-        // 当前时辰（显示时辰名 + 已过去时间，暗金色）
         const shichenEl = document.getElementById('prCurrentShichen');
         if (shichenEl) {
             const elapsed = shichen.secondsInHalfHour % 150;
@@ -156,7 +153,6 @@ const PetRingModule = {
             shichenEl.style.color = '#B8860B';
         }
         
-        // 下时辰（显示具体时辰名 + 倒计时，红色）
         const nextShichenEl = document.getElementById('prNextShichenCountdown');
         if (nextShichenEl) {
             const nextIndex = (shichen.index + 1) % 12;
@@ -166,13 +162,11 @@ const PetRingModule = {
             nextShichenEl.style.color = '#c0392b';
         }
         
-        // 系统刷新倒计时（基于跑商二刷）
         const refreshEl = document.getElementById('prNextRefreshCountdown');
         if (refreshEl) {
             const refreshCountdown = this.getNextShopRefreshCountdown();
             refreshEl.textContent = this.formatCountdown(refreshCountdown);
             
-            // 计算刷新点对应的时辰
             const config = this.getShopRefreshConfig();
             const now2 = new Date();
             const minute = now2.getMinutes();
@@ -199,7 +193,6 @@ const PetRingModule = {
             }
         }
         
-        // 🆕 本轮记录标题右侧显示当前环的序号 + 时辰
         const currentRingShichenEl = document.getElementById('prCurrentRingShichen');
         if (currentRingShichenEl) {
             const visibleRecords = this.records.filter(r => !r.deleted);
@@ -227,19 +220,16 @@ const PetRingModule = {
         const data = Storage.get(this.storageKey, {});
         this.currentRunId = data.currentRunId || null;
         
-        // 🆕 如果 records 里有有效的环次，沿用它的 runId
         const validRecords = (data.records || []).filter(r => !r.deleted);
         if (validRecords.length > 0) {
             const existingRunId = validRecords[0].runId || validRecords[0].payload?.runId;
             if (existingRunId) this.currentRunId = existingRunId;
         }
     
-        // 🆕 如果 currentRunId 已在 history 里（已结算），换新的
         if (this.currentRunId && (data.history || []).some(h => h.runId === this.currentRunId)) {
             this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
         
-        // 如果还是没有，才新生成
         if (!this.currentRunId) {
             this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         }
@@ -274,7 +264,6 @@ const PetRingModule = {
     },
 
     saveData() {
-        // 🆕 生成 V3 历史锚点（_id 用 runId，跨设备一致）
         const historyV3 = this.history.map((h, idx) => {
             return {
                 _id: h.runId ? `petRing_run_${h.runId}` : `petRing_hist_${Date.now()}_${idx}`,
@@ -284,7 +273,6 @@ const PetRingModule = {
         });
         const settledRunIds = [...new Set(this.history.map(h => h.runId || h.payload?.runId).filter(Boolean))];
         
-        // 🆕 生成 V3 当前轮次锚点
         const recordsV3 = this.records.map((r, idx) => ({
             _id: r.id || r._id || `${this.currentRunId}_rec_${idx}`,
             _index: r.taskIndex || idx + 1,
@@ -293,7 +281,6 @@ const PetRingModule = {
             payload: r
         }));
         
-        // 🆕 当前轮次的最新时间（用于同步时判断新旧）
         const recordsLastUpdated = this.records.length > 0
             ? (this.records[this.records.length - 1].clickTimestamp 
                || new Date(this.records[this.records.length - 1].date).getTime() 
@@ -314,7 +301,6 @@ const PetRingModule = {
             pendingRelog: this.pendingRelog,
             startTimestamp: this.startTimestamp,
             currentRunId: this.currentRunId, 
-            // 🆕 V3 结构
             __sync_v3: {
                 history: historyV3,
                 records: recordsV3,
@@ -328,7 +314,6 @@ const PetRingModule = {
         });
     },
 
-    // ========== 应用UI设置 ==========
     applyUISettings() {
         const s = this.uiSettings;
         const container = document.getElementById('petRingContainer');
@@ -388,7 +373,6 @@ const PetRingModule = {
         });
     },
 
-    // ========== 检查自动结算 ==========
     checkAutoSettle() {
         const stats = this.calcStats();
         if (stats.ringCount >= 100 && !this.pendingSettle) {
@@ -396,15 +380,9 @@ const PetRingModule = {
         }
     },
 
-    // ========== 获取任务标签（兼容旧数据） ==========
     getTaskLabel(key) {
-        // 🆕 兼容旧数据：如果历史记录中有 cook 但没有 medicine，说明是旧数据
-        // 在显示时统一处理
         if (key === 'cook') {
-            // 检查当前是否在显示历史数据
-            // 如果是旧数据（没有 medicine 字段），显示"烹饪三药"
-            // 新数据显示"烹饪"
-            return '烹饪三药';  // 默认兼容显示
+            return '烹饪三药';
         }
         if (key === 'medicine') {
             return '三药';
@@ -423,7 +401,6 @@ showFullSettleModal(stats) {
     const fruitValue = fruitPrice;
     const furnValue = furnPrice;
 
-    // 🆕 根据总积分自动判定书铁等级
     const score = stats.totalScore;
     let autoLevel = 90;
     let autoLevelLabel = '90级';
@@ -438,7 +415,7 @@ showFullSettleModal(stats) {
     const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '铠甲', '女衣', '项链', '发钗', '头盔', '腰带', '鞋子'];
 
     let currentBookType = '书';
-    let currentLevel = autoLevel;  // 🆕 使用自动判定的等级
+    let currentLevel = autoLevel;
     let currentBookName = '';
     let currentIsZhanpo = false;
 
@@ -446,14 +423,12 @@ showFullSettleModal(stats) {
         <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
             <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">🎯 100环结算报告</h3>
             
-            <!-- 摘要 -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:14px;font-size:0.8rem;border:1px solid #dce5ef;">
                 <div><span style="color:#5a7a94;">总成本</span> <strong>${stats.totalCost.toFixed(1)}万</strong></div>
                 <div><span style="color:#5a7a94;">总积分</span> <strong style="color:${score>=192?'#2d6b2d':'#c0392b'};">${stats.totalScore}</strong></div>
                 <div><span style="color:#5a7a94;">修炼点</span> <strong>${stats.totalPoints}</strong> <span style="color:#8ab0c8;font-size:0.7rem;">（≈${(stats.totalPoints/170).toFixed(2)}果）</span></div>
             </div>
 
-            <!-- 修炼点价值 -->
             <div style="margin-bottom:14px;padding:8px 14px;background:#e8f0e8;border-radius:10px;border:1px solid #5f8f5f;">
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">
                     <span style="color:#1f3b53;">📈 修炼点价值</span>
@@ -461,7 +436,6 @@ showFullSettleModal(stats) {
                 </div>
             </div>
 
-            <!-- 📘 书铁奖励（自动判定等级） -->
             <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;">📘 书铁奖励</div>
@@ -470,19 +444,16 @@ showFullSettleModal(stats) {
                     </div>
                 </div>
                 
-                <!-- 书/铁切换 -->
                 <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
                     <button class="ph-book-type-btn active" data-type="书" style="padding:4px 20px;border-radius:14px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.85rem;font-weight:600;">📕 书</button>
                     <button class="ph-book-type-btn" data-type="铁" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">📗 铁</button>
                 </div>
-                                <!-- 🆕 战魄选项（仅150级） -->
                 ${autoLevel === 150 ? `
                 <div id="settleZhanpoRow" style="display:none;margin-bottom:10px;">
                     <button class="ph-zhanpo-btn" style="padding:4px 20px;border-radius:14px;border:2px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.85rem;font-weight:600;">🗡️ 战魄（160级材料）</button>
                 </div>
                 ` : ''}
 
-                <!-- 书种类（仅书时显示） -->
                 <div id="settleBookNameContainer" style="margin-bottom:8px;">
                     <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
@@ -492,7 +463,6 @@ showFullSettleModal(stats) {
                     </div>
                 </div>
 
-                <!-- 价值输入 -->
                 <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
                     <label style="font-weight:500;font-size:0.8rem;color:#1f3b53;">💰 价值(万)</label>
                     <input type="number" id="settleBookValue" placeholder="输入价值" style="flex:1;padding:4px 8px;border:1px solid #bccad9;border-radius:12px;font-size:0.8rem;text-align:center;">
@@ -500,7 +470,6 @@ showFullSettleModal(stats) {
                 <div style="font-size:0.65rem;color:#8ab0c8;margin-top:4px;" id="settleBookDisplay">💡 当前选择：<span id="settleBookDisplayText">${autoLevelLabel} 书</span></div>
             </div>
 
-            <!-- 🎁 三选一 -->
             <div style="margin-bottom:14px;padding:12px 16px;background:#f0f5fb;border-radius:16px;border:1px solid #dce5ef;">
                 <div style="font-weight:700;font-size:0.9rem;color:#1f3b53;margin-bottom:8px;">🎁 随机奖励（三选一）</div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -516,7 +485,6 @@ showFullSettleModal(stats) {
                 </div>
             </div>
 
-            <!-- 预览 -->
             <div style="padding:10px 16px;background:#f5f8fc;border-radius:12px;margin-bottom:14px;border:1px solid #dce5ef;">
                 <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:0.85rem;">
                     <span style="color:#5a7a94;">📊 收入合计</span>
@@ -541,7 +509,6 @@ showFullSettleModal(stats) {
     overlay.innerHTML = modalHTML;
     document.body.appendChild(overlay);
 
-    // ===== 事件绑定 =====
     const bookTypeBtns = overlay.querySelectorAll('.ph-book-type-btn');
     const bookNameList = document.getElementById('settleBookNameList');
     const bookNameContainer = document.getElementById('settleBookNameContainer');
@@ -557,10 +524,8 @@ showFullSettleModal(stats) {
             this.style.borderColor = '#4CAF50';
             this.style.color = '#fff';
             currentBookType = this.dataset.type;
-            currentIsZhanpo = false;  // 🆕 切换时重置战魄
-            // 铁时隐藏书种类选择
+            currentIsZhanpo = false;
             bookNameContainer.style.display = currentBookType === '书' ? 'block' : 'none';
-            // 🆕 控制战魄按钮显示
             const zhanpoRow = document.getElementById('settleZhanpoRow');
             if (zhanpoRow) {
                 zhanpoRow.style.display = (currentBookType === '铁' && autoLevel === 150) ? 'block' : 'none';
@@ -574,7 +539,6 @@ showFullSettleModal(stats) {
         });
     });
 
-        // 🆕 战魄按钮
     const zhanpoBtn = overlay.querySelector('.ph-zhanpo-btn');
     if (zhanpoBtn) {
         zhanpoBtn.addEventListener('click', function() {
@@ -593,7 +557,6 @@ showFullSettleModal(stats) {
         });
     }
 
-    // 书种类点击
     bookNameList.querySelectorAll('.ph-book-name-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             bookNameList.querySelectorAll('.ph-book-name-btn').forEach(b => {
@@ -610,10 +573,8 @@ showFullSettleModal(stats) {
         });
     });
 
-    // 价值输入变化
     document.getElementById('settleBookValue').addEventListener('input', updatePreview);
 
-    // 随机奖励变化
     overlay.querySelectorAll('input[name="rewardType"]').forEach(el => {
         el.addEventListener('change', updatePreview);
     });
@@ -661,15 +622,12 @@ showFullSettleModal(stats) {
         document.getElementById('settlePreviewProfit').style.color = profit >= 0 ? '#2d6b2d' : '#c0392b';
     }
 
-    // 初始化
     updateDisplayText();
     updatePreview();
 
-    // 取消
     document.getElementById('settleFullCancel').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 
-    // 确认结算
     document.getElementById('settleFullConfirm').addEventListener('click', () => {
         const bookType = currentBookType;
         const bookLevel = autoLevel;
@@ -715,7 +673,6 @@ showFullSettleModal(stats) {
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
             date: r.date,
-            // 🆕 时辰参数
             timestamp: r.timestamp || null,
             shichen: r.shichen || '',
             shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
@@ -725,9 +682,7 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
-        // 🆕 记录结算时的二刷配置 + 对应时辰
         const shopConfig = this.getShopRefreshConfig();
-        // 计算二刷时刻对应的时辰
         const nowForShichen = new Date();
         const shopTargetMinute = Math.floor(nowForShichen.getMinutes() / 10) * 10 + shopConfig.secondMinute;
         const shopTargetSec = shopTargetMinute * 60 + shopConfig.secondSecond;
@@ -736,7 +691,6 @@ showFullSettleModal(stats) {
         const shopShichen = this.getShichen(shopTargetDate.getTime());
         shopConfig.shichen = shopShichen.name;
         shopConfig.isDaytime = shopShichen.isDaytime;
-         // 🆕 结束时间用最后一环的点击时间
         const endTs = this.records.length > 0 ? this.records[this.records.length - 1].clickTimestamp : Date.now();
         const entry = {
             date: new Date().toLocaleString(),
@@ -763,12 +717,10 @@ showFullSettleModal(stats) {
             prediction20: this._prediction20 || null,
             rings: ringsData,
             relogCount: ringsData.filter(r => r.isRelog).length,
-                        shopRefreshConfig: shopConfig,
-            // 🆕 开始时间（时辰）
+            shopRefreshConfig: shopConfig,
             startTimestamp: this.startTimestamp || null,
             startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
             startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
-            // 🆕 结束时间（时辰）
             endTimestamp: endTs,
             endShichen: this.getShichen(endTs).name,
             endIsDaytime: this.getShichen(endTs).isDaytime
@@ -780,7 +732,7 @@ showFullSettleModal(stats) {
         this.extraRewards = { points: 0, fruits: 0, furnitures: 0 };
         this.pendingSettle = null;
         this.pendingRelog = false;
-        this.startTimestamp = null;  // 🆕 清空开始时间
+        this.startTimestamp = null;
         this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         this.saveData();
 
@@ -797,7 +749,6 @@ showFullSettleModal(stats) {
     });
 },
 
-    // ========== 结算准备 ==========
     prepareSettle() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
@@ -808,13 +759,11 @@ showFullSettleModal(stats) {
         }
     },
 
-    // ========== 快速结算（提前结束） ==========
     quickSettle(stats, income) {
         const fruitPrice = this.fruitPrice || 80;
         const pointsValue = stats.totalPoints * (fruitPrice / 170);
         const rewards = this.bookRewards.map(b => `${b.name}(${b.value}万)`).join(' + ');
 
-       // 🆕 保存 rings 详细数据（只保存有效环次）
         const visibleRecords = this.records.filter(r => !r.deleted);
         const ringsData = visibleRecords.map(r => ({
             taskIndex: r.taskIndex,
@@ -826,7 +775,6 @@ showFullSettleModal(stats) {
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
             date: r.date,
-            // 🆕 时辰参数
             timestamp: r.timestamp || null,
             shichen: r.shichen || '',
             shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
@@ -836,7 +784,6 @@ showFullSettleModal(stats) {
             timeStr: r.timeStr || ''
         }));
 
-        // 🆕 记录结算时的二刷配置 + 对应时辰
         const shopConfig = this.getShopRefreshConfig();
         const nowForShichen = new Date();
         const shopTargetMinute = Math.floor(nowForShichen.getMinutes() / 10) * 10 + shopConfig.secondMinute;
@@ -845,7 +792,6 @@ showFullSettleModal(stats) {
         const shopShichen = this.getShichen(shopTargetDate.getTime());
         shopConfig.shichen = shopShichen.name;
         shopConfig.isDaytime = shopShichen.isDaytime;
-        // 🆕 结束时间用最后一环的点击时间
         const endTs = this.records.length > 0 ? this.records[this.records.length - 1].clickTimestamp : Date.now();
 
         const entry = {
@@ -868,14 +814,12 @@ showFullSettleModal(stats) {
             bookDisplayName: null,
             rewardType: null,
             prediction20: this._prediction20 || null,
-            rings: ringsData,  // 🆕 保存每环详细数据
-            relogCount: ringsData.filter(r => r.isRelog).length,  // 🆕 重登次数
+            rings: ringsData,
+            relogCount: ringsData.filter(r => r.isRelog).length,
             shopRefreshConfig: shopConfig,
-            // 🆕 开始时间（时辰）
             startTimestamp: this.startTimestamp || null,
             startShichen: this.startTimestamp ? this.getShichen(this.startTimestamp).name : '',
             startIsDaytime: this.startTimestamp ? this.getShichen(this.startTimestamp).isDaytime : false,
-            // 🆕 结束时间（时辰）
             endTimestamp: endTs,
             endShichen: this.getShichen(endTs).name,
             endIsDaytime: this.getShichen(endTs).isDaytime
@@ -888,7 +832,7 @@ showFullSettleModal(stats) {
         this.pendingRelog = false;
         this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6); 
         this.saveData();
-        this.startTimestamp = null;  // 🆕 清空开始时间
+        this.startTimestamp = null;
 
         this.updateStats();
         this.updateHistory();
@@ -903,12 +847,10 @@ showFullSettleModal(stats) {
         }
     },
 
-    // ========== 确认结算 ==========
     confirmSettle() {
         alert('请使用结算弹窗完成结算');
     },
 
-    // ========== 显示结算结果弹窗 ==========
     showSettleModal(entry) {
         const profit = entry.profit;
         const rmb = profit * this.exchangeRate;
@@ -955,7 +897,6 @@ showFullSettleModal(stats) {
             `;
         }
 
-        // 🆕 显示重登次数
         if (entry.relogCount > 0) {
             bodyHTML += `
                 <span style="grid-column:1/-1;padding:2px 0;color:#dbbd7c;">
@@ -975,7 +916,6 @@ showFullSettleModal(stats) {
         document.getElementById('settleModal').classList.add('show');
     },
 
-        // 🆕 读取跑商模块的二刷配置
     getShopRefreshConfig() {
         try {
             const shopData = Storage.get('shopHelper', {});
@@ -988,7 +928,6 @@ showFullSettleModal(stats) {
         }
     },
 
-    // 🆕 距离下次刷新倒计时（基于跑商二刷配置）
     getNextShopRefreshCountdown() {
         const config = this.getShopRefreshConfig();
         const now = new Date();
@@ -1010,7 +949,6 @@ showFullSettleModal(stats) {
         return diff;
     },
 
-        // 🆕 时辰颜色配置
     SHICHEN_COLORS: {
         '子': '#4A90D9',
         '丑': '#8E44AD',
@@ -1026,25 +964,19 @@ showFullSettleModal(stats) {
         '亥': '#2C3E50'
     },
 
-    // 🆕 获取时辰颜色
     getShichenColor(name) {
         return this.SHICHEN_COLORS[name] || '#B8860B';
     },
 
-
-    // ========== 时辰系统 ==========
-    // 🆕 获取当前时辰信息
     getShichen(timestamp) {
         const date = new Date(timestamp);
         const minute = date.getMinutes();
         const second = date.getSeconds();
         const totalSeconds = minute * 60 + second;
         
-        // 每半小时（1800秒）一轮12时辰
         const halfHourIndex = Math.floor(totalSeconds / 1800);
         const secondsInHalfHour = totalSeconds % 1800;
         
-        // 每个时辰150秒（2.5分钟）
         const shichenIndex = Math.floor(secondsInHalfHour / 150);
         
         const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -1059,7 +991,6 @@ showFullSettleModal(stats) {
         };
     },
 
-    // 🆕 获取下次系统刷新倒计时（每10分钟一次）
     getNextRefreshCountdown() {
         const now = new Date();
         const minute = now.getMinutes();
@@ -1072,7 +1003,6 @@ showFullSettleModal(stats) {
         return minutesLeft * 60 + secondsLeft;
     },
 
-    // 🆕 格式化倒计时
     formatCountdown(seconds) {
         if (seconds < 0) seconds = 0;
         const m = Math.floor(seconds / 60);
@@ -1080,7 +1010,6 @@ showFullSettleModal(stats) {
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     },
     
-    // ========== 计算 ==========
     getRingPoints(index) {
         if (index < 9) return 3;
         if (index < 19) return 4;
@@ -1095,23 +1024,23 @@ showFullSettleModal(stats) {
         return 13;
     },
 
-calcStats() {
-    let totalCost = this.INITIAL_COST, totalScore = 0, totalPoints = 0;
-    const typeCount = {};
-    this.ITEM_TYPES.forEach(t => typeCount[t.key] = 0);
-    this.DEDUCT_TYPES.forEach(d => typeCount[d.key] = 0);
+    calcStats() {
+        let totalCost = this.INITIAL_COST, totalScore = 0, totalPoints = 0;
+        const typeCount = {};
+        this.ITEM_TYPES.forEach(t => typeCount[t.key] = 0);
+        this.DEDUCT_TYPES.forEach(d => typeCount[d.key] = 0);
 
-    const visibleRecords = this.records.filter(r => !r.deleted);
+        const visibleRecords = this.records.filter(r => !r.deleted);
 
-    for (let r of visibleRecords) {
-        totalCost += r.cost;
-        totalScore += r.score;
-        totalPoints += r.ringPoints;
-        if (typeCount[r.typeKey] !== undefined) typeCount[r.typeKey]++;
-        else typeCount[r.typeKey] = 1;
-    }
+        for (let r of visibleRecords) {
+            totalCost += r.cost;
+            totalScore += r.score;
+            totalPoints += r.ringPoints;
+            if (typeCount[r.typeKey] !== undefined) typeCount[r.typeKey]++;
+            else typeCount[r.typeKey] = 1;
+        }
 
-    const count = visibleRecords.length;
+        const count = visibleRecords.length;
         let totalPointsAll = totalPoints + this.extraRewards.points + this.extraRewards.fruits * 170;
 
         return {
@@ -1150,7 +1079,6 @@ calcStats() {
         return data;
     },
 
-    // ========== 删除奖励条目 ==========
     removeRewardItem(type, idx) {
         switch(type) {
             case 'book':
@@ -1180,7 +1108,6 @@ calcStats() {
         this.render();
     },
 
-    // ========== 期望值计算 ==========
     calculateExpectation() {
         const totalRings = 100;
         const runRings = this.records.length;
@@ -1242,7 +1169,6 @@ calcStats() {
         };
     },
 
-    // ========== 构建UI ==========
     buildUI() {
         const container = document.getElementById('petRingContainer');
         if (!container) return;
@@ -1310,7 +1236,6 @@ calcStats() {
                 </div>
             </div>
 
-            <!-- 🔁 重登实时分析（放在任务类型上面） -->
 <div id="prRelogAnalysis" style="font-size:0.85rem;color:#1f3b53;padding:6px 12px;background:#fdf8ee;border-radius:10px;margin-bottom:8px;border:1px solid #f0e8d0;font-weight:600;">
     🔁 等待重登标记...
 </div>
@@ -1345,11 +1270,9 @@ calcStats() {
                 </div>
     <div class="module-body" id="prHistoryBody">
         <div style="display:flex;gap:12px;align-items:flex-start;">
-            <!-- 左侧：本轮记录 -->
             <div style="flex:1;min-width:0;">
                 <div class="history-section" id="prHistoryList" style="max-height:200px;overflow-y:auto;"><div class="empty-history">暂无记录</div></div>
             </div>
-            <!-- 右侧：时辰权重表 -->
                <div style="flex:1;min-width:0;">
                <div style="background:#f8faff;border-radius:12px;padding:4px 8px;font-size:0.75rem;border:1px solid #dce5ef;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -1371,8 +1294,6 @@ calcStats() {
         </div>
     </div>
             </div>
-
-            
 
             <div class="module" id="prModuleAdvice">
                 <div class="module-header">
@@ -1439,8 +1360,6 @@ calcStats() {
                     <div style="font-size:0.65rem;color:#5a7a94;margin-top:8px;padding-top:6px;border-top:1px solid #eef2f7;">💡 修炼果收入 = 修炼点 ÷ 170 × 单价 &nbsp;|&nbsp; 利润 = 总收入 − 总成本 &nbsp;|&nbsp; 初始成本固定10万</div>
                 </div>
             </div>
-
-
 
             <div class="flex-between">
                 <span style="font-size:0.7rem;color:#3a5f7a;">💡 点击任务按钮记录一环，满100环自动结算</span>
@@ -1515,9 +1434,7 @@ calcStats() {
         `;
     },
 
-    // ========== 绑定事件 ==========
     bindEvents() {
-        // ===== UI设置 =====
         document.getElementById('prBgColor').addEventListener('input', function() {
             PetRingModule.uiSettings.bgColor = this.value;
             PetRingModule.applyUISettings();
@@ -1583,18 +1500,14 @@ calcStats() {
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 汇率变化 =====
         document.getElementById('prExchangeRate').addEventListener('input', function() {
             const val = parseFloat(this.value) || 0;
-            // 🆕 输入的是「1元=?万」，内部存「1万=?元」
             PetRingModule.exchangeRate = val > 0 ? (1 / val) : 0;
             PetRingModule.saveData();
             PetRingModule.render();
         });
         
-        // ===== 🆕 开始跑环 =====
 document.getElementById('prStartRunBtn').addEventListener('click', function() {
-    // 如果已有记录，提示是否重新计时
     if (PetRingModule.records.length > 0) {
         if (!confirm('已经跑了一些环，确定要重新计时？\n（不会删除记录，只重置首环时辰）')) return;
     }
@@ -1606,7 +1519,6 @@ document.getElementById('prStartRunBtn').addEventListener('click', function() {
     const dayNight = shichen.isDaytime ? '☀️' : '🌙';
     const timeStr = new Date(PetRingModule.startTimestamp).toLocaleTimeString();
     
-    // 更新按钮状态
     const btn = document.getElementById('prStartRunBtn');
     btn.textContent = `✅ 已开始 ${timeStr}`;
     btn.style.background = '#8a9a8a';
@@ -1616,8 +1528,6 @@ document.getElementById('prStartRunBtn').addEventListener('click', function() {
     PetRingModule.updateTimeAndShichen();
 });
 
-
-// ===== 🆕 标记下线重登 =====
 document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
     if (PetRingModule.pendingRelog) {
         alert('已有待标记的重登，请先记录当前环再标记下一环');
@@ -1627,11 +1537,10 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
     const nextIndex = PetRingModule.records.length + 1;
     document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
     document.getElementById('prRelogStatus').style.color = '#dbbd7c';
-    document.getElementById('prCancelRelogBtn').style.display = 'inline-block';  // 🆕 加这行
+    document.getElementById('prCancelRelogBtn').style.display = 'inline-block';
     PetRingModule.updateRelogAnalysis(); 
 });
 
-        // ===== 🆕 撤销重登标记 =====
 document.getElementById('prCancelRelogBtn').addEventListener('click', function() {
     if (!PetRingModule.pendingRelog) {
         alert('当前没有待标记的重登');
@@ -1644,7 +1553,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
     PetRingModule.updateRelogAnalysis();
 });
 
-        // ===== 确认结算 =====
         document.getElementById('prConfirmSettleBtn').addEventListener('click', () => {
             const stats = this.calcStats();
             if (stats.ringCount === 0) {
@@ -1659,7 +1567,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.quickSettle(stats, income);
         });
 
-        // ===== 扣分设置折叠 =====
         document.getElementById('prToggleDeductBtn')?.addEventListener('click', function() {
             const body = document.getElementById('prDeductSettings');
             if (body) {
@@ -1670,7 +1577,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 隐藏按钮 =====
         document.getElementById('prToggleTaskBtn').addEventListener('click', function() {
             const body = document.getElementById('prTaskBody');
             body.classList.toggle('hidden');
@@ -1702,7 +1608,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
-        // ===== 任务按钮 =====
         document.getElementById('petRingContainer').addEventListener('click', (e) => {
             const btn = e.target.closest('.task-btn');
             if (btn) {
@@ -1715,18 +1620,13 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        
-
-        // ===== 撤销 =====
         document.getElementById('prUndoBtn').addEventListener('click', () => this.undoRecord());
 
-                // ===== 🆕 查看本轮全部记录 =====
         const viewAllBtn = document.getElementById('prViewAllRingsBtn');
         if (viewAllBtn) {
             viewAllBtn.addEventListener('click', () => this.showAllRingsModal());
         }
 
-        // ===== 提前结束 =====
         document.getElementById('prEndBtn').addEventListener('click', () => {
             const stats = this.calcStats();
             if (stats.ringCount === 0) {
@@ -1743,7 +1643,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.quickSettle(stats, income);
         });
 
-        // ===== 重置 =====
         document.getElementById('prResetBtn').addEventListener('click', () => {
             if (confirm('重置本轮所有记录？（不会删除已结算的历史）')) {
                 this.records = [];
@@ -1752,12 +1651,11 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
                 this.pendingSettle = null;
                 this.pendingRelog = false;
                 this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6); 
-                this.startTimestamp = null;  // 🆕 清空开始时间
+                this.startTimestamp = null;
                 this.currentRunId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
                 document.getElementById('prRelogStatus').textContent = '无待标记';
                 document.getElementById('prRelogStatus').style.color = '#5a7a94';
                 
-                // 🆕 重置开始按钮
                 const startBtn = document.getElementById('prStartRunBtn');
                 if (startBtn) {
                     startBtn.textContent = '▶️ 开始跑环';
@@ -1769,7 +1667,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 书铁添加 =====
         document.getElementById('prAddBookBtn').addEventListener('click', () => {
             const name = document.getElementById('prBookName').value.trim() || '未知书铁';
             const val = parseFloat(document.getElementById('prBookValue').value) || 0;
@@ -1781,7 +1678,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.render();
         });
 
-        // ===== 奖励删除 =====
         document.getElementById('petRingContainer').addEventListener('click', (e) => {
             const delBtn = e.target.closest('.reward-del-btn');
             if (delBtn) {
@@ -1793,7 +1689,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 奖励按钮 =====
         document.getElementById('prAdd200PointsBtn').addEventListener('click', () => {
             this.extraRewards.points += 200;
             this.saveData();
@@ -1810,7 +1705,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.render();
         });
 
-        // ===== 单价变化 =====
         document.getElementById('prFruitPrice').addEventListener('change', () => {
             const val = parseFloat(document.getElementById('prFruitPrice').value) || 80;
             PetRingModule.fruitPrice = val;
@@ -1819,7 +1713,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
         });
         document.getElementById('prFurniturePrice').addEventListener('change', () => this.render());
 
-        // ===== 价格输入变化 =====
         document.getElementById('petRingContainer').addEventListener('change', (e) => {
             const input = e.target.closest('#prPriceInputs input');
             if (input) {
@@ -1832,7 +1725,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 扣分设置变化 =====
         document.getElementById('petRingContainer').addEventListener('change', (e) => {
             const input = e.target.closest('#prDeductSettings input');
             if (input) {
@@ -1848,7 +1740,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 数据分析 =====
         let analysisVisible = false;
         document.getElementById('prAnalysisToggleBtn').addEventListener('click', function() {
             analysisVisible = !analysisVisible;
@@ -1861,7 +1752,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 筛选 =====
         document.getElementById('prApplyFilterBtn').addEventListener('click', () => {
             this.filterState.dateFrom = document.getElementById('prFilterDateFrom').value || '';
             this.filterState.dateTo = document.getElementById('prFilterDateTo').value || '';
@@ -1890,7 +1780,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // ===== 导入 =====
         document.getElementById('prImportBtn').addEventListener('click', () => {
             document.getElementById('prImpDate').value = new Date().toLocaleString();
             document.getElementById('prImpBookValue').value = '';
@@ -1906,7 +1795,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.importData();
         });
 
-        // ===== 导入弹窗奖励按钮 =====
         document.getElementById('prImpAddBookBtn').addEventListener('click', () => {
             const val = parseFloat(document.getElementById('prImpBookValue').value) || 0;
             if (val <= 0) { alert('请输入有效的书铁价值！'); return; }
@@ -1939,7 +1827,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.updateImpRewardSummary();
         });
 
-        // ===== 弹窗 =====
         document.getElementById('settleModalCancel').addEventListener('click', () => {
             document.getElementById('settleModal').classList.remove('show');
         });
@@ -1950,7 +1837,6 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             if (e.target === this) this.classList.remove('show');
         });
 
-        // ===== 🆕 历史表格详情按钮 - 弹窗显示每环数据 =====
         document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
             const btn = e.target.closest('.detail-toggle');
             if (btn) {
@@ -1983,7 +1869,6 @@ if (weightRangeEl) {
         PetRingModule.renderShichenWeights();
     });
 }
-        // ===== 排序按钮 =====
         document.getElementById('prSortHeader')?.addEventListener('click', function() {
             PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
             PetRingModule.updateHistoryTable();
@@ -1991,6 +1876,7 @@ if (weightRangeEl) {
     },
 
 // 🆕 显示每环详细数据弹窗（兼容旧数据）
+// ===== 改动点：外层 Flex 布局 + 上半固定 + 下半滚动 =====
 showRingsDetailModal(entry) {
     if (!entry) return;
 
@@ -1998,7 +1884,9 @@ showRingsDetailModal(entry) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
 
     let html = `
-            <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+              <!-- ========== 固定区（不滚动） ========== -->
+              <div style="flex-shrink:0;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                     <h3 style="color:#1f3b53;margin:0;font-size:1.2rem;">📊 ${entry.ringCount || 0}环 详细数据</h3>
@@ -2019,7 +1907,6 @@ showRingsDetailModal(entry) {
                 ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : ''}
                 ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
                 ${(() => {
-                    // 🆕 兜底：startTimestamp 没了就用首环 timestamp
                     const st = entry.startTimestamp || (entry.rings?.[0]?.timestamp) || null;
                     if (!st) return '';
                     return `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(st).toLocaleTimeString()}</strong></div>`;
@@ -2027,7 +1914,6 @@ showRingsDetailModal(entry) {
                 ${entry.endTimestamp ? `<div><span style="color:#5a7a94;">⏹️ 结束</span> <strong>${new Date(entry.endTimestamp).toLocaleTimeString()}</strong></div>` : ''}
             </div>
 
-             <!-- 🆕 时辰筛选区 -->
             <div id="ringsShichenFilter" style="margin-bottom:10px;padding:8px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
                 <div style="font-weight:700;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰筛选</div>
                 <div id="ringsShichenBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
@@ -2062,7 +1948,6 @@ showRingsDetailModal(entry) {
     const typeCount = entry.typeCount || {};
     let hasTypeCount = false;
 
-    // 🔍 判断该轮次是否为旧数据（没有 medicine 字段）
     const hasMedicine = entry.rings ? entry.rings.some(r => r.typeKey === 'medicine') : false;
 
     for (let [key, count] of Object.entries(typeCount)) {
@@ -2070,8 +1955,6 @@ showRingsDetailModal(entry) {
             hasTypeCount = true;
             let label;
             if (key === 'cook') {
-                // 如果有 medicine 字段，说明是新数据，显示"烹饪"
-                // 否则是旧数据，显示"烹饪三药"
                 label = hasMedicine ? '烹饪' : '烹饪三药';
             } else {
                 label = this.getTaskLabel(key);
@@ -2085,9 +1968,7 @@ showRingsDetailModal(entry) {
     }
 
     html += `</div>`;
-    
 
-     // ===== 🆕 重登区间分析 =====
 const rings = entry.rings || [];
 if (rings.length > 0) {
    const relogIndices = [];
@@ -2101,7 +1982,6 @@ for (let i = 0; i < rings.length; i++) {
 }
     
 relogIndices.sort((a, b) => a - b);
-console.log('🔍 relogIndices:', relogIndices);
         if (relogIndices.length > 0) {
             const intervals = [];
             for (let i = 0; i < relogIndices.length; i++) {
@@ -2135,11 +2015,18 @@ console.log('🔍 relogIndices:', relogIndices);
         }
     }
 
-    if (rings.length > 0) {
-        html += `
-            <div style="margin-bottom:6px;font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
-            <div style="max-height:none;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+    // ===== 固定区结束 =====
+    html += `</div>`;  // 关闭 flex-shrink:0
+
+    // ===== 滚动区开始：每环详情 =====
+    html += `
+            <div style="flex-shrink:0;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:0.7rem;color:#5a7a94;">📋 每环详情：</div>
+                <div style="font-size:0.65rem;color:#8ab0c8;">（下方列表可滚动，上方固定）</div>
+            </div>
+            <div id="ringsDetailListWrap" style="flex:1;min-height:0;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;background:white;">
         `;
+    if (rings.length > 0) {
         let cumulativePoints = 0;
         const pointsMap = {};
         for (let r of rings) {
@@ -2147,16 +2034,13 @@ console.log('🔍 relogIndices:', relogIndices);
             pointsMap[r.taskIndex] = cumulativePoints;
         }
         for (let r of rings) {
-            // 🆕 直接使用保存的 label，如果没有则用 getTaskLabel
             let label = r.label || this.getTaskLabel(r.typeKey);
-            // 如果是旧数据的 cook，统一显示为"烹饪三药"
             if (r.typeKey === 'cook' && !hasMedicine) {
                 label = '烹饪三药';
             }
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
             
-            // 🆕 时辰显示
             let shichenDisplay = '';
             if (r.shichen) {
                 const dayNight = r.isDaytime ? '☀️' : '🌙';
@@ -2176,7 +2060,6 @@ console.log('🔍 relogIndices:', relogIndices);
                 </div>
             `;
         }
-        html += `</div>`;
     } else if (hasTypeCount) {
         html += `
             <div style="margin-top:8px;padding:8px 12px;background:#f5f8fc;border-radius:8px;border:1px solid #e8eef5;text-align:center;color:#5a7a94;font-size:0.75rem;">
@@ -2184,9 +2067,11 @@ console.log('🔍 relogIndices:', relogIndices);
             </div>
         `;
     }
+    html += `</div>`;  // 关闭滚动区
 
+    // ===== 底部固定 =====
     html += `
-            <div class="modal-actions" style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+            <div class="modal-actions" style="flex-shrink:0;display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
                 <button class="btn-cancel" id="ringsDetailClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
             </div>
         </div>
@@ -2195,7 +2080,6 @@ console.log('🔍 relogIndices:', relogIndices);
     overlay.innerHTML = html;
     document.body.appendChild(overlay);
 
-        // 🆕 放大/缩小按钮
     const detailBox = document.getElementById('ringsDetailBox');
     if (detailBox) {
         document.getElementById('ringsDetailLarger').addEventListener('click', () => {
@@ -2210,13 +2094,11 @@ console.log('🔍 relogIndices:', relogIndices);
         });
     }
 
-    // 🆕 时辰筛选逻辑
     const shichenBtnContainer = document.getElementById('ringsShichenBtns');
     const shichenStatsContainer = document.getElementById('ringsShichenStats');
     const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
     const SHICHEN_COLORS = this.SHICHEN_COLORS || {};
 
-    // 统计每个时辰的数据
     const calcShichenStats = (filterShichen) => {
         const stats = { total: 0, typeCount: {} };
         for (let r of rings) {
@@ -2235,7 +2117,6 @@ console.log('🔍 relogIndices:', relogIndices);
             return;
         };
         
-        // 找人 vs 物品
         const findCount = stats.typeCount['find'] || 0;
         const findPct = Math.round((findCount / stats.total) * 100);
         const itemCount = stats.total - findCount;
@@ -2256,10 +2137,8 @@ console.log('🔍 relogIndices:', relogIndices);
         shichenStatsContainer.innerHTML = html;
     }
 
-    // 渲染时辰按钮
     let btnsHtml = `<button class="shichen-filter-btn" data-shichen="" style="padding:2px 10px;border-radius:12px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">全部</button>`;
     for (let name of shichenNames) {
-        // 检查这个时辰有没有数据
         const hasData = rings.some(r => r.shichen === name);
         const color = SHICHEN_COLORS[name] || '#B8860B';
         if (!hasData) {
@@ -2270,10 +2149,8 @@ console.log('🔍 relogIndices:', relogIndices);
     }
     shichenBtnContainer.innerHTML = btnsHtml;
 
-    // 绑定按钮事件
     shichenBtnContainer.querySelectorAll('.shichen-filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            // 重置所有按钮
             shichenBtnContainer.querySelectorAll('.shichen-filter-btn').forEach(b => {
                 const name = b.dataset.shichen;
                 const color = name ? (SHICHEN_COLORS[name] || '#B8860B') : '#4CAF50';
@@ -2281,7 +2158,6 @@ console.log('🔍 relogIndices:', relogIndices);
                 b.style.borderColor = '#bccad9';
                 b.style.color = color;
             });
-            // 高亮当前按钮
             this.style.background = '#4CAF50';
             this.style.borderColor = '#4CAF50';
             this.style.color = '#fff';
@@ -2289,7 +2165,6 @@ console.log('🔍 relogIndices:', relogIndices);
             const filterShichen = this.dataset.shichen || '';
             renderShichenStats(filterShichen);
             
-            // 🆕 如果筛选了具体时辰，下方每环详情也过滤
             const ringRows = overlay.querySelectorAll('.ring-detail-row');
             ringRows.forEach(row => {
                 const rowShichen = row.dataset.shichen || '';
@@ -2302,7 +2177,6 @@ console.log('🔍 relogIndices:', relogIndices);
         });
     });
 
-    // 初始化：显示全部
     renderShichenStats('');
     
     document.getElementById('ringsDetailClose').addEventListener('click', () => {
@@ -2312,19 +2186,13 @@ console.log('🔍 relogIndices:', relogIndices);
     document.getElementById('ringsDetailTopClose').addEventListener('click', () => {
     overlay.remove();
 });
-    // 去掉点击遮罩关闭，防止拖动时误关
-    // overlay.addEventListener('click', (e) => {
-    //     if (e.target === overlay) overlay.remove();
-    // });
 },
-        
 
-       addRecord(key) {
+    addRecord(key) {
         if (this.records.filter(r => !r.deleted).length >= 100) {
             alert('本轮已满100环，请先结算！');
             return;
         }
-        // 🆕 检查是否已开始跑环
         if (!this.startTimestamp && this.records.length === 0) {
             alert('请先点击「▶️ 开始跑环」按钮！');
             return;
@@ -2335,7 +2203,6 @@ console.log('🔍 relogIndices:', relogIndices);
         const visibleRecords = this.records.filter(r => !r.deleted);
         const idx = visibleRecords.length;
         
-        // 🆕 检查是否有待标记的重登
         const isRelog = this.pendingRelog || false;
         if (this.pendingRelog) {
             this.pendingRelog = false;
@@ -2344,11 +2211,9 @@ console.log('🔍 relogIndices:', relogIndices);
             document.getElementById('prCancelRelogBtn').style.display = 'none';
         }
 
-        // 🆕 记录时辰参数
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (visibleRecords.length === 0) {
             recordTimestamp = this.startTimestamp || nowTimestamp;
@@ -2371,7 +2236,6 @@ console.log('🔍 relogIndices:', relogIndices);
             isRelog: isRelog,
             date: recordDate.toLocaleString(),
             
-            // 🆕 时辰参数（当前环的生成时间）
             timestamp: recordTimestamp,
             clickTimestamp: nowTimestamp,
             shichen: shichen.name,
@@ -2392,7 +2256,6 @@ console.log('🔍 relogIndices:', relogIndices);
             alert('本轮已满100环，请先结算！');
             return;
         }
-                // 🆕 检查是否已开始跑环
         if (!this.startTimestamp && this.records.length === 0) {
             alert('请先点击「▶️ 开始跑环」按钮！');
             return;
@@ -2403,7 +2266,6 @@ console.log('🔍 relogIndices:', relogIndices);
         const visibleRecords = this.records.filter(r => !r.deleted);
         const idx = visibleRecords.length;
         
-        // 🆕 检查是否有待标记的重登
         const isRelog = this.pendingRelog || false;
         if (this.pendingRelog) {
             this.pendingRelog = false;
@@ -2412,11 +2274,9 @@ console.log('🔍 relogIndices:', relogIndices);
             document.getElementById('prCancelRelogBtn').style.display = 'none';
         }
 
-        // 🆕 记录时辰参数
         const now = new Date();
         const nowTimestamp = now.getTime();
         
-        // 第1环用开始时间；第2环及以后用上一环的点击时间
         let recordTimestamp;
         if (visibleRecords.length === 0) {
             recordTimestamp = this.startTimestamp || nowTimestamp;
@@ -2440,7 +2300,6 @@ console.log('🔍 relogIndices:', relogIndices);
             label: type ? type.label : key,
             date: recordDate.toLocaleString(),
             
-            // 🆕 时辰参数
             timestamp: recordTimestamp,
             clickTimestamp: nowTimestamp,
             shichen: shichen.name,
@@ -2456,7 +2315,6 @@ console.log('🔍 relogIndices:', relogIndices);
     },
 
 undoRecord() {
-    // 🆕 用 visibleRecords 找最后一条有效记录
     const visibleRecords = this.records.filter(r => !r.deleted);
     if (visibleRecords.length === 0) {
         alert('没有可撤销的记录！');
@@ -2464,14 +2322,12 @@ undoRecord() {
     }
 
     const lastVisible = visibleRecords[visibleRecords.length - 1];
-    // 🆕 在 this.records 里找到它并标记删除
     const idx = this.records.findIndex(r => r.id === lastVisible.id);
     if (idx >= 0) {
         this.records[idx].deleted = true;
         this.records[idx].deletedAt = Date.now();
     }
 
-    // 如果撤销的是重登标记的环，恢复待标记状态
     if (lastVisible.isRelog) {
         this.pendingRelog = true;
         const nextIndex = visibleRecords.length;
@@ -2489,7 +2345,6 @@ undoRecord() {
     this.updateRelogAnalysis();
 },
 
-    // ========== 更新书铁列表 ==========
     updateBookList() {
         const display = document.getElementById('prBookListDisplay');
         if (!display) return;
@@ -2541,7 +2396,6 @@ undoRecord() {
         display.innerHTML = html;
     },
 
-    // ========== 更新渲染 ==========
     updateStats() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
@@ -2612,7 +2466,6 @@ undoRecord() {
         this.buildDeductSettings();
         this.buildPriceInputs();
 
-                // 🆕 同步开始按钮状态
         const startBtn = document.getElementById('prStartRunBtn');
         if (startBtn) {
             if (this.startTimestamp) {
@@ -2701,7 +2554,6 @@ updateHistory() {
 
     let html = '';
     const records = visibleRecords.slice().reverse();
-    // 🆕 累计积分
     let cumulativePoints = 0;
     const pointsMap = {};
     for (let r of visibleRecords) {
@@ -2714,7 +2566,6 @@ updateHistory() {
         const sc = r.score < 0 ? r.score : `+${r.score}`;
         const relogIcon = r.isRelog ? ' 🔁' : '';
         
-        // 🆕 时辰和时间显示
         let shichenDisplay = '';
         if (r.shichen) {
             const dayNight = r.isDaytime ? '☀️' : '🌙';
@@ -2748,9 +2599,8 @@ updateHistory() {
     list.innerHTML = html;
 },
 
-    
-
     // 🆕 显示本轮全部记录弹窗
+    // ===== 改动点：外层 Flex 布局 + 上半固定 + 下半滚动 =====
 showAllRingsModal() {
     const visibleRecords = this.records.filter(r => !r.deleted);
     if (visibleRecords.length === 0) {
@@ -2792,34 +2642,39 @@ showAllRingsModal() {
         `;
     }
 
-    // 🆕 时间段分析（照搬详情弹窗）
-const timeline = this.calcWindowTimeline(visibleRecords);
-const buildTimelineRow = (list, label) => {
-    if (!list || list.length === 0) return '';
-    return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
-        <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;margin-bottom:4px;">${label}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">
-            ${list.map(w => {
-                const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
-                return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;">
-                    ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
-                </span>`;
-            }).join('')}
-        </div>
-    </div>`;
-};
-const timelineHtml = buildTimelineRow(timeline.w10, '📊 10分钟段找人率变化')
-                   + buildTimelineRow(timeline.w30, '📊 30分钟段找人率变化');
+    const timeline = this.calcWindowTimeline(visibleRecords);
+    const buildTimelineRow = (list, label) => {
+        if (!list || list.length === 0) return '';
+        return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
+            <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;margin-bottom:4px;">${label}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${list.map(w => {
+                    const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
+                    return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;">
+                        ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
+                    </span>`;
+                }).join('')}
+            </div>
+        </div>`;
+    };
+    const timelineHtml = buildTimelineRow(timeline.w10, '📊 10分钟段找人率变化')
+                       + buildTimelineRow(timeline.w30, '📊 30分钟段找人率变化');
 
     overlay.innerHTML = `
-       <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:900px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-            <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📋 本轮全部记录</h3>
-            <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:10px;">共 ${this.records.length} 环</div>
-            ${timelineHtml}
-            <div style="max-height:70vh;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;">
+       <div style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:900px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+            <!-- ========== 固定区 ========== -->
+            <div style="flex-shrink:0;">
+                <h3 style="color:#1f3b53;margin-bottom:4px;font-size:1.2rem;">📋 本轮全部记录</h3>
+                <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:10px;">共 ${this.records.length} 环</div>
+                ${timelineHtml}
+                <div style="font-size:0.7rem;color:#5a7a94;margin:4px 0 6px;">📋 每环详情（下方可滚动）：</div>
+            </div>
+            <!-- ========== 滚动区 ========== -->
+            <div style="flex:1;min-height:0;overflow-y:auto;border:1px solid #eef2f7;border-radius:12px;background:white;">
                 ${listHtml}
             </div>
-            <div style="display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
+            <!-- ========== 底部固定 ========== -->
+            <div style="flex-shrink:0;display:flex;gap:12px;margin-top:16px;justify-content:flex-end;">
                 <button class="btn-cancel" id="allRingsClose" style="padding:8px 24px;border-radius:40px;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;background:#dce5ef;color:#1f3b53;">关闭</button>
             </div>
         </div>
@@ -2929,15 +2784,11 @@ renderRealtimeWindow() {
             if (r.typeKey === 'find') map[key].find++;
         }
         const result = [];
-        // 🆕 按日期时间排序（跨天时，零点后的排在后面）
         const sortedKeys = Object.keys(map).sort((a, b) => {
-            // 如果跨越了 0 点，比较逻辑：
-            // 如果 a 是 0~6 点，b 是 20~23 点，说明 a 是第二天的，应该排在后面
             const [ah, am] = a.split(':').map(Number);
             const [bh, bm] = b.split(':').map(Number);
             const aMin = ah * 60 + am;
             const bMin = bh * 60 + bm;
-            // 假设跨天时，0~6 点是第二天
             const aIsNextDay = ah < 6;
             const bIsNextDay = bh < 6;
             if (aIsNextDay !== bIsNextDay) {
@@ -2965,7 +2816,6 @@ renderRealtimeWindow() {
     return { w10: build(10), w30: build(30) };
 },
     
-    
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
@@ -2983,7 +2833,6 @@ renderRealtimeWindow() {
     const stats = {};
     shichenNames.forEach(n => stats[n] = { total: 0, find: 0 });
 
-    // 遍历历史每一轮的 rings
     for (let h of this.history) {
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
@@ -2995,7 +2844,6 @@ renderRealtimeWindow() {
         }
     }
 
-    // 本轮 records 也统计进去（当前正在跑的，也实时反映）
     for (let r of this.records) {
         if (r.deleted) continue;
         if (!r.shichen) continue;
@@ -3024,7 +2872,6 @@ renderRealtimeWindow() {
         </div>`;
     }
     document.getElementById('prWeightList').innerHTML = html;
-            // 🆕 计算最低权重的前 4 个时辰
     const shichenArr = [];
     for (let n of shichenNames) {
         const s = stats[n];
@@ -3039,9 +2886,7 @@ renderRealtimeWindow() {
         if (top4.length === 0) {
             hintEl.textContent = '';
         } else {
-            // 取当前时辰
             const nowShichen = this.getShichen(Date.now()).name;
-            // 逐个渲染
             let parts = [];
             for (let i = 0; i < top4.length; i++) {
                 const t = top4[i];
@@ -3066,7 +2911,6 @@ updateRelogAnalysis() {
         return;
     }
 
-    // 找出所有重登的索引（用 taskIndex 定位）
     const relogIndices = [];
     for (let i = 0; i < records.length; i++) {
         if (records[i].isRelog) {
@@ -3084,7 +2928,6 @@ updateRelogAnalysis() {
         return;
     }
 
-    // 🆕 只取最后一个重登标记，统计它之后到现在的区间
     const lastRelogIdx = relogIndices[relogIndices.length - 1];
     const hasPending = (lastRelogIdx + 1) < records.length;
 
@@ -3094,7 +2937,6 @@ updateRelogAnalysis() {
         return;
     }
 
-    // 统计最后一个重登之后的任务
    const pendingRecords = records.slice(lastRelogIdx);
     const stats = {};
     for (let r of pendingRecords) {
@@ -3115,7 +2957,6 @@ updateRelogAnalysis() {
     container.innerHTML = `🔁 [${startRing}-?环] ${parts.join(' ')} (当前区间)`;
     container.style.color = '#1f3b53';
 
-    // 同步撤销按钮显示状态
     const cancelBtn = document.getElementById('prCancelRelogBtn');
     if (cancelBtn) {
         cancelBtn.style.display = this.pendingRelog ? 'inline-block' : 'none';
@@ -3188,15 +3029,7 @@ updateRelogAnalysis() {
             }
 
             const totalIncome = h.totalIncome || 0;
-
-            // 🆕 详情按钮改为打开弹窗
             const hasRings = h.rings && h.rings.length > 0;
-
-            // 🆕 重登次数显示
-            let relogDisplay = '-';
-            if (h.relogCount && h.relogCount > 0) {
-                relogDisplay = `🔁 ${h.relogCount}次`;
-            }
 
             html += `<tr>
                 <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
@@ -3228,7 +3061,6 @@ updateRelogAnalysis() {
         }
     },
 
-    // ========== 决策建议 ==========
     updateAdvice() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
@@ -3329,7 +3161,6 @@ updateRelogAnalysis() {
         tag.textContent = tagText;
     },
 
-    // ========== 数据分析 ==========
     updateAnalysis(data) {
         const count = data.length;
         if (count === 0) {
@@ -3349,7 +3180,6 @@ updateRelogAnalysis() {
         let winCount = 0, loseCount = 0;
         let maxProfit = -Infinity, minProfit = Infinity;
         const taskTotals = {};
-                // 🆕 时辰统计
         const shichenStats = {};
         const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
         shichenNames.forEach(name => {
@@ -3377,7 +3207,6 @@ updateRelogAnalysis() {
                 }
             }
 
-                        // 🆕 统计时辰数据
             if (h.rings && h.rings.length > 0) {
                 for (let r of h.rings) {
                     if (r.shichen) {
@@ -3484,7 +3313,6 @@ updateRelogAnalysis() {
         });
         document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
 
-            // 🆕 时辰分析
         let shichenHtml = '';
         if (totalRingsWithShichen > 0) {
             let rows = '';
@@ -3524,14 +3352,12 @@ updateRelogAnalysis() {
             shichenHtml = `<div style="margin-top:10px;padding:6px 12px;background:#f5f8fc;border-radius:8px;text-align:center;color:#6c87a0;font-size:0.7rem;">⏱️ 暂有时辰数据（仅新数据记录时辰）</div>`;
         }
         
-        // 插入到分析面板
         const shichenContainer = document.getElementById('prShichenAnalysis');
         if (shichenContainer) {
             shichenContainer.innerHTML = shichenHtml;
         }
     },
 
-    // ========== 导入 ==========
     importData() {
         const date = document.getElementById('prImpDate').value || new Date().toLocaleString();
         const ringCount = parseInt(document.getElementById('prImpRings').value) || 100;
@@ -3598,7 +3424,7 @@ updateRelogAnalysis() {
             isComplete: true,
             typeCount,
             rewards: rewards || `修炼果${fruitIncome.toFixed(1)}万`,
-            rings: [],  // 导入数据没有详细环数据
+            rings: [],
             relogCount: 0
         };
 
