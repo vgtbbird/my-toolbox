@@ -1876,12 +1876,20 @@ if (weightRangeEl) {
     },
 
 // 🆕 显示每环详细数据弹窗（兼容旧数据）
-// ===== 改动点：外层 Flex 布局 + 上半固定 + 下半滚动 =====
+// 改动：每个区块独立折叠按钮
 showRingsDetailModal(entry) {
     if (!entry) return;
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
+
+    // 🆕 区块标题 + 折叠按钮的统一样式
+    const secHeader = (icon, title, bodyId) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;">${icon} ${title}</div>
+            <button class="rings-sec-toggle" data-target="${bodyId}" style="padding:1px 10px;border-radius:20px;border:1px solid #bccad9;background:#dce5ef;color:#1f3b53;cursor:pointer;font-size:0.6rem;font-weight:600;">👁️</button>
+        </div>
+    `;
 
     let html = `
             <div id="ringsDetailBox" style="background:#f8faff;border-radius:28px;padding:24px 28px 28px;max-width:1200px;width:95%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
@@ -1899,55 +1907,73 @@ showRingsDetailModal(entry) {
             </div>
             <div style="font-size:0.8rem;color:#5a7a94;margin-bottom:8px;">${entry.date || '未知日期'}</div>
             
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;margin-bottom:10px;border:1px solid #dce5ef;">
-                <div><span style="color:#5a7a94;">总积分</span> <strong>${entry.totalScore || 0}</strong></div>
-                <div><span style="color:#5a7a94;">总成本</span> <strong>${(entry.totalCost || 0).toFixed(1)}万</strong></div>
-                <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
-                <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
-                ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : ''}
-                ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
-                ${(() => {
-                    const st = entry.startTimestamp || (entry.rings?.[0]?.timestamp) || null;
-                    if (!st) return '';
-                    return `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(st).toLocaleTimeString()}</strong></div>`;
-                })()}
-                ${entry.endTimestamp ? `<div><span style="color:#5a7a94;">⏹️ 结束</span> <strong>${new Date(entry.endTimestamp).toLocaleTimeString()}</strong></div>` : ''}
+            <!-- ========== 区块1：总览 ========== -->
+            <div id="ringsSecOverview" style="margin-bottom:10px;">
+                ${secHeader('📊', '总览', 'ringsSecOverviewBody')}
+                <div id="ringsSecOverviewBody" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 12px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
+                    <div><span style="color:#5a7a94;">总积分</span> <strong>${entry.totalScore || 0}</strong></div>
+                    <div><span style="color:#5a7a94;">总成本</span> <strong>${(entry.totalCost || 0).toFixed(1)}万</strong></div>
+                    <div><span style="color:#5a7a94;">总收入</span> <strong>${(entry.totalIncome || 0).toFixed(1)}万</strong></div>
+                    <div><span style="color:#5a7a94;">利润</span> <strong style="color:${(entry.profit||0)>=0?'#2d6b2d':'#c0392b'};">${(entry.profit||0)>=0?'+':''}${(entry.profit||0).toFixed(1)}万</strong></div>
+                    ${(entry.relogCount || 0) > 0 ? `<div><span style="color:#dbbd7c;">🔁 重登</span> <strong style="color:#dbbd7c;">${entry.relogCount}次</strong></div>` : ''}
+                    ${entry.shopRefreshConfig ? `<div><span style="color:#5a7a94;">🔄 二刷</span> <strong style="color:#c0392b;">${entry.shopRefreshConfig.secondMinute}分${entry.shopRefreshConfig.secondSecond}秒</strong></div>` : ''}
+                    ${(() => {
+                        const st = entry.startTimestamp || (entry.rings?.[0]?.timestamp) || null;
+                        if (!st) return '';
+                        return `<div><span style="color:#5a7a94;">▶️ 开始</span> <strong>${new Date(st).toLocaleTimeString()}</strong></div>`;
+                    })()}
+                    ${entry.endTimestamp ? `<div><span style="color:#5a7a94;">⏹️ 结束</span> <strong>${new Date(entry.endTimestamp).toLocaleTimeString()}</strong></div>` : ''}
+                </div>
             </div>
 
-            <div id="ringsShichenFilter" style="margin-bottom:10px;padding:8px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
-                <div style="font-weight:700;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰筛选</div>
-                <div id="ringsShichenBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
-                <div id="ringsShichenStats" style="font-size:0.75rem;color:#1f3b53;padding:6px 8px;background:white;border-radius:8px;border:1px solid #e8eef5;">
-                    点击上方时辰查看该时辰的任务分布
+            <!-- ========== 区块2：时辰筛选 ========== -->
+            <div id="ringsSecShichen" style="margin-bottom:10px;">
+                ${secHeader('⏱️', '时辰筛选', 'ringsSecShichenBody')}
+                <div id="ringsSecShichenBody" style="padding:8px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
+                    <div id="ringsShichenBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                    <div id="ringsShichenStats" style="font-size:0.75rem;color:#1f3b53;padding:6px 8px;background:white;border-radius:8px;border:1px solid #e8eef5;">
+                        点击上方时辰查看该时辰的任务分布
+                    </div>
                 </div>
             </div>
             
             ${(() => {
-    const t = this.calcWindowTimeline(entry.rings || []);
-    const buildRow = (list, label) => {
-        if (!list || list.length === 0) return '';
-        return `<div style="margin-bottom:8px;padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;">
-            <div style="font-weight:700;font-size:0.75rem;color:#1f3b53;margin-bottom:4px;">${label}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;">
-                ${list.map(w => {
-                    const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
-                    return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;">
-                        ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
-                    </span>`;
-                }).join('')}
-            </div>
-        </div>`;
-    };
-    return buildRow(t.w10, '📊 10分钟段找人率变化') + buildRow(t.w30, '📊 30分钟段找人率变化');
-})()}
+                const t = this.calcWindowTimeline(entry.rings || []);
+                const buildBody = (list, stepMin) => {
+                    if (!list || list.length === 0) return '<span style="color:#8ab0c8;font-size:0.65rem;">无数据</span>';
+                    return list.map(w => {
+                        const color = w.rate === null ? '#8ab0c8' : w.rate < 33 ? '#2d6b2d' : w.rate < 45 ? '#b48b3a' : '#c0392b';
+                        return `<span style="background:white;padding:1px 6px;border-radius:8px;font-size:0.62rem;border:1px solid #dce5ef;white-space:nowrap;margin:2px;">
+                            ${w.start}~${w.end} <span style="color:${color};font-weight:700;">${w.rate === null ? '—' : w.rate + '%'}</span> (${w.total}环)
+                        </span>`;
+                    }).join('');
+                };
+                return `
+                    <!-- ========== 区块3：10分钟段 ========== -->
+                    <div id="ringsSecW10" style="margin-bottom:10px;">
+                        ${secHeader('📊', '10分钟段找人率变化', 'ringsSecW10Body')}
+                        <div id="ringsSecW10Body" style="padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;display:flex;flex-wrap:wrap;gap:2px;">
+                            ${buildBody(t.w10, 10)}
+                        </div>
+                    </div>
+                    <!-- ========== 区块4：30分钟段 ========== -->
+                    <div id="ringsSecW30" style="margin-bottom:10px;">
+                        ${secHeader('📊', '30分钟段找人率变化', 'ringsSecW30Body')}
+                        <div id="ringsSecW30Body" style="padding:6px 10px;background:#f0f5fb;border-radius:10px;border:1px solid #dce5ef;display:flex;flex-wrap:wrap;gap:2px;">
+                            ${buildBody(t.w30, 30)}
+                        </div>
+                    </div>
+                `;
+            })()}
 
-            <div style="margin-bottom:8px;font-size:0.7rem;color:#5a7a94;">📌 任务分布：</div>
-            <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px;">
+            <!-- ========== 区块5：任务分布 ========== -->
+            <div id="ringsSecTasks" style="margin-bottom:10px;">
+                ${secHeader('📌', '任务分布', 'ringsSecTasksBody')}
+                <div id="ringsSecTasksBody" style="display:flex;flex-wrap:wrap;gap:4px;">
     `;
 
     const typeCount = entry.typeCount || {};
     let hasTypeCount = false;
-
     const hasMedicine = entry.rings ? entry.rings.some(r => r.typeKey === 'medicine') : false;
 
     for (let [key, count] of Object.entries(typeCount)) {
@@ -1967,21 +1993,22 @@ showRingsDetailModal(entry) {
         html += `<span style="color:#6c87a0;font-size:0.7rem;">暂无次数统计</span>`;
     }
 
-    html += `</div>`;
+    html += `</div></div>`;
 
-const rings = entry.rings || [];
-if (rings.length > 0) {
-   const relogIndices = [];
-for (let i = 0; i < rings.length; i++) {
-    if (rings[i].isRelog) {
-        const idx = (rings[i].taskIndex || (i + 1)) - 1;
-        if (!relogIndices.includes(idx)) {
-            relogIndices.push(idx);
+    // ===== 区块6：重登区间 =====
+    const rings = entry.rings || [];
+    let relogHtml = '';
+    if (rings.length > 0) {
+        const relogIndices = [];
+        for (let i = 0; i < rings.length; i++) {
+            if (rings[i].isRelog) {
+                const idx = (rings[i].taskIndex || (i + 1)) - 1;
+                if (!relogIndices.includes(idx)) {
+                    relogIndices.push(idx);
+                }
+            }
         }
-    }
-}
-    
-relogIndices.sort((a, b) => a - b);
+        relogIndices.sort((a, b) => a - b);
         if (relogIndices.length > 0) {
             const intervals = [];
             for (let i = 0; i < relogIndices.length; i++) {
@@ -2006,17 +2033,24 @@ relogIndices.sort((a, b) => a - b);
                 }
             }
             if (intervals.length > 0) {
-                html += `
-                   <div style="margin-top:8px;padding:6px 10px;background:#fdf8ee;border-radius:8px;border:1px solid #f0e8d0;font-size:0.7rem;color:#1f3b53;">
-                        🔁 重登区间分析：${intervals.join(' | ')}
-                    </div>
-                `;
+                relogHtml = intervals.join(' | ');
             }
         }
     }
 
+    if (relogHtml) {
+        html += `
+            <div id="ringsSecRelog" style="margin-bottom:10px;">
+                ${secHeader('🔁', '重登区间分析', 'ringsSecRelogBody')}
+                <div id="ringsSecRelogBody" style="padding:6px 10px;background:#fdf8ee;border-radius:8px;border:1px solid #f0e8d0;font-size:0.7rem;color:#1f3b53;">
+                    ${relogHtml}
+                </div>
+            </div>
+        `;
+    }
+
     // ===== 固定区结束 =====
-    html += `</div>`;  // 关闭 flex-shrink:0
+    html += `</div>`;
 
     // ===== 滚动区开始：每环详情 =====
     html += `
@@ -2041,15 +2075,7 @@ relogIndices.sort((a, b) => a - b);
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
             
-            let shichenDisplay = '';
-            if (r.shichen) {
-                const dayNight = r.isDaytime ? '☀️' : '🌙';
-                const shichenColor = this.getShichenColor(r.shichen);
-                shichenDisplay = `<span style="color:${shichenColor};font-size:inherit;font-weight:600;">${dayNight}${r.shichen}时</span>`;
-            }
-            const timeDisplay = r.timeStr ? `<span style="color:#8ab0c8;font-size:0.6rem;">${r.timeStr}</span>` : '';
-            
-                 html += `
+            html += `
                     <div class="ring-detail-row" data-shichen="${r.shichen || ''}" style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
@@ -2067,7 +2093,7 @@ relogIndices.sort((a, b) => a - b);
             </div>
         `;
     }
-    html += `</div>`;  // 关闭滚动区
+    html += `</div>`;
 
     // ===== 底部固定 =====
     html += `
@@ -2094,6 +2120,27 @@ relogIndices.sort((a, b) => a - b);
         });
     }
 
+    // 🆕 每个区块独立的折叠按钮
+    overlay.querySelectorAll('.rings-sec-toggle').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.dataset.target;
+            const body = document.getElementById(targetId);
+            if (!body) return;
+            const hidden = body.style.display === 'none';
+            body.style.display = hidden ? '' : 'none';
+            // 按钮文字切换
+            if (hidden) {
+                this.textContent = '👁️';
+                this.style.background = '#dce5ef';
+                this.style.color = '#1f3b53';
+            } else {
+                this.textContent = '👁️‍🗨️';
+                this.style.background = '#f0e8d0';
+                this.style.color = '#8a6a3a';
+            }
+        });
+    });
+
     const shichenBtnContainer = document.getElementById('ringsShichenBtns');
     const shichenStatsContainer = document.getElementById('ringsShichenStats');
     const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -2110,7 +2157,7 @@ relogIndices.sort((a, b) => a - b);
         return stats;
     };
 
-      const renderShichenStats = (filterShichen) => {
+    const renderShichenStats = (filterShichen) => {
         const stats = calcShichenStats(filterShichen);
         if (stats.total === 0) {
             shichenStatsContainer.innerHTML = '该时辰暂无数据';
