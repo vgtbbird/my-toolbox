@@ -7,6 +7,7 @@
 const PetRingModule = {
     id: 'petRing',
     sortState: { order: 'desc' },
+    showHidden: false,   // 🆕 是否显示已隐藏的历史
 
     // ========== 数据 ==========
     storageKey: 'petRing',
@@ -1067,6 +1068,12 @@ showFullSettleModal(stats) {
 
     getFilteredData() {
         let data = this.history.slice();
+        
+        // 🆕 默认排除已隐藏的
+        if (!this.showHidden) {
+            data = data.filter(h => !h.hidden);
+        }
+        
         const f = this.filterState;
         if (f.dateFrom) { const from = new Date(f.dateFrom); data = data.filter(h => new Date(h.date) >= from); }
         if (f.dateTo) { const to = new Date(f.dateTo); to.setHours(23, 59, 59); data = data.filter(h => new Date(h.date) <= to); }
@@ -1370,14 +1377,15 @@ showFullSettleModal(stats) {
             </div>
 
             <div class="module" id="prModuleStats">
-                <div class="module-header">
-                    <div class="title">📊 历史轮次统计 <span class="hint" id="prSettledCount">已结算: 0轮</span></div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button class="btn-analysis" id="prAnalysisToggleBtn">📊 数据分析</button>
-                        <button class="btn-import" id="prImportBtn">📥 导入数据</button>
-                        <button class="btn-toggle-history" id="prToggleStatsBtn">👁️ 隐藏</button>
+                    <div class="module-header">
+                        <div class="title">📊 历史轮次统计 <span class="hint" id="prSettledCount">已结算: 0轮</span></div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn-analysis" id="prAnalysisToggleBtn">📊 数据分析</button>
+                            <button class="btn-import" id="prImportBtn">📥 导入数据</button>
+                            <button class="btn-toggle-history" id="prShowHiddenBtn" style="background:#6b8baa;">🙈 显示隐藏</button>
+                            <button class="btn-toggle-history" id="prToggleStatsBtn">👁️ 隐藏</button>
+                        </div>
                     </div>
-                </div>
                 <div class="module-body" id="prStatsBody">
                     <div class="analysis-panel" id="prAnalysisPanel" style="display:none;">
                         <div class="analysis-grid" id="prAnalysisGrid">
@@ -1837,31 +1845,57 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             if (e.target === this) this.classList.remove('show');
         });
 
-        document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
-            const btn = e.target.closest('.detail-toggle');
-            if (btn) {
-                const idx = parseInt(btn.dataset.idx);
-                if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
-                    this.showRingsDetailModal(this.history[idx]);
-                }
-                return;
+document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.detail-toggle');
+    if (btn) {
+        const idx = parseInt(btn.dataset.idx);
+        if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
+            this.showRingsDetailModal(this.history[idx]);
+        }
+        return;
+    }
+    
+    // 🆕 隐藏/恢复按钮
+    const hideBtn = e.target.closest('.hide-btn');
+    if (hideBtn) {
+        const idx = parseInt(hideBtn.dataset.idx);
+        if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
+            const entry = this.history[idx];
+            entry.hidden = !entry.hidden;
+            this.saveData();
+            this.updateStats();
+            this.updateHistory();
+            this.updateAdvice();
+            this.updateBookList();
+            this.updateHistoryTable();
+        }
+        return;
+    }
+    
+    document.getElementById('prShowHiddenBtn').addEventListener('click', function() {
+    PetRingModule.showHidden = !PetRingModule.showHidden;
+    this.textContent = PetRingModule.showHidden ? '👁️ 隐藏已隐藏' : '🙈 显示隐藏';
+    this.style.background = PetRingModule.showHidden ? '#4c7a5c' : '#6b8baa';
+    PetRingModule.updateHistoryTable();
+    PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
+});
+    
+    const delBtn = e.target.closest('.del-btn');
+    if (delBtn) {
+        const idx = parseInt(delBtn.dataset.idx);
+        if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
+            if (confirm('⚠️ 删除历史会影响其他设备的同步过滤，确定要删除吗？\n\n建议用「🙈 隐藏」代替删除。')) {
+                this.history.splice(idx, 1);
+                this.saveData();
+                this.updateStats();
+                this.updateHistory();
+                this.updateAdvice();
+                this.updateBookList();
+                this.updateHistoryTable();
             }
-            const delBtn = e.target.closest('.del-btn');
-            if (delBtn) {
-                const idx = parseInt(delBtn.dataset.idx);
-                if (!isNaN(idx) && idx >= 0 && idx < this.history.length) {
-                    if (confirm('确定要删除这条记录吗？')) {
-                        this.history.splice(idx, 1);
-                        this.saveData();
-                        this.updateStats();
-                        this.updateHistory();
-                        this.updateAdvice();
-                        this.updateBookList();
-                        this.updateHistoryTable();
-                    }
-                }
-            }
-        });
+        }
+    }
+});
         
 const weightRangeEl = document.getElementById('prWeightRange');
 if (weightRangeEl) {
@@ -3010,103 +3044,117 @@ updateRelogAnalysis() {
     }
 },
 
-    updateHistoryTable() {
-        const tbody = document.getElementById('prHistoryTableBody');
-        const count = this.history.length;
-        document.getElementById('prSettledCount').textContent = `已结算: ${count}轮`;
+updateHistoryTable() {
+    const tbody = document.getElementById('prHistoryTableBody');
+    
+    // 🆕 统计时排除隐藏
+    const visibleHistory = this.showHidden 
+        ? this.history 
+        : this.history.filter(h => !h.hidden);
+    
+    const count = visibleHistory.length;
+    document.getElementById('prSettledCount').textContent = 
+        `已结算: ${count}轮${this.history.filter(h => h.hidden).length > 0 ? ` (隐藏${this.history.filter(h => h.hidden).length}轮)` : ''}`;
 
-        if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
-            return;
+    if (count === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">暂无已结算记录</td></tr>';
+        return;
+    }
+
+    let data = this.getFilteredData();
+
+    if (data.length === 0 && count > 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
+        return;
+    }
+
+    const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
+    data = [...data].sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return (dateA - dateB) * sortOrder;
+    });
+
+    const fruitPrice = this.fruitPrice || 80;
+
+    let html = '';
+    const total = data.length;
+    for (let i = 0; i < data.length; i++) {
+        const h = data[i];
+        const row = this.sortState.order === 'desc' ? total - i : i + 1;
+        const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
+        const idx = this.history.indexOf(h);
+        const rmb = h.profit * this.exchangeRate;
+
+        const points = h.totalPoints || 0;
+        const pointsValue = points * (fruitPrice / 170);
+        let pointsDisplay = points + '点';
+        if (points > 0) {
+            pointsDisplay += ` (${pointsValue.toFixed(1)}万)`;
         }
 
-        let data = this.getFilteredData();
-
-        if (data.length === 0 && count > 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
-            return;
+        let bookDisplay = '-';
+        if (h.bookDisplayName) {
+            bookDisplay = h.bookDisplayName;
+        } else if (h.bookIncome && h.bookIncome > 0) {
+            bookDisplay = `书铁(${h.bookIncome.toFixed(1)}万)`;
         }
 
-        const sortOrder = this.sortState.order === 'desc' ? -1 : 1;
-        data = [...data].sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            return (dateA - dateB) * sortOrder;
-        });
-
-        const fruitPrice = this.fruitPrice || 80;
-
-        let html = '';
-        const total = data.length;
-        for (let i = 0; i < data.length; i++) {
-            const h = data[i];
-            const row = this.sortState.order === 'desc' ? total - i : i + 1;
-            const pc = h.profit >= 0 ? 'profit-positive' : 'profit-negative';
-            const idx = this.history.indexOf(h);
-            const rmb = h.profit * this.exchangeRate;
-
-            const points = h.totalPoints || 0;
-            const pointsValue = points * (fruitPrice / 170);
-            let pointsDisplay = points + '点';
-            if (points > 0) {
-                pointsDisplay += ` (${pointsValue.toFixed(1)}万)`;
-            }
-
-            let bookDisplay = '-';
-            if (h.bookDisplayName) {
-                bookDisplay = h.bookDisplayName;
-            } else if (h.bookIncome && h.bookIncome > 0) {
-                bookDisplay = `书铁(${h.bookIncome.toFixed(1)}万)`;
-            }
-
-            let rewardDisplay = '-';
-            let rewardLabel = '';
-            if (h.rewardType === 'points200') {
-                rewardLabel = '200修炼点';
-            } else if (h.rewardType === 'fruit') {
-                rewardLabel = '1个修炼果';
-            } else if (h.rewardType === 'furniture') {
-                rewardLabel = '家具图×1';
-            }
-            const rewardVal = (h.fruitIncome || 0) + (h.furnitureIncome || 0);
-            if (rewardLabel && rewardVal > 0) {
-                rewardDisplay = `${rewardLabel}(${rewardVal.toFixed(1)}万)`;
-            } else if (h.rewards && h.rewards !== '无' && !h.bookDisplayName) {
-                rewardDisplay = h.rewards;
-            }
-
-            const totalIncome = h.totalIncome || 0;
-            const hasRings = h.rings && h.rings.length > 0;
-
-            html += `<tr>
-                <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
-                <td>${h.date || '未知'}</td>
-                <td><strong>${h.ringCount}</strong></td>
-                <td><strong>${h.totalScore || 0}</strong></td>
-                <td>${(h.totalCost || 0).toFixed(1)}</td>
-                <td style="font-size:0.75rem;">${pointsDisplay}</td>
-                <td style="font-size:0.75rem;">${bookDisplay}</td>
-                <td style="font-size:0.75rem;">${rewardDisplay}</td>
-                <td><strong>${totalIncome.toFixed(1)}</strong></td>
-                <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
-                <td>
-                    <button class="detail-toggle" data-idx="${idx}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#1f3b53;font-weight:600;">
-                        ${hasRings ? '📊' : '📊'}
-                    </button>
-                    <span style="font-size:0.7rem;color:#c0392b;font-weight:700;margin-left:4px;">${h.typeCount?.find || 0}</span>
-                </td>
-                <td><button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button></td>
-            </tr>`;
+        let rewardDisplay = '-';
+        let rewardLabel = '';
+        if (h.rewardType === 'points200') {
+            rewardLabel = '200修炼点';
+        } else if (h.rewardType === 'fruit') {
+            rewardLabel = '1个修炼果';
+        } else if (h.rewardType === 'furniture') {
+            rewardLabel = '家具图×1';
         }
-        tbody.innerHTML = html;
-
-        const icon = document.getElementById('prSortIcon');
-        if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
-
-        if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
-            this.updateAnalysis(data);
+        const rewardVal = (h.fruitIncome || 0) + (h.furnitureIncome || 0);
+        if (rewardLabel && rewardVal > 0) {
+            rewardDisplay = `${rewardLabel}(${rewardVal.toFixed(1)}万)`;
+        } else if (h.rewards && h.rewards !== '无' && !h.bookDisplayName) {
+            rewardDisplay = h.rewards;
         }
-    },
+
+        const totalIncome = h.totalIncome || 0;
+        const hasRings = h.rings && h.rings.length > 0;
+
+        // 🆕 隐藏行样式
+        const rowStyle = h.hidden ? 'opacity:0.45;background:#f5f5f5;' : '';
+        const hiddenTag = h.hidden ? '<span style="color:#999;font-size:0.6rem;margin-left:4px;">🙈已隐藏</span>' : '';
+
+        html += `<tr style="${rowStyle}">
+            <td style="font-weight:700;color:#1f3b53;background:#f5f8fc;">${row}</td>
+            <td>${h.date || '未知'}${hiddenTag}</td>
+            <td><strong>${h.ringCount}</strong></td>
+            <td><strong>${h.totalScore || 0}</strong></td>
+            <td>${(h.totalCost || 0).toFixed(1)}</td>
+            <td style="font-size:0.75rem;">${pointsDisplay}</td>
+            <td style="font-size:0.75rem;">${bookDisplay}</td>
+            <td style="font-size:0.75rem;">${rewardDisplay}</td>
+            <td><strong>${totalIncome.toFixed(1)}</strong></td>
+            <td class="${pc}">${(h.profit || 0).toFixed(1)} (≈${rmb.toFixed(2)}元)</td>
+            <td>
+                <button class="detail-toggle" data-idx="${idx}" style="background:#dce5ef;border:none;border-radius:30px;padding:2px 12px;font-size:0.65rem;cursor:pointer;color:#1f3b53;font-weight:600;">
+                    📊
+                </button>
+                <span style="font-size:0.7rem;color:#c0392b;font-weight:700;margin-left:4px;">${h.typeCount?.find || 0}</span>
+            </td>
+            <td>
+                <button class="hide-btn" data-idx="${idx}" style="background:${h.hidden ? '#d4edda' : '#e8e8e8'};border:none;border-radius:30px;padding:2px 10px;font-size:0.65rem;cursor:pointer;color:${h.hidden ? '#2d6b2d' : '#666'};font-weight:700;margin-right:2px;" title="${h.hidden ? '恢复显示' : '隐藏此轮'}">${h.hidden ? '👁️' : '🙈'}</button>
+                <button class="del-btn" data-idx="${idx}" style="background:#f5d0d0;border:none;border-radius:30px;padding:2px 10px;font-size:0.65rem;cursor:pointer;color:#8f3a3a;font-weight:700;">✕</button>
+            </td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+
+    const icon = document.getElementById('prSortIcon');
+    if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
+
+    if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
+        this.updateAnalysis(data);
+    }
+},
 
     updateAdvice() {
         const stats = this.calcStats();
