@@ -128,6 +128,17 @@ const PetRingModule = {
         this.renderShichenWeights();
         this.renderRealtimeWindow();
         this.updateTimeAndShichen();  
+        // 🆕 同步「显示隐藏」按钮和状态提示
+        const showHiddenBtn = document.getElementById('prShowHiddenBtn');
+        const showHiddenStatus = document.getElementById('prShowHiddenStatus');
+        if (showHiddenBtn) {
+            showHiddenBtn.textContent = this.showHidden ? '👁️ 不显示隐藏' : '🙈 显示隐藏';
+            showHiddenBtn.style.background = this.showHidden ? '#4c7a5c' : '#6b8baa';
+        }
+        if (showHiddenStatus) {
+            showHiddenStatus.textContent = this.showHidden ? '（含隐藏数据）' : '（隐藏已过滤）';
+            showHiddenStatus.style.color = this.showHidden ? '#c0392b' : '#5a7a94';
+        }
     },
 
     updateTimeAndShichen() {
@@ -253,6 +264,7 @@ const PetRingModule = {
         this.exchangeRate = data.exchangeRate || 0.08;
         this.fruitPrice = data.fruitPrice || 80;
         this.pendingRelog = data.pendingRelog || false;
+        this.showHidden = false;   // 🆕 强制默认不显示隐藏
 
         this.ITEM_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.defaultPrice;
@@ -1383,6 +1395,7 @@ showFullSettleModal(stats) {
                             <button class="btn-analysis" id="prAnalysisToggleBtn">📊 数据分析</button>
                             <button class="btn-import" id="prImportBtn">📥 导入数据</button>
                             <button class="btn-toggle-history" id="prShowHiddenBtn" style="background:#6b8baa;">🙈 显示隐藏</button>
+                             <span id="prShowHiddenStatus" style="font-size:0.6rem;color:#5a7a94;margin-left:4px;align-self:center;">（隐藏已过滤）</span>
                             <button class="btn-toggle-history" id="prToggleStatsBtn">👁️ 隐藏</button>
                         </div>
                     </div>
@@ -1872,10 +1885,15 @@ document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
         return;
     }
     
-    document.getElementById('prShowHiddenBtn').addEventListener('click', function() {
+document.getElementById('prShowHiddenBtn').addEventListener('click', function() {
     PetRingModule.showHidden = !PetRingModule.showHidden;
-    this.textContent = PetRingModule.showHidden ? '👁️ 隐藏已隐藏' : '🙈 显示隐藏';
+    this.textContent = PetRingModule.showHidden ? '👁️ 不显示隐藏' : '🙈 显示隐藏';
     this.style.background = PetRingModule.showHidden ? '#4c7a5c' : '#6b8baa';
+    const status = document.getElementById('prShowHiddenStatus');
+    if (status) {
+        status.textContent = PetRingModule.showHidden ? '（含隐藏数据）' : '（隐藏已过滤）';
+        status.style.color = PetRingModule.showHidden ? '#c0392b' : '#5a7a94';
+    }
     PetRingModule.updateHistoryTable();
     PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
 });
