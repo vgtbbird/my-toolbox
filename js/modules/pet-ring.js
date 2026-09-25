@@ -1284,7 +1284,8 @@ showFullSettleModal(stats) {
                         <div class="module" id="prModuleHistory">
                 <div class="module-header">
                   <div class="title">📜 本轮记录 <span class="hint" id="prRingInfo">共0环</span> <span id="prCurrentRingShichen" style="color:#c0392b;font-size:inherit;font-weight:700;margin-left:4px;"></span> <button class="btn-small" id="prViewAllRingsBtn" style="background:#6b8baa;color:#fff;border:none;padding:2px 14px;border-radius:30px;font-size:0.65rem;cursor:pointer;margin-left:6px;">📋 查看全部</button></div>
-                  <span id="prTopShichenHint" style="margin-left:8px;font-size:inherit;font-weight:700;color:#1f3b53;"></span>
+                     <span id="prTopShichenHint" style="margin-left:8px;font-size:inherit;font-weight:700;color:#1f3b53;"></span>
+                      <span id="prRealtimeShichenRate" style="margin-left:10px;font-size:0.75rem;font-weight:700;padding:2px 10px;border-radius:12px;background:#f0f5fb;border:1px solid #dce5ef;white-space:nowrap;color:#1f3b53;"></span>
                     <button class="toggle-btn" id="prToggleHistoryBtn">👁️ 隐藏</button>
                 </div>
     <div class="module-body" id="prHistoryBody">
@@ -3077,6 +3078,46 @@ renderShichenWeights() {
                 parts.push(`<span style="color:${color};font-weight:${weight};">${i + 1}.${t.name}</span>`);
             }
             hintEl.innerHTML = '⭐ ' + parts.join('  ');
+            // 🆕 当前时辰的实时找人率
+            const rtEl = document.getElementById('prRealtimeShichenRate');
+            if (rtEl) {
+                const nowShichen3 = this.getShichen(Date.now());
+                const shichenIndex3 = nowShichen3.index;
+                const nowSec = Math.floor(Date.now() / 1000);
+                const halfHourStartSec = nowSec - (nowSec % 1800);
+                const startSec = halfHourStartSec + shichenIndex3 * 150;
+                const startTs = startSec * 1000;
+                const endTs = Date.now();
+            
+                let total = 0, find = 0;
+                const checkRecord = (r) => {
+                    if (!r.timestamp) return;
+                    if (r.timestamp >= startTs && r.timestamp <= endTs) {
+                        total++;
+                        if (r.typeKey === 'find') find++;
+                    }
+                };
+                for (let h of this.history) {
+                    for (let r of h.rings || []) checkRecord(r);
+                }
+                for (let r of this.records) {
+                    if (r.deleted) continue;
+                    checkRecord(r);
+                }
+            
+                if (total === 0) {
+                    rtEl.innerHTML = `当前：${nowShichen3.name}时 找人率 <span style="color:#8ab0c8;">—</span>`;
+                    rtEl.style.background = '#f5f5f5';
+                } else {
+                    const rate = Math.round(find / total * 100);
+                    let color;
+                    if (rate < 33) color = '#2d6b2d';
+                    else if (rate < 45) color = '#b48b3a';
+                    else color = '#c0392b';
+                    rtEl.innerHTML = `当前：${nowShichen3.name}时 找人率 <span style="color:${color};">${rate}%</span>`;
+                    rtEl.style.background = '#f0f5fb';
+                }
+            }
         }
     }
 },
