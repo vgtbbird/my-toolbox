@@ -3028,21 +3028,17 @@ renderShichenWeights() {
             return '#c0392b';
         };
 
-        // 左/右显示
-        const leftDisplay = leftData ? `${leftData.rate}%` : '—';
+        const leftDisplay = leftData ? `${leftData.rate}%(${leftData.total})` : '—';
         const leftColor = getColor(leftData ? leftData.rate : null);
-        const rightDisplay = rightData ? `${rightData.rate}%` : '—';
+        const rightDisplay = rightData ? `${rightData.rate}%(${rightData.total})` : '—';
         const rightColor = getColor(rightData ? rightData.rate : null);
-
-        // 主显示
+        
         let mainDisplay = '—';
         let mainColor = getColor(null);
-        let totalDisplay = '0环';
         if (s.total > 0) {
             const rate = s.find / s.total * 100;
-            mainDisplay = `${rate.toFixed(0)}%`;
+            mainDisplay = `${rate.toFixed(0)}%(${s.total})`;
             mainColor = getColor(rate);
-            totalDisplay = `${s.total}环`;
         }
 
         // 当前时辰加 👉 标记
@@ -3053,11 +3049,10 @@ renderShichenWeights() {
         const rowBg = isCurrent ? 'background:#fff5f5;' : '';   // 🆕
 
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #eef2f7;font-size:0.7rem;gap:2px;${rowBg}">
-            <span style="${nameStyle}min-width:38px;white-space:nowrap;font-size:0.7rem;">${mark}${n}时</span>
-            <span style="color:${leftColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${leftDisplay}</span>
-            <span style="color:${mainColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${mainDisplay}</span>
-            <span style="color:${rightColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${rightDisplay}</span>
-            <span style="color:#8ab0c8;min-width:34px;text-align:right;font-size:0.6rem;">${totalDisplay}</span>
+            <span style="${nameStyle}flex:1.2;white-space:nowrap;font-size:0.7rem;text-align:left;">${mark}${n}时</span>
+            <span style="color:${leftColor};font-weight:700;flex:1;text-align:right;font-size:0.7rem;">${leftDisplay}</span>
+            <span style="color:${mainColor};font-weight:700;flex:1;text-align:right;font-size:0.7rem;">${mainDisplay}</span>
+            <span style="color:${rightColor};font-weight:700;flex:1;text-align:right;font-size:0.7rem;">${rightDisplay}</span>
         </div>`;
     }
     document.getElementById('prWeightList').innerHTML = html;
