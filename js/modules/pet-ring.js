@@ -1538,6 +1538,13 @@ document.getElementById('prStartRunBtn').addEventListener('click', function() {
     }
     
     PetRingModule.startTimestamp = Date.now();
+        // 🆕 开始新一轮，恢复左/右列
+    PetRingModule.hideShichenLR = false;
+    const resetBtn = document.getElementById('prResetShichenLRBtn');
+    if (resetBtn) {
+        resetBtn.textContent = '🔄 重置';
+        resetBtn.style.background = '#b48b5f';
+    }
     PetRingModule.saveData();
     
     const shichen = PetRingModule.getShichen(PetRingModule.startTimestamp);
@@ -1929,10 +1936,10 @@ if (weightRangeEl) {
 const resetShichenLRBtn = document.getElementById('prResetShichenLRBtn');
 if (resetShichenLRBtn) {
     resetShichenLRBtn.addEventListener('click', function() {
-        PetRingModule.hideShichenLR = !PetRingModule.hideShichenLR;
-        this.textContent = PetRingModule.hideShichenLR ? '🔄 恢复' : '🔄 重置';
-        this.style.background = PetRingModule.hideShichenLR ? '#4c7a5c' : '#b48b5f';
+        PetRingModule.hideShichenLR = true;
         PetRingModule.renderShichenWeights();
+        this.textContent = '🔄 已重置';
+        this.style.background = '#8a9a8a';
     });
 }
         
