@@ -8,6 +8,7 @@ const PetRingModule = {
     id: 'petRing',
     sortState: { order: 'desc' },
     showHidden: false,   // 🆕 是否显示已隐藏的历史
+    hideShichenLR: false,   // 🆕 是否隐藏时辰权重表的左/右列
 
     // ========== 数据 ==========
     storageKey: 'petRing',
@@ -1295,8 +1296,10 @@ showFullSettleModal(stats) {
             </div>
                <div style="flex:1;min-width:0;">
                <div style="background:#f8faff;border-radius:12px;padding:4px 8px;font-size:0.75rem;border:1px solid #dce5ef;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:4px;">
+                        <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
+                        <div style="display:flex;gap:4px;align-items:center;">
+                            <button id="prResetShichenLRBtn" style="background:#b48b5f;color:#fff;border:none;border-radius:30px;padding:2px 10px;font-size:0.6rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 重置</button>
                             <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
                                 <option value="all">全部</option>
                                 <option value="1">1天</option>
@@ -1922,6 +1925,17 @@ if (weightRangeEl) {
         PetRingModule.renderShichenWeights();
     });
 }
+
+const resetShichenLRBtn = document.getElementById('prResetShichenLRBtn');
+if (resetShichenLRBtn) {
+    resetShichenLRBtn.addEventListener('click', function() {
+        PetRingModule.hideShichenLR = !PetRingModule.hideShichenLR;
+        this.textContent = PetRingModule.hideShichenLR ? '🔄 恢复' : '🔄 重置';
+        this.style.background = PetRingModule.hideShichenLR ? '#4c7a5c' : '#b48b5f';
+        PetRingModule.renderShichenWeights();
+    });
+}
+        
         document.getElementById('prSortHeader')?.addEventListener('click', function() {
             PetRingModule.sortState.order = PetRingModule.sortState.order === 'desc' ? 'asc' : 'desc';
             PetRingModule.updateHistoryTable();
@@ -3017,8 +3031,8 @@ renderShichenWeights() {
         const isCurrent = (n === nowShichenName);
 
         // 🆕 计算左/右的百分比
-        const leftData = this.calcShichenRateForLastN(2, shichenIndex);
-        const rightData = this.calcShichenRateForLastN(1, shichenIndex);
+        const leftData = this.hideShichenLR ? null : this.calcShichenRateForLastN(2, shichenIndex);
+        const rightData = this.hideShichenLR ? null : this.calcShichenRateForLastN(1, shichenIndex);
 
         // 🆕 颜色规则（统一函数）
         const getColor = (rate) => {
