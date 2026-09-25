@@ -2916,42 +2916,51 @@ renderRealtimeWindow() {
     return { w10: build(10), w30: build(30) };
 },
 
-// 🆕 辅助方法：算"某个时间偏移下，某游戏时辰的时段"内的找人率
-// tsOffset: 偏移毫秒，-3600*1000 表示上一小时，-1800*1000 表示半小时前
+// 🆕 找"上 N 个已结束的完整同游戏时辰"的时段
+// n: 1 表示上一个，2 表示上两个
 // shichenIndex: 0-11（子=0, 丑=1, ..., 亥=11）
-// 返回: {rate, total} 或 null（无数据）
-calcShichenRateForOffset(tsOffset, shichenIndex) {
-    const targetTs = Date.now() + tsOffset;
-    const targetSec = Math.floor(targetTs / 1000);
-    // 找到所在半小时轮次的起点
-    const halfHourStart = targetSec - (targetSec % 1800);
-    // 该游戏时辰的 150 秒时段
-    const startSec = halfHourStart + shichenIndex * 150;
-    const endSec = startSec + 150;
-    const startTs = startSec * 1000;
-    const endTs = endSec * 1000;
+// 返回: {rate, total} 或 null（无数据/超过3天）
+calcShichenRateForLastN(n, shichenIndex) {
+    const now = Date.now();
+    const nowSec = Math.floor(now / 1000);
+    const halfHourStart = nowSec - (nowSec % 1800);
+    const curSStart = halfHourStart + shichenIndex * 150;
+    const curSEnd = curSStart + 150;
 
-    let total = 0, find = 0;
-
-    // 1. 从 history 里统计
-    for (let h of this.history) {
-        for (let r of h.rings || []) {
-            if (!r.timestamp) continue;
-            if (r.timestamp >= startTs && r.timestamp < endTs) {
-                total++;
-                if (r.typeKey === 'find') find++;
-            }
-        }
+    // 找"最近的已结束时段"的起始秒
+    let lastEndedStart;
+    if (nowSec >= curSEnd) {
+        lastEndedStart = curSStart;
+    } else {
+        lastEndedStart = curSStart - 1800;
     }
 
-    // 2. 从当前 records 里统计
-    for (let r of this.records) {
-        if (r.deleted) continue;
-        if (!r.timestamp) continue;
+    // 往前推 n-1 轮
+    const targetStartSec = lastEndedStart - (n - 1) * 1800;
+    const targetEndSec = targetStartSec + 150;
+    const startTs = targetStartSec * 1000;
+    const endTs = targetEndSec * 1000;
+
+    // 超过 3 天不查
+    const THREE_DAYS_MS = 3 * 24 * 3600 * 1000;
+    if (now - startTs > THREE_DAYS_MS) {
+        return null;
+    }
+
+    let total = 0, find = 0;
+    const checkRecord = (r) => {
+        if (!r.timestamp) return;
         if (r.timestamp >= startTs && r.timestamp < endTs) {
             total++;
             if (r.typeKey === 'find') find++;
         }
+    };
+    for (let h of this.history) {
+        for (let r of h.rings || []) checkRecord(r);
+    }
+    for (let r of this.records) {
+        if (r.deleted) continue;
+        checkRecord(r);
     }
 
     if (total === 0) return null;
@@ -3008,8 +3017,8 @@ renderShichenWeights() {
         const isCurrent = (n === nowShichenName);
 
         // 🆕 计算左/右的百分比
-        const leftData = this.calcShichenRateForOffset(-3600 * 1000, shichenIndex);
-        const rightData = this.calcShichenRateForOffset(-1800 * 1000, shichenIndex);
+        const leftData = this.calcShichenRateForLastN(2, shichenIndex);
+        const rightData = this.calcShichenRateForLastN(1, shichenIndex);
 
         // 🆕 颜色规则（统一函数）
         const getColor = (rate) => {
