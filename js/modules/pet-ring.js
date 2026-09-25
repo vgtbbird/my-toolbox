@@ -8,7 +8,7 @@ const PetRingModule = {
     id: 'petRing',
     sortState: { order: 'desc' },
     showHidden: false,   // 🆕 是否显示已隐藏的历史
-    hideShichenLR: false,   // 🆕 是否隐藏时辰权重表的左/右列
+    lrResetTs: 0,   // 🆕 左右列的重置时间点（0 表示不重置，全算）
 
     // ========== 数据 ==========
     storageKey: 'petRing',
@@ -266,6 +266,7 @@ const PetRingModule = {
         this.fruitPrice = data.fruitPrice || 80;
         this.pendingRelog = data.pendingRelog || false;
         this.showHidden = false;   // 🆕 强制默认不显示隐藏
+        this.lrResetTs = data.lrResetTs || 0;
 
         this.ITEM_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.defaultPrice;
@@ -315,6 +316,7 @@ const PetRingModule = {
             pendingRelog: this.pendingRelog,
             startTimestamp: this.startTimestamp,
             currentRunId: this.currentRunId, 
+            lrResetTs: this.lrResetTs || 0,
             __sync_v3: {
                 history: historyV3,
                 records: recordsV3,
@@ -1538,13 +1540,6 @@ document.getElementById('prStartRunBtn').addEventListener('click', function() {
     }
     
     PetRingModule.startTimestamp = Date.now();
-        // 🆕 开始新一轮，恢复左/右列
-    PetRingModule.hideShichenLR = false;
-    const resetBtn = document.getElementById('prResetShichenLRBtn');
-    if (resetBtn) {
-        resetBtn.textContent = '🔄 重置';
-        resetBtn.style.background = '#b48b5f';
-    }
     PetRingModule.saveData();
     
     const shichen = PetRingModule.getShichen(PetRingModule.startTimestamp);
@@ -1936,10 +1931,15 @@ if (weightRangeEl) {
 const resetShichenLRBtn = document.getElementById('prResetShichenLRBtn');
 if (resetShichenLRBtn) {
     resetShichenLRBtn.addEventListener('click', function() {
-        PetRingModule.hideShichenLR = true;
+        PetRingModule.lrResetTs = Date.now();
+        PetRingModule.saveData();
         PetRingModule.renderShichenWeights();
         this.textContent = '🔄 已重置';
         this.style.background = '#8a9a8a';
+        setTimeout(() => {
+            this.textContent = '🔄 重置';
+            this.style.background = '#b48b5f';
+        }, 1500);
     });
 }
         
@@ -2971,6 +2971,8 @@ calcShichenRateForLastN(n, shichenIndex) {
     let total = 0, find = 0;
     const checkRecord = (r) => {
         if (!r.timestamp) return;
+        // 🆕 跳过重置前的数据
+        if (this.lrResetTs && r.timestamp < this.lrResetTs) return;
         if (r.timestamp >= startTs && r.timestamp < endTs) {
             total++;
             if (r.typeKey === 'find') find++;
@@ -3038,8 +3040,8 @@ renderShichenWeights() {
         const isCurrent = (n === nowShichenName);
 
         // 🆕 计算左/右的百分比
-        const leftData = this.hideShichenLR ? null : this.calcShichenRateForLastN(2, shichenIndex);
-        const rightData = this.hideShichenLR ? null : this.calcShichenRateForLastN(1, shichenIndex);
+        const leftData = this.calcShichenRateForLastN(2, shichenIndex);
+        const rightData = this.calcShichenRateForLastN(1, shichenIndex);
 
         // 🆕 颜色规则（统一函数）
         const getColor = (rate) => {
