@@ -3036,10 +3036,13 @@ renderShichenWeights() {
         }
 
         // 当前时辰加 👉 标记
-        const mark = isCurrent ? '👉' : '';
-        const nameStyle = isCurrent 
-            ? 'color:#c0392b;font-weight:800;' 
-            : 'color:#1f3b53;';
+const mark = isCurrent ? '👉' : '';
+const nameStyle = isCurrent 
+    ? 'color:#c0392b;font-weight:800;' 
+    : 'color:#1f3b53;';
+const rowBg = isCurrent ? 'background:#fff5f5;' : '';   // 🆕
+// 然后 html 里给外层 div 加 ${rowBg}：
+html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #eef2f7;font-size:0.7rem;gap:2px;${rowBg}">
 
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #eef2f7;font-size:0.7rem;gap:2px;">
             <span style="${nameStyle}min-width:38px;white-space:nowrap;font-size:0.7rem;">${mark}${n}时</span>
