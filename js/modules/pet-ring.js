@@ -2914,8 +2914,50 @@ renderRealtimeWindow() {
     
     return { w10: build(10), w30: build(30) };
 },
+
+// 🆕 辅助方法：算"某个时间偏移下，某游戏时辰的时段"内的找人率
+// tsOffset: 偏移毫秒，-3600*1000 表示上一小时，-1800*1000 表示半小时前
+// shichenIndex: 0-11（子=0, 丑=1, ..., 亥=11）
+// 返回: {rate, total} 或 null（无数据）
+calcShichenRateForOffset(tsOffset, shichenIndex) {
+    const targetTs = Date.now() + tsOffset;
+    const targetSec = Math.floor(targetTs / 1000);
+    // 找到所在半小时轮次的起点
+    const halfHourStart = targetSec - (targetSec % 1800);
+    // 该游戏时辰的 150 秒时段
+    const startSec = halfHourStart + shichenIndex * 150;
+    const endSec = startSec + 150;
+    const startTs = startSec * 1000;
+    const endTs = endSec * 1000;
+
+    let total = 0, find = 0;
+
+    // 1. 从 history 里统计
+    for (let h of this.history) {
+        for (let r of h.rings || []) {
+            if (!r.timestamp) continue;
+            if (r.timestamp >= startTs && r.timestamp < endTs) {
+                total++;
+                if (r.typeKey === 'find') find++;
+            }
+        }
+    }
+
+    // 2. 从当前 records 里统计
+    for (let r of this.records) {
+        if (r.deleted) continue;
+        if (!r.timestamp) continue;
+        if (r.timestamp >= startTs && r.timestamp < endTs) {
+            total++;
+            if (r.typeKey === 'find') find++;
+        }
+    }
+
+    if (total === 0) return null;
+    return { rate: Math.round(find / total * 100), total };
+},
     
-    renderShichenWeights() {
+renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
     const range = rangeEl.value || 'all';
@@ -2932,6 +2974,7 @@ renderRealtimeWindow() {
     const stats = {};
     shichenNames.forEach(n => stats[n] = { total: 0, find: 0 });
 
+    // 从 history 累加（主统计）
     for (let h of this.history) {
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
@@ -2943,6 +2986,7 @@ renderRealtimeWindow() {
         }
     }
 
+    // 从 records 累加（主统计）
     for (let r of this.records) {
         if (r.deleted) continue;
         if (!r.shichen) continue;
@@ -2951,26 +2995,63 @@ renderRealtimeWindow() {
         if (r.typeKey === 'find') stats[r.shichen].find++;
     }
 
+    // 🆕 获取当前时辰索引
+    const nowShichen = this.getShichen(Date.now());
+    const nowShichenName = nowShichen.name;
+
+    // 🆕 生成 HTML（5 列：标记+时辰名、左%、中%、右%、环数）
     let html = '';
     for (let n of shichenNames) {
         const s = stats[n];
-        if (s.total === 0) {
-            html += `<div style="display:flex;justify-content:space-between;padding:2px 0;color:#c0ccd8;">
-                <span style="min-width:36px;">${n}时</span>
-                <span>—</span>
-                <span style="font-size:0.6rem;">0环</span>
-            </div>`;
-            continue;
+        const shichenIndex = shichenNames.indexOf(n);
+        const isCurrent = (n === nowShichenName);
+
+        // 🆕 计算左/右的百分比
+        const leftData = this.calcShichenRateForOffset(-3600 * 1000, shichenIndex);
+        const rightData = this.calcShichenRateForOffset(-1800 * 1000, shichenIndex);
+
+        // 🆕 颜色规则（统一函数）
+        const getColor = (rate) => {
+            if (rate === null || rate === undefined) return '#c0ccd8';
+            if (rate < 33) return '#2d6b2d';
+            if (rate < 45) return '#b48b3a';
+            return '#c0392b';
+        };
+
+        // 左/右显示
+        const leftDisplay = leftData ? `${leftData.rate}%` : '—';
+        const leftColor = getColor(leftData ? leftData.rate : null);
+        const rightDisplay = rightData ? `${rightData.rate}%` : '—';
+        const rightColor = getColor(rightData ? rightData.rate : null);
+
+        // 主显示
+        let mainDisplay = '—';
+        let mainColor = getColor(null);
+        let totalDisplay = '0环';
+        if (s.total > 0) {
+            const rate = s.find / s.total * 100;
+            mainDisplay = `${rate.toFixed(0)}%`;
+            mainColor = getColor(rate);
+            totalDisplay = `${s.total}环`;
         }
-        const rate = s.find / s.total * 100;
-        const color = rate < 33 ? '#2d6b2d' : rate < 45 ? '#b48b3a' : '#c0392b';
-        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #eef2f7;">
-            <span style="min-width:36px;color:#1f3b53;">${n}时</span>
-            <span style="color:${color};font-weight:700;min-width:40px;text-align:right;">${rate.toFixed(0)}%</span>
-            <span style="color:#8ab0c8;font-size:0.6rem;min-width:40px;text-align:right;">${s.total}环</span>
+
+        // 当前时辰加 👉 标记
+        const mark = isCurrent ? '👉' : '';
+        const nameStyle = isCurrent 
+            ? 'color:#c0392b;font-weight:800;' 
+            : 'color:#1f3b53;';
+
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #eef2f7;font-size:0.7rem;gap:2px;">
+            <span style="${nameStyle}min-width:38px;white-space:nowrap;font-size:0.7rem;">${mark}${n}时</span>
+            <span style="color:${leftColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${leftDisplay}</span>
+            <span style="color:${mainColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${mainDisplay}</span>
+            <span style="color:${rightColor};font-weight:700;min-width:32px;text-align:right;font-size:0.7rem;">${rightDisplay}</span>
+            <span style="color:#8ab0c8;min-width:34px;text-align:right;font-size:0.6rem;">${totalDisplay}</span>
         </div>`;
     }
     document.getElementById('prWeightList').innerHTML = html;
+
+    // 后面 top4 提示不变
     const shichenArr = [];
     for (let n of shichenNames) {
         const s = stats[n];
@@ -2985,11 +3066,11 @@ renderRealtimeWindow() {
         if (top4.length === 0) {
             hintEl.textContent = '';
         } else {
-            const nowShichen = this.getShichen(Date.now()).name;
+            const nowShichen2 = this.getShichen(Date.now()).name;
             let parts = [];
             for (let i = 0; i < top4.length; i++) {
                 const t = top4[i];
-                const isCurrent = (t.name === nowShichen);
+                const isCurrent = (t.name === nowShichen2);
                 const color = isCurrent ? '#c0392b' : '#1f3b53';
                 const weight = isCurrent ? '900' : '700';
                 parts.push(`<span style="color:${color};font-weight:${weight};">${i + 1}.${t.name}</span>`);
