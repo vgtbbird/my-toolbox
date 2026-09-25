@@ -3106,7 +3106,7 @@ renderShichenWeights() {
                 }
             
                 if (total === 0) {
-                    rtEl.innerHTML = `当前：${nowShichen3.name}时 找人率 <span style="color:#8ab0c8;">—</span>`;
+                    rtEl.innerHTML = `当前：<span style="color:#c0392b;">${nowShichen3.name}时</span> 找人率 <span style="color:#8ab0c8;">—</span>`;
                     rtEl.style.background = '#f5f5f5';
                 } else {
                     const rate = Math.round(find / total * 100);
@@ -3114,7 +3114,7 @@ renderShichenWeights() {
                     if (rate < 33) color = '#2d6b2d';
                     else if (rate < 45) color = '#b48b3a';
                     else color = '#c0392b';
-                    rtEl.innerHTML = `当前：${nowShichen3.name}时 找人率 <span style="color:${color};">${rate}%</span>`;
+                    rtEl.innerHTML = `当前：<span style="color:#c0392b;">${nowShichen3.name}时</span> 找人率 <span style="color:${color};">${rate}%</span>`;
                     rtEl.style.background = '#f0f5fb';
                 }
             }
