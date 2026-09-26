@@ -1317,8 +1317,12 @@ getListData() {
             </div>
                <div style="flex:1;min-width:0;">
                <div style="background:#f8faff;border-radius:12px;padding:4px 8px;font-size:0.75rem;border:1px solid #dce5ef;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:4px;">
-                        <div style="font-weight:700;color:#1f3b53;">⏱️ 时辰权重表</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <div style="font-weight:700;color:#1f3b53;white-space:nowrap;">⏱️ 时辰权重表</div>
+                            <span id="prLeftAvgRate" style="font-size:0.65rem;font-weight:700;color:#8ab0c8;white-space:nowrap;"></span>
+                            <span id="prRightAvgRate" style="font-size:0.65rem;font-weight:700;color:#8ab0c8;white-space:nowrap;"></span>
+                        </div>
                         <div style="display:flex;gap:4px;align-items:center;">
                             <button id="prResetShichenLRBtn" style="background:#b48b5f;color:#fff;border:none;border-radius:30px;padding:2px 10px;font-size:0.6rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 重置</button>
                             <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
@@ -3009,7 +3013,7 @@ calcShichenRateForLastN(n, shichenIndex) {
     }
 
     if (total === 0) return null;
-    return { rate: Math.round(find / total * 100), total };
+    return { rate: Math.round(find / total * 100), total, find };
 },
     
 renderShichenWeights() {
@@ -3101,7 +3105,43 @@ renderShichenWeights() {
             <span style="color:${rightColor};font-weight:700;flex:1;text-align:right;font-size:0.7rem;">${rightDisplay}</span>
         </div>`;
     }
-    document.getElementById('prWeightList').innerHTML = html;
+     document.getElementById('prWeightList').innerHTML = html;
+
+    // 🆕 计算左/右的平均找人率
+    let leftTotal = 0, leftFind = 0, rightTotal = 0, rightFind = 0;
+    for (let n of shichenNames) {
+        const idx = shichenNames.indexOf(n);
+        const l = this.calcShichenRateForLastN(2, idx);
+        const r = this.calcShichenRateForLastN(1, idx);
+        if (l) { leftTotal += l.total; leftFind += l.find; }
+        if (r) { rightTotal += r.total; rightFind += r.find; }
+    }
+
+    const getAvgColor = (rate) => {
+        if (rate < 33) return '#2d6b2d';
+        if (rate < 45) return '#b48b3a';
+        return '#c0392b';
+    };
+
+    const leftAvgEl = document.getElementById('prLeftAvgRate');
+    if (leftAvgEl) {
+        if (leftTotal > 0) {
+            const rate = Math.round(leftFind / leftTotal * 100);
+            leftAvgEl.innerHTML = `左均:<span style="color:${getAvgColor(rate)};">${rate}%(${leftTotal})</span>`;
+        } else {
+            leftAvgEl.innerHTML = `左均:<span style="color:#c0ccd8;">—</span>`;
+        }
+    }
+
+    const rightAvgEl = document.getElementById('prRightAvgRate');
+    if (rightAvgEl) {
+        if (rightTotal > 0) {
+            const rate = Math.round(rightFind / rightTotal * 100);
+            rightAvgEl.innerHTML = `右均:<span style="color:${getAvgColor(rate)};">${rate}%(${rightTotal})</span>`;
+        } else {
+            rightAvgEl.innerHTML = `右均:<span style="color:#c0ccd8;">—</span>`;
+        }
+    }
 
     // 后面 top4 提示不变
     const shichenArr = [];
