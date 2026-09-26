@@ -1084,10 +1084,8 @@ showFullSettleModal(stats) {
     getFilteredData() {
         let data = this.history.slice();
         
-        // 🆕 默认排除已隐藏的
-        if (!this.showHidden) {
-            data = data.filter(h => !h.hidden);
-        }
+        // 🆕 永远排除已隐藏的（不受 showHidden 影响）
+        data = data.filter(h => !h.hidden);
         
         const f = this.filterState;
         if (f.dateFrom) { const from = new Date(f.dateFrom); data = data.filter(h => new Date(h.date) >= from); }
@@ -2981,6 +2979,7 @@ calcShichenRateForLastN(n, shichenIndex) {
         }
     };
     for (let h of this.history) {
+        if (h.hidden) continue;   // 🆕 排除隐藏
         for (let r of h.rings || []) checkRecord(r);
     }
     for (let r of this.records) {
@@ -3011,6 +3010,7 @@ renderShichenWeights() {
 
     // 从 history 累加（主统计）
     for (let h of this.history) {
+        if (h.hidden) continue;   // 🆕 排除隐藏
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
         for (let r of h.rings || []) {
@@ -3322,7 +3322,8 @@ updateHistoryTable() {
     if (icon) icon.textContent = this.sortState.order === 'desc' ? '↓' : '↑';
 
     if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
-        this.updateAnalysis(data);
+        // 🆕 分析永远用 getFilteredData()（永远排除隐藏）
+        this.updateAnalysis(this.getFilteredData());
     }
 },
 
@@ -3427,6 +3428,8 @@ updateHistoryTable() {
     },
 
     updateAnalysis(data) {
+        // 🆕 二次保险：强制排除隐藏
+        data = data.filter(h => !h.hidden);
         const count = data.length;
         if (count === 0) {
             ['prAnaTotalRuns', 'prAnaTotalCost', 'prAnaTotalIncome', 'prAnaTotalProfit', 'prAnaAvgProfit',
