@@ -1635,6 +1635,20 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
 
+        document.getElementById('prShowHiddenBtn').addEventListener('click', function() {
+            PetRingModule.showHidden = !PetRingModule.showHidden;
+            this.textContent = PetRingModule.showHidden ? '👁️ 不显示隐藏' : '🙈 显示隐藏';
+            this.style.background = PetRingModule.showHidden ? '#4c7a5c' : '#6b8baa';
+            const status = document.getElementById('prShowHiddenStatus');
+            if (status) {
+                status.textContent = PetRingModule.showHidden ? '（含隐藏数据）' : '（隐藏已过滤）';
+                status.style.color = PetRingModule.showHidden ? '#c0392b' : '#5a7a94';
+            }
+            PetRingModule.updateHistoryTable();
+            PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
+            PetRingModule.renderShichenWeights();   // 🆕 同步刷新权重表
+        });
+
         document.getElementById('petRingContainer').addEventListener('click', (e) => {
             const btn = e.target.closest('.task-btn');
             if (btn) {
@@ -1891,18 +1905,6 @@ document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
         return;
     }
     
-document.getElementById('prShowHiddenBtn').addEventListener('click', function() {
-    PetRingModule.showHidden = !PetRingModule.showHidden;
-    this.textContent = PetRingModule.showHidden ? '👁️ 不显示隐藏' : '🙈 显示隐藏';
-    this.style.background = PetRingModule.showHidden ? '#4c7a5c' : '#6b8baa';
-    const status = document.getElementById('prShowHiddenStatus');
-    if (status) {
-        status.textContent = PetRingModule.showHidden ? '（含隐藏数据）' : '（隐藏已过滤）';
-        status.style.color = PetRingModule.showHidden ? '#c0392b' : '#5a7a94';
-    }
-    PetRingModule.updateHistoryTable();
-    PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
-});
     
     const delBtn = e.target.closest('.del-btn');
     if (delBtn) {
