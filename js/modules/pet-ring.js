@@ -1099,6 +1099,27 @@ showFullSettleModal(stats) {
         return data;
     },
 
+    // 🆕 列表数据源（根据 showHidden 决定是否含隐藏）
+getListData() {
+    let data = this.history.slice();
+    
+    // 列表显示时，showHidden 决定是否含隐藏
+    if (!this.showHidden) {
+        data = data.filter(h => !h.hidden);
+    }
+    
+    const f = this.filterState;
+    if (f.dateFrom) { const from = new Date(f.dateFrom); data = data.filter(h => new Date(h.date) >= from); }
+    if (f.dateTo) { const to = new Date(f.dateTo); to.setHours(23, 59, 59); data = data.filter(h => new Date(h.date) <= to); }
+    if (f.ringsMin) data = data.filter(h => h.ringCount >= parseInt(f.ringsMin));
+    if (f.ringsMax) data = data.filter(h => h.ringCount <= parseInt(f.ringsMax));
+    if (f.scoreMin) data = data.filter(h => (h.totalScore || 0) >= parseInt(f.scoreMin));
+    if (f.scoreMax) data = data.filter(h => (h.totalScore || 0) <= parseInt(f.scoreMax));
+    if (f.profitType === 'positive') data = data.filter(h => h.profit > 0);
+    else if (f.profitType === 'negative') data = data.filter(h => h.profit < 0);
+    return data;
+},
+
     removeRewardItem(type, idx) {
         switch(type) {
             case 'book':
@@ -3231,7 +3252,7 @@ updateHistoryTable() {
         return;
     }
 
-    let data = this.getFilteredData();
+    let data = this.getListData();
 
     if (data.length === 0 && count > 0) {
         tbody.innerHTML = '<tr><td colspan="12" style="padding:30px 0;color:#6c87a0;text-align:center;font-style:italic;">无匹配筛选条件的记录</td></tr>';
