@@ -2814,20 +2814,26 @@ showAllRingsModal() {
     const nowH2 = nowD.getHours();
     const cur10Start = Math.floor(nowM / 10) * 10;
     const cur30Start = Math.floor(nowM / 30) * 30;
-    const prev10Start = cur10Start - 10;
-    const prev30Start = cur30Start - 30;
 
-    const calcWin = (startMin, endMin) => {
-        const s = nowH2 * 3600 + startMin * 60;
-        const e = nowH2 * 3600 + endMin * 60;
+    // 🆕 用"当天相对秒数"（0-86399）比较，避免跨天负数
+    const calcWin = (daySecStart, daySecEnd) => {
+        // daySecStart 可能为负（跨天），归一化到 [0, 86400)
+        let s = daySecStart, e = daySecEnd;
+        while (s < 0) { s += 86400; e += 86400; }
+        while (e >= 86400) { e -= 86400; }
+
         let total = 0, find = 0;
         for (let r of this.records) {
             if (r.deleted) continue;
             const ts = r.timestamp;
             if (!ts) continue;
             const d = new Date(ts);
-            const sec = d.getHours() * 3600 + d.getMinutes() * 60;
-            if (sec >= s && sec < e) {
+            const sec = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+            // 🆕 处理跨天：如果 s > e，说明跨天，用"或"判断
+            const inWin = (s <= e)
+                ? (sec >= s && sec < e)
+                : (sec >= s || sec < e);
+            if (inWin) {
                 total++;
                 if (r.typeKey === 'find') find++;
             }
@@ -2836,10 +2842,10 @@ showAllRingsModal() {
     };
 
     return {
-        prev10: calcWin(prev10Start, prev10Start + 10),
-        cur10:  calcWin(cur10Start,  cur10Start + 10),
-        prev30: calcWin(prev30Start, prev30Start + 30),
-        cur30:  calcWin(cur30Start,  cur30Start + 30)
+        prev10: calcWin(nowH2 * 3600 + (cur10Start - 10) * 60, nowH2 * 3600 + cur10Start * 60),
+        cur10:  calcWin(nowH2 * 3600 + cur10Start * 60,       nowH2 * 3600 + (cur10Start + 10) * 60),
+        prev30: calcWin(nowH2 * 3600 + (cur30Start - 30) * 60, nowH2 * 3600 + cur30Start * 60),
+        cur30:  calcWin(nowH2 * 3600 + cur30Start * 60,       nowH2 * 3600 + (cur30Start + 30) * 60)
     };
 },
     
