@@ -3012,20 +3012,22 @@ renderShichenWeights() {
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
         for (let r of h.rings || []) {
-            if (!r.shichen) continue;
-            if (!stats[r.shichen]) continue;
-            stats[r.shichen].total++;
-            if (r.typeKey === 'find') stats[r.shichen].find++;
+            let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            if (!schName) continue;
+            if (!stats[schName]) continue;
+            stats[schName].total++;
+            if (r.typeKey === 'find') stats[schName].find++;
         }
     }
 
     // 从 records 累加（主统计）
     for (let r of this.records) {
         if (r.deleted) continue;
-        if (!r.shichen) continue;
-        if (!stats[r.shichen]) continue;
-        stats[r.shichen].total++;
-        if (r.typeKey === 'find') stats[r.shichen].find++;
+        let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+        if (!schName) continue;
+        if (!stats[schName]) continue;
+        stats[schName].total++;
+        if (r.typeKey === 'find') stats[schName].find++;
     }
 
     // 🆕 获取当前时辰索引
@@ -3511,8 +3513,15 @@ updateHistoryTable() {
 
             if (h.rings && h.rings.length > 0) {
                 for (let r of h.rings) {
-                    if (r.shichen) {
-                        const sc = shichenStats[r.shichen];
+                    // 🆕 优先用 timestamp 现算，兼容旧数据 r.shichen
+                    let schName = '';
+                    if (r.timestamp) {
+                        schName = this.getShichen(r.timestamp).name;
+                    } else if (r.shichen) {
+                        schName = r.shichen;
+                    }
+                    if (schName) {
+                        const sc = shichenStats[schName];
                         if (sc) {
                             sc.total++;
                             totalRingsWithShichen++;
