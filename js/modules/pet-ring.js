@@ -682,20 +682,12 @@ showFullSettleModal(stats) {
         const ringsData = visibleRecords.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
-            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
             cost: r.cost,
             score: r.score,
             ringPoints: r.ringPoints,
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
-            date: r.date,
-            timestamp: r.timestamp || null,
-            shichen: r.shichen || '',
-            shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
-            halfHour: r.halfHour !== undefined ? r.halfHour : -1,
-            secondsInHalfHour: r.secondsInHalfHour !== undefined ? r.secondsInHalfHour : -1,
-            isDaytime: r.isDaytime || false,
-            timeStr: r.timeStr || ''
+            timestamp: r.timestamp || null
         }));
 
         const shopConfig = this.getShopRefreshConfig();
@@ -784,20 +776,12 @@ showFullSettleModal(stats) {
         const ringsData = visibleRecords.map(r => ({
             taskIndex: r.taskIndex,
             typeKey: r.typeKey,
-            label: this.ITEM_TYPES.find(t => t.key === r.typeKey)?.label || r.typeKey,
             cost: r.cost,
             score: r.score,
             ringPoints: r.ringPoints,
             isDeduct: r.isDeduct || false,
             isRelog: r.isRelog || false,
-            date: r.date,
-            timestamp: r.timestamp || null,
-            shichen: r.shichen || '',
-            shichenIndex: r.shichenIndex !== undefined ? r.shichenIndex : -1,
-            halfHour: r.halfHour !== undefined ? r.halfHour : -1,
-            secondsInHalfHour: r.secondsInHalfHour !== undefined ? r.secondsInHalfHour : -1,
-            isDaytime: r.isDaytime || false,
-            timeStr: r.timeStr || ''
+            timestamp: r.timestamp || null
         }));
 
         const shopConfig = this.getShopRefreshConfig();
@@ -2173,13 +2157,23 @@ showRingsDetailModal(entry) {
             }
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
+            // 🆕 从 timestamp 现算
+            let schName = '', schColor = '#B8860B', schIcon = '', timeStr = '';
+            if (r.timestamp) {
+                const sch = this.getShichen(r.timestamp);
+                schName = sch.name;
+                schColor = this.getShichenColor(sch.name);
+                schIcon = sch.isDaytime ? '☀️' : '🌙';
+                const d = new Date(r.timestamp);
+                timeStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+            }
             
             html += `
-                    <div class="ring-detail-row" data-shichen="${r.shichen || ''}" style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
+                    <div class="ring-detail-row" data-shichen="${schName}" style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #f0f4f8;background:${bgColor};font-size:0.75rem;gap:6px;">
                     <span style="font-weight:600;color:#1f3b53;min-width:50px;font-size:0.75rem;">第${r.taskIndex}环</span>
                     <span style="color:${r.typeKey === 'find' ? '#c0392b' : '#1f3b53'};min-width:60px;font-size:0.75rem;">${label}${relogIcon}</span>
-                    <span style="color:${r.shichen ? this.getShichenColor(r.shichen) : '#B8860B'};font-size:inherit;font-weight:600;min-width:50px;">${r.shichen ? (r.isDaytime ? '☀️' : '🌙') + r.shichen + '时' : ''}</span>
-                    <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${(() => { if (!r.date) return r.timeStr || ''; const p = r.date.split(' ')[0].split('/'); return p.length >= 3 ? p[1] + '/' + p[2] + ' ' + (r.timeStr || '') : r.timeStr || ''; })()}</span>
+                    <span style="color:${schColor};font-size:inherit;font-weight:600;min-width:50px;">${schName ? schIcon + schName + '时' : ''}</span>
+                    <span style="color:#1a1a2e;font-size:0.75rem;min-width:60px;">${timeStr}</span>
                     <span style="color:#1a1a2e;font-size:0.75rem;">💰${(r.cost || 0).toFixed(1)} ⭐${r.score || 0} 累计${pointsMap[r.taskIndex] || 0}</span>
                     ${r.isRelog ? '<span style="color:#dbbd7c;font-weight:700;font-size:0.75rem;">🔁重登</span>' : '<span style="color:#1a1a2e;font-size:0.75rem;">✅</span>'}
                 </div>
@@ -2248,8 +2242,9 @@ showRingsDetailModal(entry) {
     const calcShichenStats = (filterShichen) => {
         const stats = { total: 0, typeCount: {} };
         for (let r of rings) {
-            if (!r.shichen) continue;
-            if (filterShichen && r.shichen !== filterShichen) continue;
+            const sch = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            if (!sch) continue;
+            if (filterShichen && sch !== filterShichen) continue;
             stats.total++;
             stats.typeCount[r.typeKey] = (stats.typeCount[r.typeKey] || 0) + 1;
         }
@@ -2285,8 +2280,11 @@ showRingsDetailModal(entry) {
 
     let btnsHtml = `<button class="shichen-filter-btn" data-shichen="" style="padding:2px 10px;border-radius:12px;border:2px solid #4CAF50;background:#4CAF50;color:#fff;cursor:pointer;font-size:0.7rem;font-weight:600;">全部</button>`;
     for (let name of shichenNames) {
-        const hasData = rings.some(r => r.shichen === name);
-        const color = SHICHEN_COLORS[name] || '#B8860B';
+        const hasData = rings.some(r => {
+            const sch = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            return sch === name;
+        });
+    const color = SHICHEN_COLORS[name] || '#B8860B';
         if (!hasData) {
             btnsHtml += `<button disabled style="padding:2px 10px;border-radius:12px;border:1px solid #e0e0e0;background:#f5f5f5;color:#ccc;font-size:0.7rem;">${name}</button>`;
         } else {
@@ -2366,9 +2364,6 @@ showRingsDetailModal(entry) {
         } else {
             recordTimestamp = visibleRecords[visibleRecords.length - 1].clickTimestamp || nowTimestamp;
         }
-        const recordDate = new Date(recordTimestamp);
-        const shichen = this.getShichen(recordTimestamp);
-        const winState = this.calcRealtimeWindow();
 
         this.records.push({ 
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -2380,17 +2375,8 @@ showRingsDetailModal(entry) {
             ringPoints: this.getRingPoints(idx), 
             isDeduct: false,
             isRelog: isRelog,
-            date: recordDate.toLocaleString(),
-            
             timestamp: recordTimestamp,
-            clickTimestamp: nowTimestamp,
-            shichen: shichen.name,
-            shichenIndex: shichen.index,
-            halfHour: shichen.halfHour,
-            secondsInHalfHour: shichen.secondsInHalfHour,
-            isDaytime: shichen.isDaytime,
-            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`,
-            winState: winState
+            clickTimestamp: nowTimestamp
         });
         this.render();
         this.updateRelogAnalysis();
@@ -2429,9 +2415,7 @@ showRingsDetailModal(entry) {
         } else {
             recordTimestamp = visibleRecords[visibleRecords.length - 1].clickTimestamp || nowTimestamp;
         }
-        const recordDate = new Date(recordTimestamp);
-        const shichen = this.getShichen(recordTimestamp);
-        const winState = this.calcRealtimeWindow();
+
 
         this.records.push({
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
@@ -2443,18 +2427,8 @@ showRingsDetailModal(entry) {
             ringPoints: this.getRingPoints(idx),
             isDeduct: true,
             isRelog: isRelog,
-            label: type ? type.label : key,
-            date: recordDate.toLocaleString(),
-            
             timestamp: recordTimestamp,
-            clickTimestamp: nowTimestamp,
-            shichen: shichen.name,
-            shichenIndex: shichen.index,
-            halfHour: shichen.halfHour,
-            secondsInHalfHour: shichen.secondsInHalfHour,
-            isDaytime: shichen.isDaytime,
-            timeStr: `${String(recordDate.getHours()).padStart(2,'0')}:${String(recordDate.getMinutes()).padStart(2,'0')}:${String(recordDate.getSeconds()).padStart(2,'0')}`,
-            winState: winState
+            clickTimestamp: nowTimestamp
         });
         this.render();
         this.updateRelogAnalysis();
@@ -2708,25 +2682,21 @@ updateHistory() {
     }
     for (let r of records) {
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
-        const label = type ? type.label : (r.label || r.typeKey);
+        const label = type ? type.label : r.typeKey;   // 🆕 去掉 r.label 兜底
         const sc = r.score < 0 ? r.score : `+${r.score}`;
         const relogIcon = r.isRelog ? ' 🔁' : '';
         
+        // 🆕 从 timestamp 现算 shichen / isDaytime / timeStr / date
         let shichenDisplay = '';
-        if (r.shichen) {
-            const dayNight = r.isDaytime ? '☀️' : '🌙';
-            shichenDisplay = `<span style="color:#b8860b;font-size:0.7rem;">${dayNight}${r.shichen}时</span>`;
-        }
         let timeDisplay = '';
-        if (r.timeStr) {
-            let shortDate = '';
-            if (r.date) {
-                const parts = r.date.split(' ')[0].split('/');
-                if (parts.length >= 3) {
-                    shortDate = `${parts[1]}/${parts[2]}`;
-                }
-            }
-           timeDisplay = `<span style="color:#1a1a2e;font-size:0.85rem;">${shortDate} ${r.timeStr}</span>`;
+        if (r.timestamp) {
+            const sc2 = this.getShichen(r.timestamp);
+            const dayNight = sc2.isDaytime ? '☀️' : '🌙';
+            shichenDisplay = `<span style="color:#b8860b;font-size:0.7rem;">${dayNight}${sc2.name}时</span>`;
+            const d = new Date(r.timestamp);
+            const shortDate = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+            const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+            timeDisplay = `<span style="color:#1a1a2e;font-size:0.85rem;">${shortDate} ${timeStr}</span>`;
         }
         
         const labelColor = r.typeKey === 'find' ? '#c0392b' : '#1a1a2e';
@@ -2761,18 +2731,21 @@ showAllRingsModal() {
     for (let i = 0; i < visibleRecords.length; i++) {
         const r = visibleRecords[i];
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
-        const label = type ? type.label : (r.label || r.typeKey);
+        const label = type ? type.label : r.typeKey;
         const sc = r.score < 0 ? r.score : `+${r.score}`;
         const relogIcon = r.isRelog ? ' 🔁' : '';
-        const dayNight = r.isDaytime ? '☀️' : '🌙';
-        const shichenColor = r.shichen ? this.getShichenColor(r.shichen) : '#B8860B';
-        const shichenDisplay = r.shichen ? `<span style="color:${shichenColor};font-weight:600;">${dayNight}${r.shichen}时</span>` : '';
-        let timeDisplay = r.timeStr || '';
-        if (r.date) {
-            const parts = r.date.split(' ')[0].split('/');
-            if (parts.length >= 3) {
-                timeDisplay = `${parts[1]}/${parts[2]} ${timeDisplay}`;
-            }
+        // 🆕 从 timestamp 现算
+        let shichenDisplay = '';
+        let timeDisplay = '';
+        if (r.timestamp) {
+            const sch = this.getShichen(r.timestamp);
+            const dayNight = sch.isDaytime ? '☀️' : '🌙';
+            const shichenColor = this.getShichenColor(sch.name);
+            shichenDisplay = `<span style="color:${shichenColor};font-weight:600;">${dayNight}${sch.name}时</span>`;
+            const d = new Date(r.timestamp);
+            const shortDate = `${d.getMonth()+1}/${d.getDate()}`;
+            const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+            timeDisplay = `${shortDate} ${timeStr}`;
         }
         const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
         
