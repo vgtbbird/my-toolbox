@@ -2910,7 +2910,6 @@ renderRealtimeWindow() {
             if (ts < map[key].firstTs) map[key].firstTs = ts;
         }
         const result = [];
-        const result = [];
         const sortedKeys = Object.keys(map).sort((a, b) => {
             // 🆕 用"第一个记录的时间戳"排序（真实先后）
             return map[a].firstTs - map[b].firstTs;
