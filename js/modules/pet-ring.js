@@ -2904,22 +2904,16 @@ renderRealtimeWindow() {
             const m = d.getMinutes();
             const startMin = Math.floor(m / stepMin) * stepMin;
             const key = `${String(h).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
-            if (!map[key]) map[key] = { start: key, total: 0, find: 0 };
+            if (!map[key]) map[key] = { start: key, total: 0, find: 0, firstTs: ts };
             map[key].total++;
             if (r.typeKey === 'find') map[key].find++;
+            if (ts < map[key].firstTs) map[key].firstTs = ts;
         }
         const result = [];
+        const result = [];
         const sortedKeys = Object.keys(map).sort((a, b) => {
-            const [ah, am] = a.split(':').map(Number);
-            const [bh, bm] = b.split(':').map(Number);
-            const aMin = ah * 60 + am;
-            const bMin = bh * 60 + bm;
-            const aIsNextDay = ah < 6;
-            const bIsNextDay = bh < 6;
-            if (aIsNextDay !== bIsNextDay) {
-                return aIsNextDay ? 1 : -1;
-            }
-            return aMin - bMin;
+            // 🆕 用"第一个记录的时间戳"排序（真实先后）
+            return map[a].firstTs - map[b].firstTs;
         });
         for (let k of sortedKeys) {
             const w = map[k];
