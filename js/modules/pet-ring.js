@@ -1317,6 +1317,11 @@ getListData() {
                                 <option value="4">4天</option>
                                 <option value="5">5天</option>
                                 <option value="6">6天</option>
+                                <option value="r1">最近1轮</option>
+                                <option value="r2">最近2轮</option>
+                                <option value="r3">最近3轮</option>
+                                <option value="r5">最近5轮</option>
+                                <option value="r10">最近10轮</option>
                             </select>
                         </div>
                     </div>
@@ -2988,16 +2993,22 @@ calcShichenRateForLastN(n, shichenIndex) {
     return { rate: Math.round(find / total * 100), total, find };
 },
     
-renderShichenWeights() {
+    renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
     const range = rangeEl.value || 'all';
     const now = Date.now();
     let cutoff = 0;
+    let roundLimit = 0;
+
     if (range !== 'all') {
-        const days = parseInt(range);
-        if (!isNaN(days) && days > 0) {
-            cutoff = now - days * 24 * 3600 * 1000;
+        if (range.startsWith('r')) {
+            roundLimit = parseInt(range.slice(1)) || 0;
+        } else {
+            const days = parseInt(range);
+            if (!isNaN(days) && days > 0) {
+                cutoff = now - days * 24 * 3600 * 1000;
+            }
         }
     }
 
@@ -3005,9 +3016,16 @@ renderShichenWeights() {
     const stats = {};
     shichenNames.forEach(n => stats[n] = { total: 0, find: 0 });
 
+    // 🆕 构建"要统计的 history 列表"
+    let historyList = this.history.filter(h => !h.hidden);
+    if (roundLimit > 0) {
+        historyList = [...historyList]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, roundLimit);
+    }
+
     // 从 history 累加（主统计）
-    for (let h of this.history) {
-        if (h.hidden) continue;   // 🆕 排除隐藏
+    for (let h of historyList) {
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
         for (let r of h.rings || []) {
@@ -3020,13 +3038,16 @@ renderShichenWeights() {
     }
 
     // 从 records 累加（主统计）
-    for (let r of this.records) {
-        if (r.deleted) continue;
-        let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
-        if (!schName) continue;
-        if (!stats[schName]) continue;
-        stats[schName].total++;
-        if (r.typeKey === 'find') stats[schName].find++;
+    // 🆕 只在"全部/天数"模式下算，选了"最近 N 轮"就不算当前未结算的
+    if (roundLimit === 0) {
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            if (!schName) continue;
+            if (!stats[schName]) continue;
+            stats[schName].total++;
+            if (r.typeKey === 'find') stats[schName].find++;
+        }
     }
 
     // 🆕 获取当前时辰索引
