@@ -1309,20 +1309,29 @@ getListData() {
                         </div>
                         <div style="display:flex;gap:4px;align-items:center;">
                             <button id="prResetShichenLRBtn" style="background:#b48b5f;color:#fff;border:none;border-radius:30px;padding:2px 10px;font-size:0.6rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 重置</button>
-                            <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
-                                <option value="all">全部</option>
-                                <option value="1">1天</option>
-                                <option value="2">2天</option>
-                                <option value="3">3天</option>
-                                <option value="4">4天</option>
-                                <option value="5">5天</option>
-                                <option value="6">6天</option>
-                                <option value="r1">最近1轮</option>
-                                <option value="r2">最近2轮</option>
-                                <option value="r3">最近3轮</option>
-                                <option value="r5">最近5轮</option>
-                                <option value="r10">最近10轮</option>
-                            </select>
+                                <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
+                                    <option value="all">全部</option>
+                                    <option value="1">1天</option>
+                                    <option value="2">2天</option>
+                                    <option value="3">3天</option>
+                                    <option value="4">4天</option>
+                                    <option value="5">5天</option>
+                                    <option value="6">6天</option>
+                                    <option value="r1">最近1轮</option>
+                                    <option value="r2">最近2轮</option>
+                                    <option value="r3">最近3轮</option>
+                                    <option value="r5">最近5轮</option>
+                                    <option value="r10">最近10轮</option>
+                                    <option value="thisWeek">本周</option>
+                                    <option value="lastWeek">上周</option>
+                                    <option value="w2">2周前</option>
+                                    <option value="w3">3周前</option>
+                                    <option value="w4">4周前</option>
+                                    <option value="w5">5周前</option>
+                                    <option value="w6">6周前</option>
+                                    <option value="w7">7周前</option>
+                                    <option value="w8">8周前</option>
+                                </select>
                         </div>
                     </div>
                    <div id="prWeightList" style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px;"></div>
@@ -2992,6 +3001,20 @@ calcShichenRateForLastN(n, shichenIndex) {
     if (total === 0) return null;
     return { rate: Math.round(find / total * 100), total, find };
 },
+
+    // 🆕 获取"最近的周二 09:00"的时间戳（本周二 09:00 还没到就用上周二）
+getThisTuesday9am() {
+    const now = new Date();
+    const day = now.getDay();   // 0=周日, 1=周一, 2=周二, ..., 6=周六
+    let daysSinceTue = (day - 2 + 7) % 7;
+    const thisTue = new Date(now);
+    thisTue.setDate(now.getDate() - daysSinceTue);
+    thisTue.setHours(9, 0, 0, 0);
+    if (thisTue.getTime() > now.getTime()) {
+        thisTue.setDate(thisTue.getDate() - 7);
+    }
+    return thisTue.getTime();
+},
     
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
@@ -3000,10 +3023,24 @@ calcShichenRateForLastN(n, shichenIndex) {
     const now = Date.now();
     let cutoff = 0;
     let roundLimit = 0;
+    let weekStart = 0;   // 🆕 周起始时间戳
+    let weekEnd = 0;     // 🆕 周结束时间戳（0 表示不限制）
 
     if (range !== 'all') {
         if (range.startsWith('r')) {
             roundLimit = parseInt(range.slice(1)) || 0;
+        } else if (range === 'thisWeek') {
+            weekStart = this.getThisTuesday9am();
+            weekEnd = 0;   // 到现在
+        } else if (range === 'lastWeek') {
+            const thisTue = this.getThisTuesday9am();
+            weekStart = thisTue - 7 * 24 * 3600 * 1000;
+            weekEnd = thisTue;
+        } else if (range.startsWith('w')) {
+            const nWeeksAgo = parseInt(range.slice(1)) || 0;
+            const thisTue = this.getThisTuesday9am();
+            weekStart = thisTue - nWeeksAgo * 7 * 24 * 3600 * 1000;
+            weekEnd = thisTue - (nWeeksAgo - 1) * 7 * 24 * 3600 * 1000;
         } else {
             const days = parseInt(range);
             if (!isNaN(days) && days > 0) {
@@ -3028,6 +3065,9 @@ calcShichenRateForLastN(n, shichenIndex) {
     for (let h of historyList) {
         const histTime = new Date(h.date).getTime();
         if (cutoff && histTime < cutoff) continue;
+        // 🆕 周范围过滤
+        if (weekStart && histTime < weekStart) continue;
+        if (weekEnd && histTime >= weekEnd) continue;
         for (let r of h.rings || []) {
             let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
             if (!schName) continue;
