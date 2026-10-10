@@ -94,7 +94,7 @@ const PetRingModule = {
     ],
 
     INITIAL_COST: 10,
-    filterState: { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' },
+    filterState: { range: 'all', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' },
 
     // ========== 生命周期 ==========
     init() {
@@ -1068,12 +1068,52 @@ showFullSettleModal(stats) {
     getFilteredData() {
         let data = this.history.slice();
         
-        // 🆕 永远排除已隐藏的（不受 showHidden 影响）
+        // 🆕 永远排除已隐藏的
         data = data.filter(h => !h.hidden);
         
         const f = this.filterState;
-        if (f.dateFrom) { const from = new Date(f.dateFrom); data = data.filter(h => new Date(h.date) >= from); }
-        if (f.dateTo) { const to = new Date(f.dateTo); to.setHours(23, 59, 59); data = data.filter(h => new Date(h.date) <= to); }
+        
+        // 🆕 范围筛选（替换原来的 dateFrom/dateTo）
+        if (f.range && f.range !== 'all') {
+            const range = f.range;
+            const now = Date.now();
+            
+            if (range.startsWith('r')) {
+                // 最近 N 轮
+                const n = parseInt(range.slice(1)) || 0;
+                if (n > 0) {
+                    data = [...data].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, n);
+                }
+            } else if (range === 'thisWeek') {
+                const start = this.getThisTuesday9am();
+                data = data.filter(h => new Date(h.date).getTime() >= start);
+            } else if (range === 'lastWeek') {
+                const thisTue = this.getThisTuesday9am();
+                const start = thisTue - 7 * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < thisTue;
+                });
+            } else if (range.startsWith('w')) {
+                const n = parseInt(range.slice(1)) || 0;
+                const thisTue = this.getThisTuesday9am();
+                const start = thisTue - n * 7 * 24 * 3600 * 1000;
+                const end = thisTue - (n - 1) * 7 * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < end;
+                });
+            } else {
+                // 天数
+                const days = parseInt(range);
+                if (!isNaN(days) && days > 0) {
+                    const cutoff = now - days * 24 * 3600 * 1000;
+                    data = data.filter(h => new Date(h.date).getTime() >= cutoff);
+                }
+            }
+        }
+        
+        // 保留原有的其他筛选
         if (f.ringsMin) data = data.filter(h => h.ringCount >= parseInt(f.ringsMin));
         if (f.ringsMax) data = data.filter(h => h.ringCount <= parseInt(f.ringsMax));
         if (f.scoreMin) data = data.filter(h => (h.totalScore || 0) >= parseInt(f.scoreMin));
@@ -1083,26 +1123,61 @@ showFullSettleModal(stats) {
         return data;
     },
 
-    // 🆕 列表数据源（根据 showHidden 决定是否含隐藏）
-getListData() {
-    let data = this.history.slice();
-    
-    // 列表显示时，showHidden 决定是否含隐藏
-    if (!this.showHidden) {
-        data = data.filter(h => !h.hidden);
-    }
-    
-    const f = this.filterState;
-    if (f.dateFrom) { const from = new Date(f.dateFrom); data = data.filter(h => new Date(h.date) >= from); }
-    if (f.dateTo) { const to = new Date(f.dateTo); to.setHours(23, 59, 59); data = data.filter(h => new Date(h.date) <= to); }
-    if (f.ringsMin) data = data.filter(h => h.ringCount >= parseInt(f.ringsMin));
-    if (f.ringsMax) data = data.filter(h => h.ringCount <= parseInt(f.ringsMax));
-    if (f.scoreMin) data = data.filter(h => (h.totalScore || 0) >= parseInt(f.scoreMin));
-    if (f.scoreMax) data = data.filter(h => (h.totalScore || 0) <= parseInt(f.scoreMax));
-    if (f.profitType === 'positive') data = data.filter(h => h.profit > 0);
-    else if (f.profitType === 'negative') data = data.filter(h => h.profit < 0);
-    return data;
-},
+    getListData() {
+        let data = this.history.slice();
+        
+        if (!this.showHidden) {
+            data = data.filter(h => !h.hidden);
+        }
+        
+        const f = this.filterState;
+        
+        // 🆕 范围筛选
+        if (f.range && f.range !== 'all') {
+            const range = f.range;
+            const now = Date.now();
+            
+            if (range.startsWith('r')) {
+                const n = parseInt(range.slice(1)) || 0;
+                if (n > 0) {
+                    data = [...data].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, n);
+                }
+            } else if (range === 'thisWeek') {
+                const start = this.getThisTuesday9am();
+                data = data.filter(h => new Date(h.date).getTime() >= start);
+            } else if (range === 'lastWeek') {
+                const thisTue = this.getThisTuesday9am();
+                const start = thisTue - 7 * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < thisTue;
+                });
+            } else if (range.startsWith('w')) {
+                const n = parseInt(range.slice(1)) || 0;
+                const thisTue = this.getThisTuesday9am();
+                const start = thisTue - n * 7 * 24 * 3600 * 1000;
+                const end = thisTue - (n - 1) * 7 * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < end;
+                });
+            } else {
+                const days = parseInt(range);
+                if (!isNaN(days) && days > 0) {
+                    const cutoff = now - days * 24 * 3600 * 1000;
+                    data = data.filter(h => new Date(h.date).getTime() >= cutoff);
+                }
+            }
+        }
+        
+        if (f.ringsMin) data = data.filter(h => h.ringCount >= parseInt(f.ringsMin));
+        if (f.ringsMax) data = data.filter(h => h.ringCount <= parseInt(f.ringsMax));
+        if (f.scoreMin) data = data.filter(h => (h.totalScore || 0) >= parseInt(f.scoreMin));
+        if (f.scoreMax) data = data.filter(h => (h.totalScore || 0) <= parseInt(f.scoreMax));
+        if (f.profitType === 'positive') data = data.filter(h => h.profit > 0);
+        else if (f.profitType === 'negative') data = data.filter(h => h.profit < 0);
+        return data;
+    },
 
     removeRewardItem(type, idx) {
         switch(type) {
@@ -1445,14 +1520,38 @@ getListData() {
                         <div id="prAnaPredictionCompare" style="padding:4px 0;margin:8px 0;"></div>
                         <div class="task-stats-row" id="prTaskStatsRow"></div>
                         <div id="prShichenAnalysis"></div>
-                        <div class="filter-row">
-                            <div class="filter-item"><label>📅 日期从</label><input type="date" id="prFilterDateFrom"></div>
-                            <div class="filter-item"><label>到</label><input type="date" id="prFilterDateTo"></div>
-                            <div class="filter-item"><label>📌 环数</label><input type="number" id="prFilterRingsMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterRingsMax" placeholder="≤" style="width:50px;"></div>
-                           <div class="filter-item"><label>⭐ 积分</label><input type="number" id="prFilterScoreMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterScoreMax" placeholder="≤" style="width:50px;"></div>
-                            <div class="filter-item"><label>📈 利润</label><select id="prFilterProfitType"><option value="all">全部</option><option value="positive">盈利</option><option value="negative">亏损</option></select></div>
-                            <div class="filter-item"><button class="btn-filter" id="prApplyFilterBtn">应用筛选</button><button class="btn-filter reset" id="prResetFilterBtn">重置</button></div>
-                        </div>
+                            <div class="filter-row">
+                                <div class="filter-item">
+                                    <label>📅 范围</label>
+                                    <select id="prFilterRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
+                                        <option value="all">全部</option>
+                                        <option value="1">1天</option>
+                                        <option value="2">2天</option>
+                                        <option value="3">3天</option>
+                                        <option value="4">4天</option>
+                                        <option value="5">5天</option>
+                                        <option value="6">6天</option>
+                                        <option value="r1">最近1轮</option>
+                                        <option value="r2">最近2轮</option>
+                                        <option value="r3">最近3轮</option>
+                                        <option value="r5">最近5轮</option>
+                                        <option value="r10">最近10轮</option>
+                                        <option value="thisWeek">本周</option>
+                                        <option value="lastWeek">上周</option>
+                                        <option value="w2">2周前</option>
+                                        <option value="w3">3周前</option>
+                                        <option value="w4">4周前</option>
+                                        <option value="w5">5周前</option>
+                                        <option value="w6">6周前</option>
+                                        <option value="w7">7周前</option>
+                                        <option value="w8">8周前</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item"><label>📌 环数</label><input type="number" id="prFilterRingsMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterRingsMax" placeholder="≤" style="width:50px;"></div>
+                                <div class="filter-item"><label>⭐ 积分</label><input type="number" id="prFilterScoreMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterScoreMax" placeholder="≤" style="width:50px;"></div>
+                                <div class="filter-item"><label>📈 利润</label><select id="prFilterProfitType"><option value="all">全部</option><option value="positive">盈利</option><option value="negative">亏损</option></select></div>
+                                <div class="filter-item"><button class="btn-filter" id="prApplyFilterBtn">应用筛选</button><button class="btn-filter reset" id="prResetFilterBtn">重置</button></div>
+                            </div>
                     </div>
                     <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
                         <table>
@@ -1815,8 +1914,7 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
         });
 
         document.getElementById('prApplyFilterBtn').addEventListener('click', () => {
-            this.filterState.dateFrom = document.getElementById('prFilterDateFrom').value || '';
-            this.filterState.dateTo = document.getElementById('prFilterDateTo').value || '';
+            this.filterState.range = document.getElementById('prFilterRange').value || 'all';
             this.filterState.ringsMin = document.getElementById('prFilterRingsMin').value || '';
             this.filterState.ringsMax = document.getElementById('prFilterRingsMax').value || '';
             this.filterState.scoreMin = document.getElementById('prFilterScoreMin').value || '';
@@ -1828,17 +1926,31 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
         document.getElementById('prResetFilterBtn').addEventListener('click', () => {
-            document.getElementById('prFilterDateFrom').value = '';
-            document.getElementById('prFilterDateTo').value = '';
+            document.getElementById('prFilterRange').value = 'all';
             document.getElementById('prFilterRingsMin').value = '';
             document.getElementById('prFilterRingsMax').value = '';
             document.getElementById('prFilterScoreMin').value = '';
             document.getElementById('prFilterScoreMax').value = '';
             document.getElementById('prFilterProfitType').value = 'all';
-            this.filterState = { dateFrom: '', dateTo: '', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' };
+            this.filterState = { range: 'all', ringsMin: '', ringsMax: '', scoreMin: '', scoreMax: '', profitType: 'all' };
             this.render();
             if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
                 this.updateAnalysis(this.getFilteredData());
+            }
+        });
+
+        // 🆕 数据分析范围下拉：改变时也同步到权重表
+        document.getElementById('prFilterRange').addEventListener('change', function() {
+            const val = this.value;
+            // 同步到权重表下拉
+            const weightRangeEl = document.getElementById('prWeightRange');
+            if (weightRangeEl) weightRangeEl.value = val;
+            // 更新 filterState
+            PetRingModule.filterState.range = val;
+            // 刷新权重表 + 数据分析
+            PetRingModule.renderShichenWeights();
+            if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
+                PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
             }
         });
 
@@ -1947,7 +2059,17 @@ document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
 const weightRangeEl = document.getElementById('prWeightRange');
 if (weightRangeEl) {
     weightRangeEl.addEventListener('change', function() {
+        const val = this.value;
+        // 🆕 同步到数据分析下拉
+        const filterRangeEl = document.getElementById('prFilterRange');
+        if (filterRangeEl) filterRangeEl.value = val;
+        // 更新 filterState
+        PetRingModule.filterState.range = val;
+        // 刷新权重表 + 数据分析
         PetRingModule.renderShichenWeights();
+        if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
+            PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
+        }
     });
 }
 
