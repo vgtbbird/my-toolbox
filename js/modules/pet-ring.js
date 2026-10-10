@@ -1103,8 +1103,17 @@ showFullSettleModal(stats) {
                     const t = new Date(h.date).getTime();
                     return t >= start && t < end;
                 });
+            } else if (range.startsWith('d')) {
+                // 🆕 "今天/前一天/..."
+                const n = parseInt(range.slice(1)) || 0;
+                const thisDay9 = this.getThisDay9am();
+                const start = thisDay9 - n * 24 * 3600 * 1000;
+                const end = (n === 0) ? Infinity : thisDay9 - (n - 1) * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < end;
+                });
             } else {
-                // 天数
                 const days = parseInt(range);
                 if (!isNaN(days) && days > 0) {
                     const cutoff = now - days * 24 * 3600 * 1000;
@@ -1157,6 +1166,15 @@ showFullSettleModal(stats) {
                 const thisTue = this.getThisTuesday9am();
                 const start = thisTue - n * 7 * 24 * 3600 * 1000;
                 const end = thisTue - (n - 1) * 7 * 24 * 3600 * 1000;
+                data = data.filter(h => {
+                    const t = new Date(h.date).getTime();
+                    return t >= start && t < end;
+                });
+            } else if (range.startsWith('d')) {
+                const n = parseInt(range.slice(1)) || 0;
+                const thisDay9 = this.getThisDay9am();
+                const start = thisDay9 - n * 24 * 3600 * 1000;
+                const end = (n === 0) ? Infinity : thisDay9 - (n - 1) * 24 * 3600 * 1000;
                 data = data.filter(h => {
                     const t = new Date(h.date).getTime();
                     return t >= start && t < end;
@@ -1386,12 +1404,13 @@ showFullSettleModal(stats) {
                             <button id="prResetShichenLRBtn" style="background:#b48b5f;color:#fff;border:none;border-radius:30px;padding:2px 10px;font-size:0.6rem;font-weight:600;cursor:pointer;white-space:nowrap;">🔄 重置</button>
                                 <select id="prWeightRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
                                     <option value="all">全部</option>
-                                    <option value="1">1天</option>
-                                    <option value="2">2天</option>
-                                    <option value="3">3天</option>
-                                    <option value="4">4天</option>
-                                    <option value="5">5天</option>
-                                    <option value="6">6天</option>
+                                    <option value="d0">今天</option>
+                                    <option value="d1">前一天</option>
+                                    <option value="d2">前两天</option>
+                                    <option value="d3">前三天</option>
+                                    <option value="d4">前四天</option>
+                                    <option value="d5">前五天</option>
+                                    <option value="d6">前六天</option>
                                     <option value="r1">最近1轮</option>
                                     <option value="r2">最近2轮</option>
                                     <option value="r3">最近3轮</option>
@@ -1523,29 +1542,30 @@ showFullSettleModal(stats) {
                             <div class="filter-row">
                                 <div class="filter-item">
                                     <label>📅 范围</label>
-                                    <select id="prFilterRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
-                                        <option value="all">全部</option>
-                                        <option value="1">1天</option>
-                                        <option value="2">2天</option>
-                                        <option value="3">3天</option>
-                                        <option value="4">4天</option>
-                                        <option value="5">5天</option>
-                                        <option value="6">6天</option>
-                                        <option value="r1">最近1轮</option>
-                                        <option value="r2">最近2轮</option>
-                                        <option value="r3">最近3轮</option>
-                                        <option value="r5">最近5轮</option>
-                                        <option value="r10">最近10轮</option>
-                                        <option value="thisWeek">本周</option>
-                                        <option value="lastWeek">上周</option>
-                                        <option value="w2">2周前</option>
-                                        <option value="w3">3周前</option>
-                                        <option value="w4">4周前</option>
-                                        <option value="w5">5周前</option>
-                                        <option value="w6">6周前</option>
-                                        <option value="w7">7周前</option>
-                                        <option value="w8">8周前</option>
-                                    </select>
+                                        <select id="prFilterRange" style="font-size:0.65rem;padding:2px 4px;border-radius:8px;border:1px solid #bccad9;background:white;">
+                                            <option value="all">全部</option>
+                                            <option value="d0">今天</option>
+                                            <option value="d1">前一天</option>
+                                            <option value="d2">前两天</option>
+                                            <option value="d3">前三天</option>
+                                            <option value="d4">前四天</option>
+                                            <option value="d5">前五天</option>
+                                            <option value="d6">前六天</option>
+                                            <option value="r1">最近1轮</option>
+                                            <option value="r2">最近2轮</option>
+                                            <option value="r3">最近3轮</option>
+                                            <option value="r5">最近5轮</option>
+                                            <option value="r10">最近10轮</option>
+                                            <option value="thisWeek">本周</option>
+                                            <option value="lastWeek">上周</option>
+                                            <option value="w2">2周前</option>
+                                            <option value="w3">3周前</option>
+                                            <option value="w4">4周前</option>
+                                            <option value="w5">5周前</option>
+                                            <option value="w6">6周前</option>
+                                            <option value="w7">7周前</option>
+                                            <option value="w8">8周前</option>
+                                        </select>
                                 </div>
                                 <div class="filter-item"><label>📌 环数</label><input type="number" id="prFilterRingsMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterRingsMax" placeholder="≤" style="width:50px;"></div>
                                 <div class="filter-item"><label>⭐ 积分</label><input type="number" id="prFilterScoreMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterScoreMax" placeholder="≤" style="width:50px;"></div>
@@ -3138,6 +3158,17 @@ getThisTuesday9am() {
     return thisTue.getTime();
 },
     
+    // 🆕 获取"最近的当天 09:00"的时间戳（如果今天 09:00 还没到，就用昨天 09:00）
+getThisDay9am() {
+    const now = new Date();
+    const today9 = new Date(now);
+    today9.setHours(9, 0, 0, 0);
+    if (today9.getTime() > now.getTime()) {
+        today9.setDate(today9.getDate() - 1);
+    }
+    return today9.getTime();
+},
+    
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
@@ -3153,7 +3184,7 @@ getThisTuesday9am() {
             roundLimit = parseInt(range.slice(1)) || 0;
         } else if (range === 'thisWeek') {
             weekStart = this.getThisTuesday9am();
-            weekEnd = 0;   // 到现在
+            weekEnd = 0;
         } else if (range === 'lastWeek') {
             const thisTue = this.getThisTuesday9am();
             weekStart = thisTue - 7 * 24 * 3600 * 1000;
@@ -3163,6 +3194,12 @@ getThisTuesday9am() {
             const thisTue = this.getThisTuesday9am();
             weekStart = thisTue - nWeeksAgo * 7 * 24 * 3600 * 1000;
             weekEnd = thisTue - (nWeeksAgo - 1) * 7 * 24 * 3600 * 1000;
+        } else if (range.startsWith('d')) {
+            // 🆕 "今天/前一天/..."
+            const n = parseInt(range.slice(1)) || 0;
+            const thisDay9 = this.getThisDay9am();
+            weekStart = thisDay9 - n * 24 * 3600 * 1000;
+            weekEnd = (n === 0) ? 0 : thisDay9 - (n - 1) * 24 * 3600 * 1000;
         } else {
             const days = parseInt(range);
             if (!isNaN(days) && days > 0) {
