@@ -1568,6 +1568,9 @@ showFullSettleModal(stats) {
                                             <option value="w6">6周前</option>
                                             <option value="w7">7周前</option>
                                             <option value="w8">8周前</option>
+                                            <option value="last6w">最近6周</option>
+                                            <option value="last6d">最近6天</option>
+                                            <option value="last6h">最近6小时</option>
                                         </select>
                                 </div>
                                 <div class="filter-item"><label>📌 环数</label><input type="number" id="prFilterRingsMin" placeholder="≥" style="width:50px;"><span>-</span><input type="number" id="prFilterRingsMax" placeholder="≤" style="width:50px;"></div>
