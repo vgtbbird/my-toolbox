@@ -9,6 +9,7 @@ const PetRingModule = {
     sortState: { order: 'desc' },
     showHidden: false,   // 🆕 是否显示已隐藏的历史
     lrResetTs: 0,   // 🆕 左右列的重置时间点（0 表示不重置，全算）
+    weightRange: 'all',   // 🆕 时辰权重表的范围（独立于 filterState.range）
 
     // ========== 数据 ==========
     storageKey: 'petRing',
@@ -126,6 +127,9 @@ const PetRingModule = {
         setTimeout(() => this.applyUISettings(), 100);
         this.checkAutoSettle();
         this.updateRelogAnalysis();
+                // 🆕 初始化权重表下拉的值
+        const weightRangeEl = document.getElementById('prWeightRange');
+        if (weightRangeEl) weightRangeEl.value = this.weightRange || 'all';
         this.renderShichenWeights();
         this.renderRealtimeWindow();
         this.updateTimeAndShichen();  
@@ -267,6 +271,7 @@ const PetRingModule = {
         this.pendingRelog = data.pendingRelog || false;
         this.showHidden = false;   // 🆕 强制默认不显示隐藏
         this.lrResetTs = data.lrResetTs || 0;
+        this.weightRange = data.weightRange || 'all';
 
         this.ITEM_TYPES.forEach(t => {
             if (this.prices[t.key] === undefined) this.prices[t.key] = t.defaultPrice;
@@ -317,6 +322,7 @@ const PetRingModule = {
             startTimestamp: this.startTimestamp,
             currentRunId: this.currentRunId, 
             lrResetTs: this.lrResetTs || 0,
+            weightRange: this.weightRange || 'all',
             __sync_v3: {
                 history: historyV3,
                 records: recordsV3,
@@ -1965,16 +1971,8 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             }
         });
 
-        // 🆕 数据分析范围下拉：改变时也同步到权重表
         document.getElementById('prFilterRange').addEventListener('change', function() {
-            const val = this.value;
-            // 同步到权重表下拉
-            const weightRangeEl = document.getElementById('prWeightRange');
-            if (weightRangeEl) weightRangeEl.value = val;
-            // 更新 filterState
-            PetRingModule.filterState.range = val;
-            // 刷新权重表 + 数据分析
-            PetRingModule.renderShichenWeights();
+            PetRingModule.filterState.range = this.value;
             if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
                 PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
             }
@@ -2085,17 +2083,9 @@ document.getElementById('prHistoryTableBody').addEventListener('click', (e) => {
 const weightRangeEl = document.getElementById('prWeightRange');
 if (weightRangeEl) {
     weightRangeEl.addEventListener('change', function() {
-        const val = this.value;
-        // 🆕 同步到数据分析下拉
-        const filterRangeEl = document.getElementById('prFilterRange');
-        if (filterRangeEl) filterRangeEl.value = val;
-        // 更新 filterState
-        PetRingModule.filterState.range = val;
-        // 刷新权重表 + 数据分析
+        PetRingModule.weightRange = this.value;
+        PetRingModule.saveData();   // 持久化
         PetRingModule.renderShichenWeights();
-        if (document.getElementById('prAnalysisPanel').style.display !== 'none') {
-            PetRingModule.updateAnalysis(PetRingModule.getFilteredData());
-        }
     });
 }
 
@@ -3224,7 +3214,7 @@ getThisHourStart() {
     renderShichenWeights() {
     const rangeEl = document.getElementById('prWeightRange');
     if (!rangeEl) return;
-    const range = rangeEl.value || 'all';
+    const range = this.weightRange || rangeEl.value || 'all';
     const now = Date.now();
     let cutoff = 0;
     let roundLimit = 0;
