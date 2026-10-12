@@ -1425,6 +1425,9 @@ showFullSettleModal(stats) {
                                     <option value="w6">6周前</option>
                                     <option value="w7">7周前</option>
                                     <option value="w8">8周前</option>
+                                    <option value="last6w">最近6周</option>
+                                    <option value="last6d">最近6天</option>
+                                    <option value="last6h">最近6小时</option>
                                 </select>
                         </div>
                     </div>
@@ -3144,6 +3147,46 @@ calcShichenRateForLastN(n, shichenIndex) {
     return { rate: Math.round(find / total * 100), total, find };
 },
 
+// 🆕 计算"某个时辰在 N 个周期前（周/天/小时）"的找人率
+// n: 0 = 本周期（本周/今天/本小时），1-6 = 前 N 个周期
+// isHour: 是否按小时，isDay: 是否按天（都 false 就是周）
+// 返回: {rate, total} 或 null
+calcShichenRateInPeriod(shichenName, n, isHour, isDay) {
+    let periodStart, periodEnd;
+    const now = Date.now();
+
+    if (isHour) {
+        const hourStart = this.getThisHourStart();
+        periodStart = hourStart - n * 3600 * 1000;
+        periodEnd = (n === 0) ? now : (hourStart - (n - 1) * 3600 * 1000);
+    } else if (isDay) {
+        const day9 = this.getThisDay9am();
+        periodStart = day9 - n * 24 * 3600 * 1000;
+        periodEnd = (n === 0) ? now : (day9 - (n - 1) * 24 * 3600 * 1000);
+    } else {
+        const tue9 = this.getThisTuesday9am();
+        periodStart = tue9 - n * 7 * 24 * 3600 * 1000;
+        periodEnd = (n === 0) ? now : (tue9 - (n - 1) * 7 * 24 * 3600 * 1000);
+    }
+
+    let total = 0, find = 0;
+    // 从 history 里找
+    for (let h of this.history) {
+        if (h.hidden) continue;
+        for (let r of h.rings || []) {
+            if (!r.timestamp) continue;
+            if (r.timestamp < periodStart || r.timestamp >= periodEnd) continue;
+            const schName = this.getShichen(r.timestamp).name;
+            if (schName !== shichenName) continue;
+            total++;
+            if (r.typeKey === 'find') find++;
+        }
+    }
+
+    if (total === 0) return null;
+    return { rate: Math.round(find / total * 100), total };
+},
+
     // 🆕 获取"最近的周二 09:00"的时间戳（本周二 09:00 还没到就用上周二）
 getThisTuesday9am() {
     const now = new Date();
@@ -3167,6 +3210,12 @@ getThisDay9am() {
         today9.setDate(today9.getDate() - 1);
     }
     return today9.getTime();
+},
+// 🆕 获取"当前整点"的时间戳
+getThisHourStart() {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    return now.getTime();
 },
     
     renderShichenWeights() {
@@ -3843,38 +3892,116 @@ updateHistoryTable() {
         });
         document.getElementById('prTaskStatsRow').innerHTML = tsHtml;
 
+        // 🆕 根据 filterState.range 决定列的展示方式
         let shichenHtml = '';
+        const range = this.filterState.range || 'all';
+        const isLast6w = range === 'last6w';
+        const isLast6d = range === 'last6d';
+        const isLast6h = range === 'last6h';
+
         if (totalRingsWithShichen > 0) {
-            let rows = '';
-            shichenNames.forEach(name => {
-                const sc = shichenStats[name];
-                if (sc.total > 0) {
-                    const findPct = Math.round((sc.find / sc.total) * 100);
-                    const itemPct = Math.round((sc.items / sc.total) * 100);
-                    const isDay = ['辰', '巳', '午', '未', '申', '酉'].includes(name);
-                    const dayNight = isDay ? '☀️' : '🌙';
-                    rows += `<tr>
-                        <td style="padding:3px 6px;text-align:center;font-weight:600;">${dayNight}${name}时</td>
-                        <td style="padding:3px 6px;text-align:center;">${sc.total}</td>
-                        <td style="padding:3px 6px;text-align:center;color:#2d6b9e;">${sc.find} (${findPct}%)</td>
-                        <td style="padding:3px 6px;text-align:center;color:#b45a3a;">${sc.items} (${itemPct}%)</td>
-                    </tr>`;
+            let tableHeader = '';
+            let tableRows = '';
+
+            if (isLast6w || isLast6d || isLast6h) {
+                // 🆕 "最近 6 周/天/小时"：列 = 前6 + 前5 + ... + 前1 + 本周/今天/本小时
+                const isHour = isLast6h;
+                const isDay = isLast6d;
+                const unit = isHour ? '时' : (isDay ? '天' : '周');
+                const thisLabel = isHour ? '本时' : (isDay ? '今天' : '本周');
+
+                // 表头：时辰 | 总环数 | 前6X | 前5X | ... | 前1X | 本X | 物品
+                tableHeader = `<tr style="background:#1f344b;color:#f0ebdd;">
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">时辰</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">总环数</th>`;
+                for (let n = 6; n >= 1; n--) {
+                    tableHeader += `<th style="padding:3px 6px;text-align:center;font-weight:600;">前${n}${unit}</th>`;
                 }
-            });
-            
+                tableHeader += `<th style="padding:3px 6px;text-align:center;font-weight:600;">${thisLabel}</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">物品</th>
+                </tr>`;
+
+                // 先算每个时辰的"总环数"和"物品"
+                const baseStats = {};
+                for (let name of shichenNames) {
+                    baseStats[name] = { total: 0, items: 0 };
+                }
+                // 遍历 data 里每个 h 的 rings
+                for (let h of data) {
+                    for (let r of h.rings || []) {
+                        let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+                        if (!schName || !baseStats[schName]) continue;
+                        baseStats[schName].total++;
+                        if (['ring60', 'ring70', 'ring80', 'flower', 'cook', 'medicine', 'furn1', 'furn2', 'var_common', 'var_spec'].includes(r.typeKey)) {
+                            baseStats[schName].items++;
+                        }
+                    }
+                }
+
+                // 对每个时辰，算每列（前6X 到 本X）的 find/total
+                shichenNames.forEach(name => {
+                    const isDaytime = ['辰', '巳', '午', '未', '申', '酉'].includes(name);
+                    const dayNight = isDaytime ? '☀️' : '🌙';
+                    const base = baseStats[name];
+
+                    // 计算 6 列的数据
+                    const cellRates = [];
+                    for (let n = 6; n >= 1; n--) {
+                        const cellRate = this.calcShichenRateInPeriod(name, n, isHour, isDay);
+                        cellRates.push(cellRate);
+                    }
+                    // 本X
+                    const thisRate = this.calcShichenRateInPeriod(name, 0, isHour, isDay);
+                    cellRates.push(thisRate);
+
+                    tableRows += `<tr>
+                        <td style="padding:3px 6px;text-align:center;font-weight:600;">${dayNight}${name}时</td>
+                        <td style="padding:3px 6px;text-align:center;">${base.total}</td>`;
+                    
+                    for (let cr of cellRates) {
+                        if (cr === null) {
+                            tableRows += `<td style="padding:3px 6px;text-align:center;color:#c0ccd8;">—</td>`;
+                        } else {
+                            const color = cr.rate < 33 ? '#2d6b2d' : (cr.rate < 45 ? '#b48b3a' : '#c0392b');
+                            tableRows += `<td style="padding:3px 6px;text-align:center;"><span style="color:${color};font-weight:700;">${cr.rate}%</span><span style="color:#8ab0c8;font-size:0.6rem;">(${cr.total})</span></td>`;
+                        }
+                    }
+                    
+                    const itemPct = base.total > 0 ? Math.round((base.items / base.total) * 100) : 0;
+                    tableRows += `<td style="padding:3px 6px;text-align:center;color:#b45a3a;">${base.items} (${itemPct}%)</td>
+                    </tr>`;
+                });
+            } else {
+                // 原逻辑：时辰 | 总环数 | 找人 | 物品
+                tableHeader = `<tr style="background:#1f344b;color:#f0ebdd;">
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">时辰</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">总环数</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">找人</th>
+                    <th style="padding:3px 6px;text-align:center;font-weight:600;">物品</th>
+                </tr>`;
+                shichenNames.forEach(name => {
+                    const sc = shichenStats[name];
+                    if (sc.total > 0) {
+                        const findPct = Math.round((sc.find / sc.total) * 100);
+                        const itemPct = Math.round((sc.items / sc.total) * 100);
+                        const isDay = ['辰', '巳', '午', '未', '申', '酉'].includes(name);
+                        const dayNight = isDay ? '☀️' : '🌙';
+                        tableRows += `<tr>
+                            <td style="padding:3px 6px;text-align:center;font-weight:600;">${dayNight}${name}时</td>
+                            <td style="padding:3px 6px;text-align:center;">${sc.total}</td>
+                            <td style="padding:3px 6px;text-align:center;color:#2d6b9e;">${sc.find} (${findPct}%)</td>
+                            <td style="padding:3px 6px;text-align:center;color:#b45a3a;">${sc.items} (${itemPct}%)</td>
+                        </tr>`;
+                    }
+                });
+            }
+
             shichenHtml = `
                 <div style="margin-top:10px;padding:8px 10px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
                     <div style="font-weight:700;font-size:0.8rem;color:#1f3b53;margin-bottom:6px;">⏱️ 时辰分布分析 <span style="font-weight:400;font-size:0.65rem;color:#5a7a94;">— 共 ${totalRingsWithShichen} 环有数据</span></div>
                     <table style="width:100%;border-collapse:collapse;font-size:0.7rem;">
-                        <thead>
-                            <tr style="background:#1f344b;color:#f0ebdd;">
-                                <th style="padding:3px 6px;text-align:center;font-weight:600;">时辰</th>
-                                <th style="padding:3px 6px;text-align:center;font-weight:600;">总环数</th>
-                                <th style="padding:3px 6px;text-align:center;font-weight:600;">找人</th>
-                                <th style="padding:3px 6px;text-align:center;font-weight:600;">物品</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
+                        <thead>${tableHeader}</thead>
+                        <tbody>${tableRows}</tbody>
                     </table>
                 </div>
             `;
