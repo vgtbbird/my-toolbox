@@ -3279,11 +3279,14 @@ getThisHourStart() {
     }
 
     // 从 records 累加（主统计）
-    // 🆕 只在"全部/天数"模式下算，选了"最近 N 轮"就不算当前未结算的
     if (roundLimit === 0) {
         for (let r of this.records) {
             if (r.deleted) continue;
-            let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            if (!r.timestamp) continue;
+            // 🆕 按 weekStart/weekEnd 过滤
+            if (weekStart && r.timestamp < weekStart) continue;
+            if (weekEnd && r.timestamp >= weekEnd) continue;
+            let schName = this.getShichen(r.timestamp).name;
             if (!schName) continue;
             if (!stats[schName]) continue;
             stats[schName].total++;
