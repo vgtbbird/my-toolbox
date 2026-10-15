@@ -1715,7 +1715,7 @@ document.getElementById('prMarkRelogBtn').addEventListener('click', function() {
     PetRingModule.pendingRelog = true;
     const nextIndex = PetRingModule.records.length + 1;
     document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
-    document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+    document.getElementById('prRelogStatus').style.color = '#c0392b';
     document.getElementById('prCancelRelogBtn').style.display = 'inline-block';
     PetRingModule.updateRelogAnalysis(); 
 });
@@ -2604,7 +2604,7 @@ undoRecord() {
         this.pendingRelog = true;
         const nextIndex = visibleRecords.length;
         document.getElementById('prRelogStatus').textContent = `⏳ 第${nextIndex}环待标记 🔁`;
-        document.getElementById('prRelogStatus').style.color = '#dbbd7c';
+        document.getElementById('prRelogStatus').style.color = '#c0392b';
         document.getElementById('prCancelRelogBtn').style.display = 'inline-block';
     }
 
@@ -3484,7 +3484,7 @@ updateRelogAnalysis() {
 
     if (!hasPending) {
         container.innerHTML = `🔁 已标记第${lastRelogIdx + 1}环重登，等待任务记录...`;
-        container.style.color = '#dbbd7c';
+        container.style.color = '#c0392b';
         return;
     }
 
