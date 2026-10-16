@@ -356,6 +356,8 @@ const PetRingModule = {
         });
 
         container.querySelectorAll('.stat-item .num, .stat-item .label, .module .title, .module .title .hint, .income-item label, .income-item .fixed-val, .flex-between span, .footer-note, .history-item, .price-item label, .price-item input, .task-count, .ds-item label, .ds-item input, .filter-item label, .filter-item input, .filter-item select, .table-wrap td, .table-wrap th').forEach(el => {
+            // 🆕 跳过带 profit-positive / profit-negative 类的元素
+            if (el.classList.contains('profit-positive') || el.classList.contains('profit-negative')) return;
             el.style.setProperty('color', s.textColor, 'important');
         });
 
