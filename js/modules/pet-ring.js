@@ -3264,15 +3264,14 @@ getThisHourStart() {
             .slice(0, roundLimit);
     }
 
-    // 从 history 累加（主统计）
+    // 从 history 累加（主统计）—— 🆕 按环（r.timestamp）过滤
     for (let h of historyList) {
-        const histTime = new Date(h.date).getTime();
-        if (cutoff && histTime < cutoff) continue;
-        // 🆕 周范围过滤
-        if (weekStart && histTime < weekStart) continue;
-        if (weekEnd && histTime >= weekEnd) continue;
         for (let r of h.rings || []) {
-            let schName = r.timestamp ? this.getShichen(r.timestamp).name : (r.shichen || '');
+            if (!r.timestamp) continue;
+            if (cutoff && r.timestamp < cutoff) continue;
+            if (weekStart && r.timestamp < weekStart) continue;
+            if (weekEnd && r.timestamp >= weekEnd) continue;
+            let schName = this.getShichen(r.timestamp).name;
             if (!schName) continue;
             if (!stats[schName]) continue;
             stats[schName].total++;
@@ -3761,11 +3760,51 @@ updateHistoryTable() {
         let predictionDiffs = [];
         let predictionCount = 0;
 
+        // 🆕 先按"环级"过滤（用于时辰分布）
+        const range = this.filterState.range || 'all';
+        let ringFilterStart = 0, ringFilterEnd = Infinity;
+        if (range !== 'all') {
+            const now = Date.now();
+            if (range.startsWith('r')) {
+                // 最近 N 轮：已经按轮过滤了 data，环级不用再过滤
+            } else if (range === 'thisWeek') {
+                ringFilterStart = this.getThisTuesday9am();
+            } else if (range === 'lastWeek') {
+                const thisTue = this.getThisTuesday9am();
+                ringFilterStart = thisTue - 7 * 24 * 3600 * 1000;
+                ringFilterEnd = thisTue;
+            } else if (range.startsWith('w')) {
+                const n = parseInt(range.slice(1)) || 0;
+                const thisTue = this.getThisTuesday9am();
+                ringFilterStart = thisTue - n * 7 * 24 * 3600 * 1000;
+                ringFilterEnd = thisTue - (n - 1) * 7 * 24 * 3600 * 1000;
+            } else if (range.startsWith('d')) {
+                const n = parseInt(range.slice(1)) || 0;
+                const thisDay9 = this.getThisDay9am();
+                ringFilterStart = thisDay9 - n * 24 * 3600 * 1000;
+                ringFilterEnd = (n === 0) ? Infinity : thisDay9 - (n - 1) * 24 * 3600 * 1000;
+            } else if (range.startsWith('last6')) {
+                // 最近6周/天/小时：只用于"列展示"，这里先不管
+            } else {
+                const days = parseInt(range);
+                if (!isNaN(days) && days > 0) {
+                    ringFilterStart = now - days * 24 * 3600 * 1000;
+                }
+            }
+        }
+
         for (let h of data) {
+            // 轮级统计（利润、成本）还是按轮
             totalCost += h.totalCost || 0;
             totalIncome += h.totalIncome || 0;
             totalProfit += h.profit || 0;
-            totalRings += h.ringCount || 0;
+           // 🆕 "总环数"改成按环统计（只算时间范围内的环）
+            for (let r of h.rings || []) {
+                if (!r.timestamp) continue;
+                if (r.timestamp < ringFilterStart) continue;
+                if (r.timestamp >= ringFilterEnd) continue;
+                totalRings++;
+            }
             totalScore += h.totalScore || 0;
             if (h.profit > 0) winCount++;
             else if (h.profit < 0) loseCount++;
@@ -3777,15 +3816,13 @@ updateHistoryTable() {
                 }
             }
 
+            // 🆕 时辰分布：按环级过滤
             if (h.rings && h.rings.length > 0) {
                 for (let r of h.rings) {
-                    // 🆕 优先用 timestamp 现算，兼容旧数据 r.shichen
-                    let schName = '';
-                    if (r.timestamp) {
-                        schName = this.getShichen(r.timestamp).name;
-                    } else if (r.shichen) {
-                        schName = r.shichen;
-                    }
+                    if (!r.timestamp) continue;
+                    if (r.timestamp < ringFilterStart) continue;
+                    if (r.timestamp >= ringFilterEnd) continue;
+                    const schName = this.getShichen(r.timestamp).name;
                     if (schName) {
                         const sc = shichenStats[schName];
                         if (sc) {
