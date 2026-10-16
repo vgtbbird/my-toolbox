@@ -3761,7 +3761,6 @@ updateHistoryTable() {
         let predictionCount = 0;
 
         // 🆕 先按"环级"过滤（用于时辰分布）
-        const range = this.filterState.range || 'all';
         let ringFilterStart = 0, ringFilterEnd = Infinity;
         if (range !== 'all') {
             const now = Date.now();
