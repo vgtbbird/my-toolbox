@@ -3761,6 +3761,7 @@ updateHistoryTable() {
         let predictionCount = 0;
 
         // 🆕 先按"环级"过滤（用于时辰分布）
+        const range = this.filterState.range || 'all';
         let ringFilterStart = 0, ringFilterEnd = Infinity;
         if (range !== 'all') {
             const now = Date.now();
@@ -3928,7 +3929,6 @@ updateHistoryTable() {
 
         // 🆕 根据 filterState.range 决定列的展示方式
         let shichenHtml = '';
-        const range = this.filterState.range || 'all';
         const isLast6w = range === 'last6w';
         const isLast6d = range === 'last6d';
         const isLast6h = range === 'last6h';
