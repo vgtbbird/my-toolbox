@@ -77,12 +77,12 @@ const PetRingModule = {
     ITEM_TYPES: [
         { key: 'find', label: '找人', icon: '🔍', score: 1, defaultPrice: 0, color: '#2d6b9e' },
         { key: 'ring60', label: '60环', icon: '🔵', score: 2, defaultPrice: 1.5, color: '#3a7a4a' },
-        { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
-        { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
-        { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
-        { key: 'cook', label: '烹饪', icon: '🍳', score: 2, defaultPrice: 0.8, color: '#3a9e7a' },
-        { key: 'medicine', label: '三药', icon: '💊', score: 2, defaultPrice: 1.5, color: '#7a5a9e' },
         { key: 'furn1', label: '1级家具', icon: '🪑', score: 2, defaultPrice: 1, color: '#7a8a3a' },
+        { key: 'medicine', label: '三药', icon: '💊', score: 2, defaultPrice: 1.5, color: '#7a5a9e' },
+        { key: 'cook', label: '烹饪', icon: '🍳', score: 2, defaultPrice: 0.8, color: '#3a9e7a' },
+        { key: 'ring70', label: '70环', icon: '🟠', score: 3, defaultPrice: 3, color: '#b87a3a' },
+        { key: 'flower', label: '花卉乐器', icon: '🌸', score: 4, defaultPrice: 2, color: '#c45a7a' },
+        { key: 'ring80', label: '80环', icon: '🟣', score: 5, defaultPrice: 8, color: '#8f3a8f' },
         { key: 'furn2', label: '2级家具', icon: '🛋️', score: 5, defaultPrice: 3, color: '#8a6a3a' },
         { key: 'var_common', label: '非指定变异', icon: '🐉', score: 5, defaultPrice: 30, color: '#b45a3a' },
         { key: 'var_spec', label: '指定变异', icon: '⭐', score: 10, defaultPrice: 80, color: '#b43a7a' }
@@ -91,7 +91,7 @@ const PetRingModule = {
     DEDUCT_TYPES: [
         { key: 'skip', label: '跳过任务', icon: '⏭️', defaultDeduct: 20, defaultCost: 0 },
         { key: 'normal_pet', label: '交普通召唤兽', icon: '🐾', defaultDeduct: 15, defaultCost: 0.5 },
-        { key: 'low_quality', label: '不足品质烹饪/三药', icon: '⚠️', defaultDeduct: 4, defaultCost: 0.3 }
+        { key: 'low_quality', label: '品质不足三药/烹饪', icon: '⚠️', defaultDeduct: 4, defaultCost: 0.3 }
     ],
 
     INITIAL_COST: 10,
