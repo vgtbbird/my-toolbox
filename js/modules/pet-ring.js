@@ -2211,17 +2211,11 @@ showRingsDetailModal(entry) {
 
     const typeCount = entry.typeCount || {};
     let hasTypeCount = false;
-    const hasMedicine = entry.rings ? entry.rings.some(r => r.typeKey === 'medicine') : false;
 
     for (let [key, count] of Object.entries(typeCount)) {
         if (count > 0) {
             hasTypeCount = true;
-            let label;
-            if (key === 'cook') {
-                label = hasMedicine ? '烹饪' : '烹饪三药';
-            } else {
-                label = this.getTaskLabel(key);
-            }
+            let label = this.getTaskLabel(key);
             html += `<span style="display:inline-block;background:#f0f5fb;padding:2px 10px;border-radius:12px;margin:2px;font-size:0.7rem;">${label}: ${count}次</span>`;
         }
     }
