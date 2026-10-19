@@ -2882,8 +2882,10 @@ showAllRingsModal() {
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);';
 
     let listHtml = '';
-    for (let i = 0; i < visibleRecords.length; i++) {
-        const r = visibleRecords[i];
+    // 🆕 倒序排列，最新的在最前面
+    const reversedRecords = [...visibleRecords].reverse();
+    for (let i = 0; i < reversedRecords.length; i++) {
+        const r = reversedRecords[i];
         const type = this.ITEM_TYPES.find(t => t.key === r.typeKey);
         const label = type ? type.label : r.typeKey;
         const sc = r.score < 0 ? r.score : `+${r.score}`;
