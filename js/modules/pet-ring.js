@@ -2306,9 +2306,6 @@ showRingsDetailModal(entry) {
         }
         for (let r of rings) {
             let label = r.label || this.getTaskLabel(r.typeKey);
-            if (r.typeKey === 'cook' && !hasMedicine) {
-                label = '烹饪三药';
-            }
             const relogIcon = r.isRelog ? ' 🔁' : '';
             const bgColor = r.isRelog ? '#fdf8ee' : 'transparent';
             // 🆕 从 timestamp 现算
