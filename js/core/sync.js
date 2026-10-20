@@ -1,11 +1,5 @@
 // ============================================================
 //  ☁️ 同步核心 - 精简版（按 runId + 环次 id 合并）
-//  核心逻辑：
-//    1. history：按 _id 取并集，同 _id 取 _createdAt 新的
-//    2. records：过滤已结算 runId → 按 runId 分组 → 组内按 id 去重 → 过滤 deleted
-//    3. config：按 configLastUpdated 取新
-//    4. 上传：只上传本地数据，不写回本地
-//    5. 拉取：合并本地和云端，写回本地
 // ============================================================
 const GitHubSync = {
     token: '',
@@ -64,21 +58,18 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  合并：配置类模块（只有配置，按 configLastUpdated 取新）
+    //  合并：配置类模块
     // ============================================================
     mergeConfigModule(moduleKey, localData, cloudData) {
-        // 🆕 跑商：以云端为主（实时协作看价格）
         if (moduleKey === 'shopHelper') {
-            if (!cloudData || Object.keys(cloudData).length === 0) {
-                return localData;
-            }
+            if (!cloudData || Object.keys(cloudData).length === 0) return localData;
             return cloudData;
         }
-        // 其他配置类模块：按 configLastUpdated 取新，没有则取本地
         const localTime = localData?.configLastUpdated || localData?.__sync_v3?._meta?.lastUpdated || 0;
         const cloudTime = cloudData?.configLastUpdated || cloudData?.__sync_v3?._meta?.lastUpdated || 0;
         return (cloudTime > localTime) ? cloudData : localData;
     },
+
     // ============================================================
     //  合并：数据类模块（有 history + records）
     // ============================================================
@@ -152,12 +143,10 @@ const GitHubSync = {
             const cloudList = cloudByRun[runId] || [];
             
             const idMap = new Map();
-            // 先放云端的
             for (let r of cloudList) {
                 const id = r._id || r.id || r.payload?.id;
                 if (id) idMap.set(id, r);
             }
-            // 再放本地的，同 id 取 deletedAt/createdAt 更新的
             for (let r of localList) {
                 const id = r._id || r.id || r.payload?.id;
                 if (!id) continue;
@@ -184,9 +173,21 @@ const GitHubSync = {
         const mergedTopHistory = mergedHistory.map(h => h.payload || h).filter(Boolean);
         const mergedTopRecords = mergedRecords.map(r => r.payload || r).filter(Boolean);
         
+        // 🆕 核心修复：如果本地配置是空的，坚决使用云端的配置！
+        const finalPrices = Object.keys(localData.prices || {}).length > 0 ? localData.prices : cloudData.prices;
+        const finalDeductSettings = Object.keys(localData.deductSettings || {}).length > 0 ? localData.deductSettings : cloudData.deductSettings;
+        const finalUiSettings = localData.uiSettings || cloudData.uiSettings;
+        const finalExchangeRate = localData.exchangeRate || cloudData.exchangeRate;
+        const finalFruitPrice = localData.fruitPrice || cloudData.fruitPrice;
+
         return {
             ...cloudData,
             ...localData,
+            prices: finalPrices,
+            deductSettings: finalDeductSettings,
+            uiSettings: finalUiSettings,
+            exchangeRate: finalExchangeRate,
+            fruitPrice: finalFruitPrice,
             history: mergedTopHistory,
             records: mergedTopRecords,
             __sync_v3: {
@@ -271,18 +272,14 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  同步上传（只上传本地数据，不合并，不写回本地）
+    //  同步上传
     // ============================================================
     async syncToCloud() {
         const token = this.getToken();
         if (!token) return { success: false, message: '❌ 请先设置 Gitee Token' };
 
-        // 1. 获取本地所有数据
         const localModules = Storage.getAllForSync();
-        
-        // 2. 直接上传本地数据
         const finalModules = { ...localModules };
-        
         const payload = {
             version: '3.0',
             timestamp: new Date().toISOString(),
@@ -326,7 +323,7 @@ const GitHubSync = {
     },
 
     // ============================================================
-    //  从云端拉取（合并本地和云端，写回本地）
+    //  从云端拉取
     // ============================================================
     async syncFromCloud() {
         const token = this.getToken();
@@ -355,26 +352,34 @@ const GitHubSync = {
             for (let [moduleKey, cloudData] of Object.entries(content.modules)) {
                 const localData = Storage.get(moduleKey, {});
                 
-                // 如果本地为空，直接用云端
                 if (!localData || Object.keys(localData).length === 0) {
                     localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(cloudData));
                     continue;
                 }
                 
-                // 合并
+                // 🆕 防丢校验（双重保险）
+                if (cloudData.prices && Object.keys(cloudData.prices).length > 0) {
+                    const localPrices = localData.prices || {};
+                    if (Object.keys(localPrices).length === 0) {
+                        console.log(`⚠️ ${moduleKey}: 本地配置为空，强制使用云端配置`);
+                        localData.prices = cloudData.prices;
+                        localData.deductSettings = cloudData.deductSettings;
+                        localData.exchangeRate = cloudData.exchangeRate;
+                        localData.fruitPrice = cloudData.fruitPrice;
+                        localData.uiSettings = cloudData.uiSettings;
+                    }
+                }
+                
                 const mergedData = this.mergeModule(moduleKey, localData, cloudData);
                 
-                // 统计新增历史
                 const localHistCount = (localData.__sync_v3?.history || localData.history || []).length;
                 const mergedHistCount = (mergedData.__sync_v3?.history || []).length;
                 addedHistoryCount += Math.max(0, mergedHistCount - localHistCount);
                 
-                // 写回本地
                 localStorage.setItem(`toolbox_${moduleKey}`, JSON.stringify(mergedData));
                 mergedCount++;
             }
 
-            // 刷新页面
             setTimeout(() => {
                 console.log('🔄 页面刷新...');
                 location.reload();
