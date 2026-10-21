@@ -426,15 +426,19 @@ showFullSettleModal(stats) {
     const furnValue = furnPrice;
 
     const score = stats.totalScore;
-    let autoLevel = 90;
-    let autoLevelLabel = '90级';
+    let autoLevel = 80;
+    let autoLevelLabel = '80级';
+    let bookCount = 1; // 🆕 默认是 1
+    
     if (score >= 222) { autoLevel = 150; autoLevelLabel = '150级'; }
     else if (score >= 212) { autoLevel = 140; autoLevelLabel = '140级'; }
     else if (score >= 202) { autoLevel = 130; autoLevelLabel = '130级'; }
     else if (score >= 192) { autoLevel = 120; autoLevelLabel = '120级'; }
     else if (score >= 182) { autoLevel = 110; autoLevelLabel = '110级'; }
     else if (score >= 172) { autoLevel = 100; autoLevelLabel = '100级'; }
-    else { autoLevel = 90; autoLevelLabel = '90级'; }
+    else if (score >= 162) { autoLevel = 90; autoLevelLabel = '90级'; }
+    else if (score >= 152) { autoLevel = 80; autoLevelLabel = '80级'; bookCount = 3; } // 🆕 只有这里变成 3
+    else { autoLevel = 80; autoLevelLabel = '80级'; bookCount = 1; } // 152 以下也是 1
 
     const bookTypeList = ['剑', '刀', '枪', '锤', '斧', '扇', '鞭', '魔棒', '双环', '双剑', '飘带', '爪刺', '伞', '灯笼', '法杖', '宝珠', '巨剑', '弓', '棍', '铠甲', '女衣', '项链', '发钗', '头盔', '腰带', '鞋子'];
 
@@ -479,7 +483,7 @@ showFullSettleModal(stats) {
                 ` : ''}
 
                 <div id="settleBookNameContainer" style="margin-bottom:8px;">
-                    <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类</div>
+                    <div style="font-size:0.7rem;color:#5a7a94;margin-bottom:4px;">选择书种类 ${bookCount > 1 ? `(获得 ${bookCount} 个)` : ''}</div>
                     <div style="display:flex;flex-wrap:wrap;gap:4px;" id="settleBookNameList">
                         ${bookTypeList.map(t => `
                             <button class="ph-book-name-btn" data-name="${t}" style="padding:2px 10px;border-radius:12px;border:1px solid #bccad9;background:#f0f4f8;color:#1f3b53;cursor:pointer;font-size:0.65rem;margin:2px;">${t}</button>
@@ -606,15 +610,17 @@ showFullSettleModal(stats) {
     function updateDisplayText() {
         const typeText = currentBookType === '书' ? '📕 书' : '📗 铁';
         let detailText = '';
+        const countText = bookCount > 1 ? ` × ${bookCount}` : ''; // 🆕
+
         if (currentBookType === '书') {
             const levelLabel = autoLevel + '级';
             const nameLabel = currentBookName || '请选择';
-            detailText = `${typeText} ${levelLabel} ${nameLabel}`;
+            detailText = `${typeText} ${levelLabel} ${nameLabel}${countText}`;
         } else {
             if (currentIsZhanpo) {
                 detailText = `${typeText} 战魄`;
             } else {
-                detailText = `${typeText} ${autoLevel}级铁`;
+                detailText = `${typeText} ${autoLevel}级铁${countText}`;
             }
         }
         document.getElementById('settleBookDisplayText').textContent = detailText;
@@ -663,14 +669,16 @@ showFullSettleModal(stats) {
         if (bookType === '书' && !bookNameInput) { alert('请选择书种类！'); return; }
 
         let bookDisplayName = '';
+        const countText = bookCount > 1 ? ` × ${bookCount}` : ''; // 🆕 只有大于 1 才加数量后缀
+        
         if (bookType === '铁') {
             if (currentIsZhanpo) {
                 bookDisplayName = '战魄';
             } else {
-                bookDisplayName = `${bookLevel}级铁`;
+                bookDisplayName = `${bookLevel}级铁${countText}`;
             }
         } else {
-            bookDisplayName = `${bookLevel}级${bookNameInput}书`;
+            bookDisplayName = `${bookLevel}级${bookNameInput}书${countText}`;
         }
 
         const rewardType = overlay.querySelector('input[name="rewardType"]:checked')?.value || 'points200';
