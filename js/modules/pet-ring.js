@@ -287,18 +287,19 @@ const PetRingModule = {
         const historyV3 = this.history.map((h, idx) => {
             return {
                 _id: h.runId ? `petRing_run_${h.runId}` : `petRing_hist_${Date.now()}_${idx}`,
-                _createdAt: h._createdAt || h.date || new Date().toISOString(),
-                payload: h
+                _createdAt: h._createdAt || h.date || new Date().toISOString()
+                // 🆕 删掉了 payload: h
             };
         });
+        
         const settledRunIds = [...new Set(this.history.map(h => h.runId || h.payload?.runId).filter(Boolean))];
         
         const recordsV3 = this.records.map((r, idx) => ({
             _id: r.id || r._id || `${this.currentRunId}_rec_${idx}`,
             _index: r.taskIndex || idx + 1,
             _createdAt: r._createdAt || r.date || new Date().toISOString(),
-            runId: r.runId || this.currentRunId || 'unknown_run',
-            payload: r
+            runId: r.runId || this.currentRunId || 'unknown_run'
+            // 🆕 删掉了 payload: r
         }));
         
         const recordsLastUpdated = this.records.length > 0
