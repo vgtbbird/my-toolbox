@@ -77,8 +77,14 @@ const GitHubSync = {
         localData = localData || {};
         cloudData = cloudData || {};
         
-        const localV3 = localData.__sync_v3 || { history: [], records: [] };
-        const cloudV3 = cloudData.__sync_v3 || { history: [], records: [] };
+        let localV3 = localData.__sync_v3 || { history: [], records: [] };
+        let cloudV3 = cloudData.__sync_v3 || { history: [], records: [] };
+
+        // 🆕 终极补全：不管是不是瘦身版，强制把缺失的 payload 补齐！
+        if (localV3.history) localV3.history.forEach((h, i) => { if (!h.payload && localData.history && localData.history[i]) h.payload = localData.history[i]; });
+        if (cloudV3.history) cloudV3.history.forEach((h, i) => { if (!h.payload && cloudData.history && cloudData.history[i]) h.payload = cloudData.history[i]; });
+        if (localV3.records) localV3.records.forEach((r, i) => { if (!r.payload && localData.records && localData.records[i]) r.payload = localData.records[i]; });
+        if (cloudV3.records) cloudV3.records.forEach((r, i) => { if (!r.payload && cloudData.records && cloudData.records[i]) r.payload = cloudData.records[i]; });
         
         // ===== 1. 合并 history（按 _id 去重） =====
         const historyMap = new Map();
