@@ -121,6 +121,7 @@ const PetRingModule = {
         this.updateStats();
         this.updateHistory();
         this.updateAdvice();
+        this.renderRadar();
         this.updateBookList();
         this.updateHistoryTable();
         this.saveData();
@@ -1457,15 +1458,57 @@ showFullSettleModal(stats) {
 
             <div class="module" id="prModuleAdvice">
                 <div class="module-header">
-                    <div class="title">🧠 决策建议 <span class="tag" id="prAdviceTag" style="background:#4c7a5c;color:#fff;font-size:0.55rem;padding:2px 12px;border-radius:30px;">实时分析</span></div>
+                    <div class="title">📡 高发雷达 <span class="hint">— 寻找高分任务的周期规律</span></div>
                     <button class="toggle-btn" id="prToggleAdviceBtn">👁️ 隐藏</button>
                 </div>
                 <div class="module-body" id="prAdviceBody">
-                    <div class="advice-text" style="background:#1f344b;border-radius:14px;padding:8px 14px;color:#f2eee4;">
-                        <div><span class="advice-label" style="color:#b9cfde;font-weight:600;">📊 当前状态：</span><span id="prAdviceStatus" style="color:#f2eee4;">点击下方任务按钮，开始记录本轮跑环数据。</span></div>
-                        <div id="prAdvicePrediction" style="display:none;margin-top:4px;"><span class="advice-label" style="color:#b9cfde;font-weight:600;">🔮 积分预测：</span><span id="prAdvicePredictionText" style="color:#f2eee4;">-</span></div>
-                        <div id="prAdviceStrategy" style="display:none;margin-top:4px;"><span class="advice-label" style="color:#b9cfde;font-weight:600;">🎯 策略建议：</span><span id="prAdviceStrategyText" style="color:#f2eee4;">-</span></div>
+                    
+                    <!-- 筛选控制区 -->
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 12px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">时间范围</label>
+                            <select id="radarTimeRange" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
+                                <optgroup label="最近 N 周">
+                                    <option value="recent_1">最近 1 周</option>
+                                    <option value="recent_2">最近 2 周</option>
+                                    <option value="recent_3">最近 3 周</option>
+                                    <option value="recent_4" selected>最近 4 周</option>
+                                </optgroup>
+                                <optgroup label="前 N 周">
+                                    <option value="past_1">前 1 周</option>
+                                    <option value="past_2">前 2 周</option>
+                                    <option value="past_3">前 3 周</option>
+                                    <option value="past_4">前 4 周</option>
+                                </optgroup>
+                                <option value="all">全部历史</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">高分档位</label>
+                            <select id="radarScoreType" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
+                                <option value="4">≥ 4分 (花乐/80环)</option>
+                                <option value="5" selected>≥ 5分 (80环/变异)</option>
+                                <option value="10">= 10分 (指定变异)</option>
+                            </select>
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">分布方式</label>
+                            <select id="radarViewMode" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
+                                <option value="shichen">按时辰 (子丑寅卯)</option>
+                                <option value="minute">按分钟 (0分~59分)</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn-small" id="radarRefreshBtn" style="background:#4c7a5c;color:#fff;border:none;padding:4px 16px;border-radius:30px;font-weight:600;cursor:pointer;">🔄 刷新分析</button>
                     </div>
+
+                    <!-- 结果展示区 -->
+                    <div id="radarResults" style="background:#f8faff;border-radius:12px;padding:10px;border:1px solid #dce5ef;min-height:150px;max-height:300px;overflow-y:auto;">
+                        <div style="text-align:center;color:#8ab0c8;padding:20px;font-size:0.8rem;">请点击刷新分析查看规律</div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1776,6 +1819,10 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             const body = document.getElementById('prAdviceBody');
             body.classList.toggle('hidden');
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
+        });
+                // 🆕 高发雷达刷新按钮
+        document.getElementById('radarRefreshBtn').addEventListener('click', function() {
+            PetRingModule.renderRadar();
         });
         document.getElementById('prTogglePriceBtn').addEventListener('click', function() {
             const body = document.getElementById('prPriceBody');
@@ -3630,6 +3677,116 @@ updateHistoryTable() {
     }
 },
 
+
+        // 🆕 高发雷达统计
+    renderRadar() {
+        const timeRange = document.getElementById('radarTimeRange').value;
+        const scoreType = parseInt(document.getElementById('radarScoreType').value);
+        const viewMode = document.getElementById('radarViewMode').value;
+        const container = document.getElementById('radarResults');
+        
+        const now = Date.now();
+        // 计算二刷分界线（读取跑商设置，默认 3分20秒）
+        const shopData = Storage.get('shopHelper', {});
+        const refreshMinute = shopData.secondMinute !== undefined ? shopData.secondMinute : 3;
+        const refreshSecond = shopData.secondSecond !== undefined ? shopData.secondSecond : 20;
+        
+        // 本周起点（周二 9点，复用之前的方法）
+        const thisTue = this.getThisTuesday9am();
+        const weekMs = 7 * 24 * 3600 * 1000;
+
+        // 1. 确定时间范围
+        let startTs = 0, endTs = now;
+        if (timeRange.startsWith('recent_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            startTs = now - n * weekMs;
+        } else if (timeRange.startsWith('past_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            endTs = now - (n - 1) * weekMs;
+            startTs = now - n * weekMs;
+        }
+        
+        // 2. 初始化统计结构
+        const scoreMap = { find: 1, ring60: 2, ring70: 3, ring80: 5, flower: 4, cook: 2, medicine: 2, furn1: 2, furn2: 5, var_common: 5, var_spec: 10 };
+        const stats = {};
+        let totalTasks = 0;
+        let targetTasks = 0;
+
+        if (viewMode === 'shichen') {
+            const shichenNames = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+            shichenNames.forEach(n => stats[n] = { total: 0, target: 0 });
+        } else {
+            for (let i = 0; i < 60; i++) stats[i] = { total: 0, target: 0 };
+        }
+
+        // 3. 遍历历史数据
+        for (let h of this.history) {
+            if (h.hidden) continue;
+            for (let r of h.rings || []) {
+                if (!r.timestamp || r.isDeduct) continue;
+                if (r.timestamp < startTs || r.timestamp > endTs) continue;
+
+                const date = new Date(r.timestamp);
+                let key;
+                if (viewMode === 'shichen') {
+                    key = this.getShichen(r.timestamp).name;
+                } else {
+                    key = date.getMinutes();
+                }
+
+                const sc = scoreMap[r.typeKey] || 0;
+                stats[key].total++;
+                totalTasks++;
+                if (sc >= scoreType) {
+                    stats[key].target++;
+                    targetTasks++;
+                }
+            }
+        }
+
+        // 4. 排序并生成 HTML
+        let list = [];
+        for (let [key, data] of Object.entries(stats)) {
+            if (data.total > 0) {
+                const pct = (data.target / data.total * 100).toFixed(1);
+                list.push({ key: key, total: data.total, target: data.target, pct: parseFloat(pct) });
+            }
+        }
+        
+        // 按出现率（pct）降序排序
+        list.sort((a, b) => b.pct - a.pct);
+
+        if (list.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#8ab0c8;padding:20px;">该时间段内无数据</div>';
+            return;
+        }
+
+        let html = `<div style="font-size:0.75rem;font-weight:600;color:#1f3b53;margin-bottom:8px;">
+            📊 ${timeRange.startsWith('recent') ? '最近' + timeRange.split('_')[1] : (timeRange.startsWith('past') ? '前' + timeRange.split('_')[1] : '全部')} 
+            周内共有 ${totalTasks} 个任务，其中目标高分任务 ${targetTasks} 个 (总体概率 ${(targetTasks/totalTasks*100).toFixed(2)}%)
+        </div>`;
+        
+        html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">`;
+        
+        list.forEach((item, index) => {
+            let label = viewMode === 'shichen' ? `${item.key}时` : `${item.key}分`;
+            // 如果按分钟排，前 3 名标红
+            const isTop = index < 3 && item.target > 0;
+            const bg = isTop ? '#fff5f5' : 'white';
+            const border = isTop ? '1px solid #f0c0c0' : '1px solid #eef2f7';
+            const titleColor = isTop ? '#c0392b' : '#1f3b53';
+            
+            html += `<div style="background:${bg};border:${border};border-radius:8px;padding:6px 8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size:0.75rem;font-weight:700;color:${titleColor};">${label}</div>
+                <div style="font-size:0.9rem;font-weight:700;color:#2d6b2d;margin:2px 0;">${item.pct}%</div>
+                <div style="font-size:0.6rem;color:#8ab0c8;">${item.target} / ${item.total}</div>
+            </div>`;
+        });
+        
+        html += `</div>`;
+        container.innerHTML = html;
+    },
+    
     updateAdvice() {
         const stats = this.calcStats();
         const income = this.calcIncome(stats);
