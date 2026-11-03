@@ -119,9 +119,6 @@ const PetRingModule = {
         this.loadData();
         this.injectRadarStyle(); // 🆕 加载雷达动画
         this.buildUI();
-                setTimeout(() => {
-            this.renderRadar();
-        }, 500);
         this.bindEvents();
         App.register(this);
         this.render();
@@ -132,6 +129,11 @@ const PetRingModule = {
             this.updateTimeAndShichen();
         }, 1000);
         this.updateTimeAndShichen();
+
+        // 🆕 延迟加载雷达
+        setTimeout(() => {
+            this.renderRadar();
+        }, 600);
     },
 
     render() {
@@ -1476,12 +1478,14 @@ showFullSettleModal(stats) {
     </div>
             </div>
 
+            <div class="module" id="prModuleAdvice">
                 <div class="module-header" id="radarHeader">
                     <div class="title">📡 高发雷达 <span class="hint">— 寻找高分任务的周期规律</span>
                         <span id="radarWarning" style="display:none; padding:2px 10px; border-radius:30px; font-size:0.7rem; font-weight:700; margin-left:8px; box-shadow:0 0 10px rgba(255,0,0,0.5);"></span>
                     </div>
                     <button class="toggle-btn" id="prToggleAdviceBtn">👁️ 隐藏</button>
                 </div>
+                <div class="module-body" id="prAdviceBody">
                     
                     <!-- 筛选控制区 -->
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 12px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
