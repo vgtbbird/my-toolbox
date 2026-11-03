@@ -36,6 +36,23 @@ const PetRingModule = {
         deductColor: '#d4a0a0'
     },
 
+        // 🆕 动态注入雷达预警闪烁动画
+    injectRadarStyle() {
+        if (document.getElementById('radar-style')) return;
+        const style = document.createElement('style');
+        style.id = 'radar-style';
+        style.innerHTML = `
+            @keyframes radarPulse {
+                0% { transform: scale(1); opacity: 0.8; }
+                100% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 15px rgba(192, 57, 43, 0.8); }
+            }
+            .radar-pulse-active {
+                animation: radarPulse 1s infinite alternate !important;
+            }
+        `;
+        document.head.appendChild(style);
+    },
+
     // ========== 概率表 ==========
     taskProb: {
         find: 0.43,
@@ -100,6 +117,7 @@ const PetRingModule = {
     // ========== 生命周期 ==========
     init() {
         this.loadData();
+        this.injectRadarStyle(); // 🆕 加载雷达动画
         this.buildUI();
         this.bindEvents();
         App.register(this);
