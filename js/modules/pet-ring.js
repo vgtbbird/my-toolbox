@@ -180,18 +180,20 @@ const PetRingModule = {
         }, 200);
     },
 
-    // 🆕 独立的高发预警更新器
+    // 🆕 独立的高发预警更新器（强制双核预警）
     updateRadarWarning() {
         const warningEl = document.getElementById('radarWarning');
         const headerEl = document.getElementById('radarHeader');
         const radarResults = document.getElementById('radarResults');
+        
+        // 卡片元素
         const shichenCard = document.getElementById('prCurrentShichenCard');
         const shichenBestMinEl = document.getElementById('prCurrentShichenBestMin');
-        
-        // 如果还没渲染出雷达结果，直接退出
+        const timeCard = document.getElementById('prCurrentTimeCard');
+
         if (!warningEl || !headerEl || !radarResults || radarResults.innerHTML.includes('请点击刷新分析')) return;
 
-        // 🆕 1. 读取框选的范围
+        // 1. 读取框选范围
         const timeRange = document.getElementById('radarTimeRange')?.value || 'recent_4';
         const scoreType = parseInt(document.getElementById('radarScoreType')?.value || '5');
         const now = Date.now();
@@ -207,7 +209,9 @@ const PetRingModule = {
             startTs = this.getThisTuesday9am() - n * weekMs;
         }
 
+        const nowD = new Date();
         const currentShichen = this.getShichen(Date.now()).name;
+        const currentMinute = nowD.getMinutes();
 
         const scoreMap = { find: 1, ring60: 2, ring70: 3, ring80: 5, flower: 4, cook: 2, medicine: 2, furn1: 2, furn2: 5, var_common: 5, var_spec: 10 };
         const shichenStats = {};
@@ -217,7 +221,7 @@ const PetRingModule = {
         ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'].forEach(n => shichenStats[n] = { total: 0, target: 0 });
         for (let i = 0; i < 60; i++) minuteStats[i] = { total: 0, target: 0 };
 
-        // 🆕 2. 遍历框选范围内的数据
+        // 遍历数据统计
         for (let h of this.history) {
             if (h.hidden) continue;
             for (let r of h.rings || []) {
@@ -228,50 +232,79 @@ const PetRingModule = {
                 const min = new Date(r.timestamp).getMinutes();
                 const sc = scoreMap[r.typeKey] || 0;
 
-                // 统计该时辰的总概率
                 shichenStats[sch].total++;
-                if (sc >= scoreType) shichenStats[sch].target++;
-
-                // 🆕 核心：只统计【当前时辰】下，各个分钟段的表现
-                if (sch === currentShichen) {
-                    minuteStats[min].total++;
-                    if (sc >= scoreType) minuteStats[min].target++;
+                minuteStats[min].total++;
+                
+                if (sc >= scoreType) {
+                    shichenStats[sch].target++;
+                    minuteStats[min].target++;
                 }
             }
         }
 
-        // 判断当前时辰是否在高发前3名
+        // 2. 判定时辰前 3 和分钟前 5
         const shichenList = Object.entries(shichenStats).map(([k, v]) => ({ key: k, pct: v.total > 0 ? v.target / v.total : 0 })).sort((a, b) => b.pct - a.pct);
         const shichenTop3 = shichenList.slice(0, 3).map(i => i.key);
         const isShichenHigh = shichenTop3.includes(currentShichen) && (shichenStats[currentShichen].target / (shichenStats[currentShichen].total || 1) > 0.08);
 
+        const minuteList = Object.entries(minuteStats).map(([k, v]) => ({ key: parseInt(k), pct: v.total > 0 ? v.target / v.total : 0 })).sort((a, b) => b.pct - a.pct);
+        const minuteTop5 = minuteList.slice(0, 5).map(i => i.key);
+        const isMinuteHigh = minuteTop5.includes(currentMinute) && (minuteStats[currentMinute].target / (minuteStats[currentMinute].total || 1) > 0.08);
+
+        // 3. 组装报警文案（如果双发共振，在头顶文字里也提示一下）
         let isTriggered = false;
         let warningText = '';
+        let isDoubleTriggered = false;
 
-        // 点亮卡片 & 计算专属分钟
+        if (isShichenHigh && isMinuteHigh) {
+            isTriggered = true;
+            isDoubleTriggered = true;
+            warningText = `⚡ 双发共振！高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分`;
+        } else if (isShichenHigh) {
+            isTriggered = true;
+            warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
+        } else if (isMinuteHigh) {
+            isTriggered = true;
+            warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
+        }
+
+        // 4. 点亮【当前时辰】卡片 & 算专属分钟
         if (shichenCard && shichenBestMinEl) {
             if (isShichenHigh) {
-                isTriggered = true;
-                warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
-                
-                // 卡片高亮闪烁
                 shichenCard.style.background = '#fff3cd';
                 shichenCard.style.border = '2px solid #f0d060';
                 shichenCard.style.boxShadow = '0 0 15px rgba(240, 208, 96, 0.6)';
                 shichenCard.classList.add('radar-pulse-active');
 
-                // 🆕 提取最佳分钟段（只算当前时辰内部）
+                // 提取最佳分钟段（只算当前时辰内部）
                 let bestMins = [];
                 for (let m in minuteStats) {
                     const d = minuteStats[m];
-                    // 样本过滤：这个分钟在框选范围内至少跑过 3 次，且出过高分
+                    // 这里的 minuteStats 包含了全部数据，但我们要在内部过滤出当前时辰的数据
+                    // 实际上前面的遍历已经记录了全局，这里需要重新筛选当前时辰的数据
+                }
+                // 重新遍历一遍，只算当前时辰里的分钟分布
+                const currentShichenMins = {};
+                for (let i = 0; i < 60; i++) currentShichenMins[i] = { total: 0, target: 0 };
+                for (let h of this.history) {
+                    if (h.hidden) continue;
+                    for (let r of h.rings || []) {
+                        if (!r.timestamp || r.isDeduct || r.timestamp < startTs || r.timestamp > endTs) continue;
+                        if (this.getShichen(r.timestamp).name === currentShichen) {
+                            const min = new Date(r.timestamp).getMinutes();
+                            const sc = scoreMap[r.typeKey] || 0;
+                            currentShichenMins[min].total++;
+                            if (sc >= scoreType) currentShichenMins[min].target++;
+                        }
+                    }
+                }
+                for (let m in currentShichenMins) {
+                    const d = currentShichenMins[m];
                     if (d.total >= 3 && d.target > 0) {
                         bestMins.push({ min: parseInt(m), pct: d.target / d.total });
                     }
                 }
                 bestMins.sort((a, b) => b.pct - a.pct);
-                
-                // 拼接显示的字符串
                 const bestMinsStr = bestMins.slice(0, 3).map(m => `${m.min}分`).join(' ');
                 
                 if (bestMinsStr) {
@@ -280,9 +313,7 @@ const PetRingModule = {
                 } else {
                     shichenBestMinEl.style.display = 'none';
                 }
-
             } else {
-                // 解除高亮
                 shichenCard.style.background = '';
                 shichenCard.style.border = '';
                 shichenCard.style.boxShadow = '';
@@ -291,16 +322,44 @@ const PetRingModule = {
             }
         }
 
-        // 顶部预警提示
+        // 5. 点亮【当前时间】卡片
+        if (timeCard) {
+            if (isMinuteHigh) {
+                timeCard.style.background = '#fff3cd';
+                timeCard.style.border = '2px solid #f0d060';
+                timeCard.style.boxShadow = '0 0 15px rgba(240, 208, 96, 0.6)';
+                timeCard.classList.add('radar-pulse-active');
+            } else {
+                timeCard.style.background = '';
+                timeCard.style.border = '';
+                timeCard.style.boxShadow = '';
+                timeCard.classList.remove('radar-pulse-active');
+            }
+        }
+
+        // 6. 顶部雷达文字闪烁
         if (isTriggered) {
             if (warningEl.style.display !== 'inline-block' || warningEl.textContent !== warningText) {
                 warningEl.style.display = 'inline-block';
                 warningEl.textContent = warningText;
-                warningEl.style.background = '#c0392b';
-                warningEl.style.color = '#fff';
-                warningEl.style.animation = 'radarPulse 1s infinite alternate';
+                
+                if (isDoubleTriggered) {
+                    warningEl.style.background = 'linear-gradient(90deg, #ff0000, #ff8c00, #ff0000)';
+                    warningEl.style.backgroundSize = '200% 100%';
+                    warningEl.style.color = '#fff';
+                    warningEl.style.fontSize = '0.8rem';
+                    warningEl.style.padding = '4px 14px';
+                    warningEl.style.animation = 'radarPulse 0.5s infinite alternate, gradientShift 1.5s infinite linear';
+                    headerEl.style.background = '#fff3cd';
+                } else {
+                    warningEl.style.background = '#c0392b';
+                    warningEl.style.color = '#fff';
+                    warningEl.style.fontSize = '0.7rem';
+                    warningEl.style.padding = '2px 10px';
+                    warningEl.style.animation = 'radarPulse 1s infinite alternate';
+                    headerEl.style.background = '#fff5f5';
+                }
                 warningEl.classList.add('radar-pulse-active');
-                headerEl.style.background = '#fff5f5';
             }
         } else {
             if (warningEl.style.display !== 'none') {
@@ -1524,7 +1583,7 @@ showFullSettleModal(stats) {
             </div>
 
             <div class="stats-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
-                <div class="stat-item"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
+                <div class="stat-item" id="prCurrentTimeCard" style="transition: all 0.3s;"><div class="num" id="prCurrentTime">--:--:--</div><div class="label">🕐 当前时间</div></div>
                 <div class="stat-item" id="prCurrentShichenCard" style="transition: all 0.3s;">
                     <div class="num" id="prCurrentShichen">--</div>
                     <div class="label">⏱️ 当前时辰</div>
