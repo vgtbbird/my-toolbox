@@ -1456,12 +1456,12 @@ showFullSettleModal(stats) {
     </div>
             </div>
 
-            <div class="module" id="prModuleAdvice">
-                <div class="module-header">
-                    <div class="title">📡 高发雷达 <span class="hint">— 寻找高分任务的周期规律</span></div>
+                <div class="module-header" id="radarHeader">
+                    <div class="title">📡 高发雷达 <span class="hint">— 寻找高分任务的周期规律</span>
+                        <span id="radarWarning" style="display:none; padding:2px 10px; border-radius:30px; font-size:0.7rem; font-weight:700; margin-left:8px; box-shadow:0 0 10px rgba(255,0,0,0.5);"></span>
+                    </div>
                     <button class="toggle-btn" id="prToggleAdviceBtn">👁️ 隐藏</button>
                 </div>
-                <div class="module-body" id="prAdviceBody">
                     
                     <!-- 筛选控制区 -->
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 12px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
@@ -3785,6 +3785,53 @@ updateHistoryTable() {
         
         html += `</div>`;
         container.innerHTML = html;
+
+        // 🆕 动态预警判断：当前是否踩在“高发期”上
+        const warningEl = document.getElementById('radarWarning');
+        const headerEl = document.getElementById('radarHeader');
+        if (!warningEl || !headerEl) return;
+
+        const nowD = new Date();
+        const currentShichen = this.getShichen(Date.now()).name;
+        const currentMinute = nowD.getMinutes();
+        
+        let isTriggered = false;
+        let warningText = '';
+
+        if (viewMode === 'shichen') {
+            // 取按概率排序的前 3 名（且必须有数据）
+            const topShichen = list.slice(0, 3).filter(item => item.target > 0);
+            if (topShichen.some(item => item.key === currentShichen)) {
+                isTriggered = true;
+                warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
+            }
+        } else {
+            // 取按概率排序的前 10 名（且必须有数据）
+            const topMinutes = list.slice(0, 10).filter(item => item.target > 0);
+            if (topMinutes.some(item => item.key === currentMinute)) {
+                isTriggered = true;
+                warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
+            }
+        }
+
+        // 触发动画
+        if (isTriggered) {
+            warningEl.style.display = 'inline-block';
+            warningEl.textContent = warningText;
+            warningEl.style.background = '#c0392b';
+            warningEl.style.color = '#fff';
+            
+            // 加上 CSS 呼吸闪烁动画
+            warningEl.style.animation = 'radarPulse 1s infinite alternate';
+            
+            // 顺便把整个头部背景稍微染红
+            headerEl.style.background = '#fff5f5';
+            headerEl.style.transition = 'background 0.3s';
+        } else {
+            warningEl.style.display = 'none';
+            warningEl.style.animation = 'none';
+            headerEl.style.background = 'transparent';
+        }
     },
     
     updateAdvice() {
