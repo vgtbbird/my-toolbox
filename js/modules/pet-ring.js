@@ -295,7 +295,7 @@ const PetRingModule = {
         }
         for (let m in currentShichenMins) {
             const d = currentShichenMins[m];
-            if (d.total >= 3 && d.target > 0) {
+            if (d.total >= 1 && d.target > 0) { // 🆕 改成 >= 1
                 bestMins.push({ min: parseInt(m), pct: d.target / d.total });
             }
         }
