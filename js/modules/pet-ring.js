@@ -119,6 +119,9 @@ const PetRingModule = {
         this.loadData();
         this.injectRadarStyle(); // 🆕 加载雷达动画
         this.buildUI();
+                setTimeout(() => {
+            this.renderRadar();
+        }, 500);
         this.bindEvents();
         App.register(this);
         this.render();
@@ -139,7 +142,6 @@ const PetRingModule = {
         this.updateStats();
         this.updateHistory();
         this.updateAdvice();
-        this.renderRadar();
         this.updateBookList();
         this.updateHistoryTable();
         this.saveData();
@@ -3839,15 +3841,16 @@ updateHistoryTable() {
             warningEl.style.background = '#c0392b';
             warningEl.style.color = '#fff';
             
-            // 加上 CSS 呼吸闪烁动画
-            warningEl.style.animation = 'radarPulse 1s infinite alternate';
+            // 🆕 改用 classList 控制，避免 style 属性覆盖
+            warningEl.classList.add('radar-pulse-active');
             
             // 顺便把整个头部背景稍微染红
             headerEl.style.background = '#fff5f5';
             headerEl.style.transition = 'background 0.3s';
         } else {
             warningEl.style.display = 'none';
-            warningEl.style.animation = 'none';
+            // 🆕 移除动画类
+            warningEl.classList.remove('radar-pulse-active');
             headerEl.style.background = 'transparent';
         }
     },
