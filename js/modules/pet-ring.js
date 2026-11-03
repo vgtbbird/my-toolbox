@@ -200,7 +200,9 @@ const PetRingModule = {
         const weekMs = 7 * 24 * 3600 * 1000;
         let startTs = 0, endTs = now;
 
-        if (timeRange.startsWith('recent_')) {
+        if (timeRange === 'thisWeek') {
+            startTs = this.getThisTuesday9am();
+        } else if (timeRange.startsWith('recent_')) {
             const n = parseInt(timeRange.split('_')[1]);
             startTs = this.getThisTuesday9am() - (n - 1) * weekMs;
         } else if (timeRange.startsWith('past_')) {
@@ -1728,6 +1730,7 @@ showFullSettleModal(stats) {
                         <div style="display:flex;align-items:center;gap:4px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">时间范围</label>
                             <select id="radarTimeRange" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
+                                <option value="thisWeek">🔥 本周</option>
                                 <optgroup label="最近 N 周">
                                     <option value="recent_1">最近 1 周</option>
                                     <option value="recent_2">最近 2 周</option>
@@ -3957,13 +3960,15 @@ updateHistoryTable() {
 
         // 1. 确定时间范围
         let startTs = 0, endTs = now;
-        if (timeRange.startsWith('recent_')) {
+        if (timeRange === 'thisWeek') {
+            startTs = this.getThisTuesday9am();
+        } else if (timeRange.startsWith('recent_')) {
             const n = parseInt(timeRange.split('_')[1]);
-            startTs = now - n * weekMs;
+            startTs = this.getThisTuesday9am() - (n - 1) * weekMs;
         } else if (timeRange.startsWith('past_')) {
             const n = parseInt(timeRange.split('_')[1]);
-            endTs = now - (n - 1) * weekMs;
-            startTs = now - n * weekMs;
+            endTs = this.getThisTuesday9am() - (n - 1) * weekMs;
+            startTs = this.getThisTuesday9am() - n * weekMs;
         }
         
         // 2. 初始化统计结构
@@ -4021,9 +4026,14 @@ updateHistoryTable() {
             return;
         }
 
+        let rangeLabel = '';
+        if (timeRange === 'thisWeek') rangeLabel = '本周';
+        else if (timeRange === 'all') rangeLabel = '全部历史';
+        else if (timeRange.startsWith('recent_')) rangeLabel = '最近' + timeRange.split('_')[1] + '周';
+        else if (timeRange.startsWith('past_')) rangeLabel = '前' + timeRange.split('_')[1] + '周';
+
         let html = `<div style="font-size:0.75rem;font-weight:600;color:#1f3b53;margin-bottom:8px;">
-            📊 ${timeRange.startsWith('recent') ? '最近' + timeRange.split('_')[1] : (timeRange.startsWith('past') ? '前' + timeRange.split('_')[1] : '全部')} 
-            周内共有 ${totalTasks} 个任务，其中目标高分任务 ${targetTasks} 个 (总体概率 ${(targetTasks/totalTasks*100).toFixed(2)}%)
+            📊 ${rangeLabel}内共有 ${totalTasks} 个任务，其中目标高分任务 ${targetTasks} 个 (总体概率 ${(totalTasks > 0 ? (targetTasks/totalTasks*100).toFixed(2) : '0.00')}%)
         </div>`;
         
         html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">`;
