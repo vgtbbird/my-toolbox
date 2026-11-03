@@ -143,7 +143,6 @@ const PetRingModule = {
         }
         this.updateStats();
         this.updateHistory();
-        this.updateAdvice();
         this.updateBookList();
         this.updateHistoryTable();
         this.saveData();
@@ -167,6 +166,13 @@ const PetRingModule = {
             showHiddenStatus.textContent = this.showHidden ? '（含隐藏数据）' : '（隐藏已过滤）';
             showHiddenStatus.style.color = this.showHidden ? '#c0392b' : '#5a7a94';
         }
+
+        // 🆕 初始化雷达数据
+        setTimeout(() => {
+            if (document.getElementById('radarResults')) {
+                this.renderRadar();
+            }
+        }, 200);
     },
 
     updateTimeAndShichen() {
@@ -3859,105 +3865,6 @@ updateHistoryTable() {
         }
     },
     
-    updateAdvice() {
-        const stats = this.calcStats();
-        const income = this.calcIncome(stats);
-        const status = document.getElementById('prAdviceStatus');
-        const pred = document.getElementById('prAdvicePrediction');
-        const predText = document.getElementById('prAdvicePredictionText');
-        const strat = document.getElementById('prAdviceStrategy');
-        const stratText = document.getElementById('prAdviceStrategyText');
-        const tag = document.getElementById('prAdviceTag');
-
-        if (stats.ringCount === 0) {
-            status.textContent = '点击下方任务按钮，开始记录本轮跑环数据。（初始成本10万）';
-            pred.style.display = 'none';
-            strat.style.display = 'none';
-            tag.textContent = '等待开始';
-            return;
-        }
-
-        const exp = this.calculateExpectation();
-        const expectedFinal = exp.expectedScore;
-        const runRings = stats.ringCount;
-        const remaining = 100 - runRings;
-
-        const benchmark = runRings * 2;
-        const diff = stats.totalScore - benchmark;
-
-        let statusMsg = `已完成 ${runRings} 环，剩余 ${remaining} 环，总成本 ${stats.totalCost.toFixed(1)} 万，当前积分 ${stats.totalScore}。`;
-        if (diff > 0) {
-            statusMsg += ` 🟢 领先 ${diff} 分`;
-        } else if (diff < 0) {
-            statusMsg += ` 🔴 落后 ${Math.abs(diff)} 分`;
-        } else {
-            statusMsg += ` ⚪ 持平`;
-        }
-        status.textContent = statusMsg;
-
-        pred.style.display = 'block';
-        let reward = '';
-        let rewardColor = '#f2eee4';
-        if (expectedFinal >= 222) {
-            reward = '🏆 150级书铁或160级战魄';
-            rewardColor = '#f0d060';
-        } else if (expectedFinal >= 212) {
-            reward = '🌟 140级书铁';
-            rewardColor = '#60d080';
-        } else if (expectedFinal >= 202) {
-            reward = '📈 130级书铁';
-            rewardColor = '#60b0e0';
-        } else if (expectedFinal >= 192) {
-            reward = '📊 120级书铁';
-            rewardColor = '#b0c8e0';
-        } else if (expectedFinal >= 182) {
-            reward = '📉 110级书铁';
-            rewardColor = '#e0a060';
-        } else if (expectedFinal >= 172) {
-            reward = '📉 100级书铁';
-            rewardColor = '#e0a060';
-        } else {
-            reward = '⚠️ 80-90级书铁或家具图纸';
-            rewardColor = '#e06060';
-        }
-
-        predText.innerHTML = `按概率模型预测终积分约 <strong style="color:${rewardColor};">${expectedFinal.toFixed(0)}</strong> 分，预计获得 <strong style="color:${rewardColor};">${reward}</strong>`;
-
-        if (runRings === 20) {
-            this._prediction20 = Math.round(expectedFinal);
-        } else if (runRings < 20) {
-            this._prediction20 = null;
-        }
-
-        strat.style.display = 'block';
-        let strategyMsg = '';
-        let tagText = '';
-
-        if (expectedFinal >= 222 && diff >= 0) {
-            strategyMsg = '🎯 <strong style="color:#f0d060;">冲刺150级策略</strong>：当前有望冲击150级奖励！建议全部正常交，遇到指定变异提交（+10分），80环正常交，不要跳。<br>💡 预计成本较高，但收益也最高。';
-            tagText = '🏆 冲150级';
-        } else if (expectedFinal >= 192 && diff >= -5) {
-            strategyMsg = '📊 <strong style="color:#60d080;">标准跑环策略</strong>：目标120-140级书铁。建议60/70环正常交，80环视善恶点情况，变异任务评估成本。<br>💡 投入产出均衡，适合多数玩家。';
-            tagText = '📈 标准模式';
-        } else if (expectedFinal >= 172) {
-            strategyMsg = '📉 <strong style="color:#e0a060;">乞丐跑环策略</strong>：目标100-110级书铁或保底。建议80环用善恶点或跳过，变异任务交普通或跳过，只交低价物品。<br>💡 成本最低，保底收益。';
-            tagText = '🛡️ 乞丐模式';
-        } else {
-            strategyMsg = '⚠️ <strong style="color:#e06060;">保底策略</strong>：当前积分偏低，建议以保底修炼果为目标。80环以上全部跳过，变异任务跳过或交普通，只交60环、烹饪、三药等低价物品。<br>💡 控制成本，等待下一轮。';
-            tagText = '💤 保底模式';
-        }
-
-        if (expectedFinal >= 212) {
-            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#f0d060;">✅ 建议提交</span>（有望冲140-150级）';
-        } else if (expectedFinal >= 192 && diff >= 0) {
-            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#60d080;">🤔 视成本决定</span>（低价可交，高价跳过）';
-        } else {
-            strategyMsg += '<br>🐉 <strong>变异策略</strong>：遇到指定变异 <span style="color:#e06060;">❌ 不建议提交</span>（收益有限，保底为主）';
-        }
-
-        stratText.innerHTML = strategyMsg;
-        tag.textContent = tagText;
-    },
 
     updateAnalysis(data) {
         // 🆕 二次保险：强制排除隐藏
