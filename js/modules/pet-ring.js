@@ -281,17 +281,27 @@ const PetRingModule = {
         let bestMins = [];
         const currentShichenMins = {};
         for (let i = 0; i < 60; i++) currentShichenMins[i] = { total: 0, target: 0 };
+        
+        // 🆕 把提取当前时辰分钟的逻辑封装一下
+        const processMins = (r) => {
+            if (!r.timestamp || r.isDeduct || r.timestamp < startTs || r.timestamp > endTs) return;
+            if (this.getShichen(r.timestamp).name === currentShichen) {
+                const min = new Date(r.timestamp).getMinutes();
+                const sc = scoreMap[r.typeKey] || 0;
+                currentShichenMins[min].total++;
+                if (sc >= scoreType) currentShichenMins[min].target++;
+            }
+        };
+
+        // 统计历史
         for (let h of this.history) {
             if (h.hidden) continue;
-            for (let r of h.rings || []) {
-                if (!r.timestamp || r.isDeduct || r.timestamp < startTs || r.timestamp > endTs) continue;
-                if (this.getShichen(r.timestamp).name === currentShichen) {
-                    const min = new Date(r.timestamp).getMinutes();
-                    const sc = scoreMap[r.typeKey] || 0;
-                    currentShichenMins[min].total++;
-                    if (sc >= scoreType) currentShichenMins[min].target++;
-                }
-            }
+            for (let r of h.rings || []) processMins(r);
+        }
+        // 🆕 统计当前未结算的环
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            processMins(r);
         }
         for (let m in currentShichenMins) {
             const d = currentShichenMins[m];
