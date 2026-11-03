@@ -220,25 +220,32 @@ const PetRingModule = {
         ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'].forEach(n => shichenStats[n] = { total: 0, target: 0 });
         for (let i = 0; i < 60; i++) minuteStats[i] = { total: 0, target: 0 };
 
-        // 遍历数据统计
+        // 遍历数据统计（包含历史与当前未结算）
+        const processWarningRing = (r) => {
+            if (!r.timestamp || r.isDeduct) return;
+            if (r.timestamp < startTs || r.timestamp > endTs) return;
+
+            const sch = this.getShichen(r.timestamp).name;
+            const min = new Date(r.timestamp).getMinutes();
+            const sc = scoreMap[r.typeKey] || 0;
+
+            shichenStats[sch].total++;
+            minuteStats[min].total++;
+            
+            if (sc >= scoreType) {
+                shichenStats[sch].target++;
+                minuteStats[min].target++;
+            }
+        };
+
         for (let h of this.history) {
             if (h.hidden) continue;
-            for (let r of h.rings || []) {
-                if (!r.timestamp || r.isDeduct) continue;
-                if (r.timestamp < startTs || r.timestamp > endTs) continue;
-
-                const sch = this.getShichen(r.timestamp).name;
-                const min = new Date(r.timestamp).getMinutes();
-                const sc = scoreMap[r.typeKey] || 0;
-
-                shichenStats[sch].total++;
-                minuteStats[min].total++;
-                
-                if (sc >= scoreType) {
-                    shichenStats[sch].target++;
-                    minuteStats[min].target++;
-                }
-            }
+            for (let r of h.rings || []) processWarningRing(r);
+        }
+        // 🆕 加入当前未结算的数据
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            processWarningRing(r);
         }
 
         // 2. 判定时辰前 4 和 分钟前 10
@@ -3973,29 +3980,38 @@ updateHistoryTable() {
             for (let i = 0; i < 60; i++) stats[i] = { total: 0, target: 0 };
         }
 
-        // 3. 遍历历史数据
+        // 3. 遍历历史数据 & 当前正在跑的 records
+        const processRing = (r) => {
+            if (!r.timestamp || r.isDeduct) return;
+            if (r.timestamp < startTs || r.timestamp > endTs) return;
+
+            const date = new Date(r.timestamp);
+            let key;
+            if (viewMode === 'shichen') {
+                key = this.getShichen(r.timestamp).name;
+            } else {
+                key = date.getMinutes();
+            }
+
+            const sc = scoreMap[r.typeKey] || 0;
+            if (!stats[key]) stats[key] = { total: 0, target: 0 };
+            stats[key].total++;
+            totalTasks++;
+            if (sc >= scoreType) {
+                stats[key].target++;
+                targetTasks++;
+            }
+        };
+
+        // 统计已结算
         for (let h of this.history) {
             if (h.hidden) continue;
-            for (let r of h.rings || []) {
-                if (!r.timestamp || r.isDeduct) continue;
-                if (r.timestamp < startTs || r.timestamp > endTs) continue;
-
-                const date = new Date(r.timestamp);
-                let key;
-                if (viewMode === 'shichen') {
-                    key = this.getShichen(r.timestamp).name;
-                } else {
-                    key = date.getMinutes();
-                }
-
-                const sc = scoreMap[r.typeKey] || 0;
-                stats[key].total++;
-                totalTasks++;
-                if (sc >= scoreType) {
-                    stats[key].target++;
-                    targetTasks++;
-                }
-            }
+            for (let r of h.rings || []) processRing(r);
+        }
+        // 🆕 统计当前未结算
+        for (let r of this.records) {
+            if (r.deleted) continue;
+            processRing(r);
         }
 
         // 4. 排序并生成 HTML
