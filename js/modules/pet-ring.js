@@ -49,6 +49,11 @@ const PetRingModule = {
             .radar-pulse-active {
                 animation: radarPulse 1s infinite alternate !important;
             }
+            /* 🆕 双发共振专属：金红色流光 */
+            @keyframes gradientShift {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 200% 50%; }
+            }
         `;
         document.head.appendChild(style);
     },
@@ -235,35 +240,66 @@ const PetRingModule = {
 
         let isTriggered = false;
         let warningText = '';
+        let isDoubleTriggered = false;
+
+        // 独立判断：当前时辰是否在前3，当前分钟是否在前10
+        const shichenTop3 = list.slice(0, 3).map(i => i.key);
+        const minuteTop10 = list.slice(0, 10).map(i => i.key);
+        const isShichenHigh = shichenTop3.includes(currentShichen);
+        const isMinuteHigh = minuteTop10.includes(currentMinute);
 
         if (viewMode === 'shichen') {
-            const top3 = list.slice(0, 3).map(i => i.key);
-            if (top3.includes(currentShichen)) {
+            if (isShichenHigh) {
                 isTriggered = true;
                 warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
+                // 🆕 如果当前分钟也在前10，触发双发共振
+                if (isMinuteHigh) {
+                    isDoubleTriggered = true;
+                    warningText = `⚡ 双发共振！高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分`;
+                }
             }
         } else {
-            const top10 = list.slice(0, 10).map(i => i.key);
-            if (top10.includes(currentMinute)) {
+            if (isMinuteHigh) {
                 isTriggered = true;
                 warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
+                // 🆕 如果当前时辰也在前3，触发双发共振
+                if (isShichenHigh) {
+                    isDoubleTriggered = true;
+                    warningText = `⚡ 双发共振！高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分`;
+                }
             }
         }
 
         if (isTriggered) {
-            // 防止每次都重绘导致闪烁
             if (warningEl.style.display !== 'inline-block' || warningEl.textContent !== warningText) {
                 warningEl.style.display = 'inline-block';
                 warningEl.textContent = warningText;
-                warningEl.style.background = '#c0392b';
-                warningEl.style.color = '#fff';
+                
+                if (isDoubleTriggered) {
+                    // 🆕 双发共振：金色渐变背景 + 极速闪烁
+                    warningEl.style.background = 'linear-gradient(90deg, #ff0000, #ff8c00, #ff0000)';
+                    warningEl.style.backgroundSize = '200% 100%';
+                    warningEl.style.color = '#fff';
+                    warningEl.style.fontSize = '0.8rem';
+                    warningEl.style.padding = '4px 14px';
+                    warningEl.style.animation = 'radarPulse 0.5s infinite alternate, gradientShift 1.5s infinite linear';
+                    headerEl.style.background = '#fff3cd'; // 整个头部变金色
+                } else {
+                    // 普通预警
+                    warningEl.style.background = '#c0392b';
+                    warningEl.style.color = '#fff';
+                    warningEl.style.fontSize = '0.7rem';
+                    warningEl.style.padding = '2px 10px';
+                    warningEl.style.animation = 'radarPulse 1s infinite alternate';
+                    headerEl.style.background = '#fff5f5';
+                }
                 warningEl.classList.add('radar-pulse-active');
-                headerEl.style.background = '#fff5f5';
             }
         } else {
             if (warningEl.style.display !== 'none') {
                 warningEl.style.display = 'none';
                 warningEl.classList.remove('radar-pulse-active');
+                warningEl.style.animation = 'none';
                 headerEl.style.background = 'transparent';
             }
         }
