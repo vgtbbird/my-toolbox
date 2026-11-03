@@ -244,12 +244,12 @@ const PetRingModule = {
 
         // 2. 判定时辰前 3 和分钟前 5
         const shichenList = Object.entries(shichenStats).map(([k, v]) => ({ key: k, pct: v.total > 0 ? v.target / v.total : 0 })).sort((a, b) => b.pct - a.pct);
-        const shichenTop3 = shichenList.slice(0, 3).map(i => i.key);
-        const isShichenHigh = shichenTop3.includes(currentShichen) && (shichenStats[currentShichen].target / (shichenStats[currentShichen].total || 1) > 0.08);
+        const shichenTop4 = shichenList.slice(0, 4).map(i => i.key); // 🆕 改成 4
+        const isShichenHigh = shichenTop4.includes(currentShichen) && (shichenStats[currentShichen].target / (shichenStats[currentShichen].total || 1) > 0.08);
 
         const minuteList = Object.entries(minuteStats).map(([k, v]) => ({ key: parseInt(k), pct: v.total > 0 ? v.target / v.total : 0 })).sort((a, b) => b.pct - a.pct);
-        const minuteTop5 = minuteList.slice(0, 5).map(i => i.key);
-        const isMinuteHigh = minuteTop5.includes(currentMinute) && (minuteStats[currentMinute].target / (minuteStats[currentMinute].total || 1) > 0.08);
+        const minuteTop10 = minuteList.slice(0, 10).map(i => i.key); // 🆕 改成 10
+        const isMinuteHigh = minuteTop10.includes(currentMinute) && (minuteStats[currentMinute].target / (minuteStats[currentMinute].total || 1) > 0.08);
 
         // 3. 组装报警文案（如果双发共振，在头顶文字里也提示一下）
         let isTriggered = false;
