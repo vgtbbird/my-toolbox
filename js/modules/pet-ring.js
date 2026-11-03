@@ -175,6 +175,102 @@ const PetRingModule = {
         }, 200);
     },
 
+        // 🆕 独立的高发预警更新器
+    updateRadarWarning() {
+        const warningEl = document.getElementById('radarWarning');
+        const headerEl = document.getElementById('radarHeader');
+        const radarResults = document.getElementById('radarResults');
+        if (!warningEl || !headerEl || !radarResults || radarResults.innerHTML.includes('请点击刷新分析')) return;
+
+        // 获取当前设置
+        const viewMode = document.getElementById('radarViewMode')?.value || 'shichen';
+        const scoreType = parseInt(document.getElementById('radarScoreType')?.value || '5');
+        
+        const nowD = new Date();
+        const currentShichen = this.getShichen(Date.now()).name;
+        const currentMinute = nowD.getMinutes();
+        
+        // 我们要基于当前页面上的数据去重新分析
+        // 最稳妥的办法是用同样的逻辑再算一遍排行榜（只算轻量级排行）
+        const timeRange = document.getElementById('radarTimeRange')?.value || 'recent_4';
+        const now = Date.now();
+        const weekMs = 7 * 24 * 3600 * 1000;
+        let startTs = 0, endTs = now;
+        if (timeRange.startsWith('recent_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            startTs = this.getThisTuesday9am() - (n - 1) * weekMs;
+        } else if (timeRange.startsWith('past_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            endTs = this.getThisTuesday9am() - (n - 1) * weekMs;
+            startTs = this.getThisTuesday9am() - n * weekMs;
+        }
+
+        const scoreMap = { find: 1, ring60: 2, ring70: 3, ring80: 5, flower: 4, cook: 2, medicine: 2, furn1: 2, furn2: 5, var_common: 5, var_spec: 10 };
+        const stats = {};
+        if (viewMode === 'shichen') {
+            ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'].forEach(n => stats[n] = { total: 0, target: 0 });
+        } else {
+            for (let i = 0; i < 60; i++) stats[i] = { total: 0, target: 0 };
+        }
+
+        for (let h of this.history) {
+            if (h.hidden) continue;
+            for (let r of h.rings || []) {
+                if (!r.timestamp || r.isDeduct) continue;
+                if (r.timestamp < startTs || r.timestamp > endTs) continue;
+                const key = viewMode === 'shichen' ? this.getShichen(r.timestamp).name : new Date(r.timestamp).getMinutes();
+                const sc = scoreMap[r.typeKey] || 0;
+                stats[key].total++;
+                if (sc >= scoreType) stats[key].target++;
+            }
+        }
+
+        let list = [];
+        for (let [key, data] of Object.entries(stats)) {
+            if (data.total > 0) {
+                list.push({ key: key, pct: (data.target / data.total * 100) });
+            }
+        }
+        list.sort((a, b) => b.pct - a.pct);
+
+        let isTriggered = false;
+        let warningText = '';
+
+        if (viewMode === 'shichen') {
+            const top3 = list.slice(0, 3).map(i => i.key);
+            if (top3.includes(currentShichen)) {
+                isTriggered = true;
+                warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
+            }
+        } else {
+            const top10 = list.slice(0, 10).map(i => i.key);
+            if (top10.includes(currentMinute)) {
+                isTriggered = true;
+                warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
+            }
+        }
+
+        if (isTriggered) {
+            // 防止每次都重绘导致闪烁
+            if (warningEl.style.display !== 'inline-block' || warningEl.textContent !== warningText) {
+                warningEl.style.display = 'inline-block';
+                warningEl.textContent = warningText;
+                warningEl.style.background = '#c0392b';
+                warningEl.style.color = '#fff';
+                warningEl.classList.add('radar-pulse-active');
+                headerEl.style.background = '#fff5f5';
+            }
+        } else {
+            if (warningEl.style.display !== 'none') {
+                warningEl.style.display = 'none';
+                warningEl.classList.remove('radar-pulse-active');
+                headerEl.style.background = 'transparent';
+            }
+        }
+    },
+
+    
+
     updateTimeAndShichen() {
         const now = new Date();
         const timestamp = now.getTime();
@@ -259,6 +355,9 @@ const PetRingModule = {
             const ringTimeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
             currentRingShichenEl.textContent = `第${currentRingIndex}环: ${dayNight}${ringShichen.name}时 ${ringTimeStr}`;
         }
+
+                // 🆕 每次秒钟跳动，顺便检查雷达预警
+        this.updateRadarWarning();
     },
 
     // ========== 数据操作 ==========
@@ -3815,54 +3914,9 @@ updateHistoryTable() {
         
         html += `</div>`;
         container.innerHTML = html;
-
-        // 🆕 动态预警判断：当前是否踩在“高发期”上
-        const warningEl = document.getElementById('radarWarning');
-        const headerEl = document.getElementById('radarHeader');
-        if (!warningEl || !headerEl) return;
-
-        const nowD = new Date();
-        const currentShichen = this.getShichen(Date.now()).name;
-        const currentMinute = nowD.getMinutes();
         
-        let isTriggered = false;
-        let warningText = '';
-
-        if (viewMode === 'shichen') {
-            // 取按概率排序的前 3 名（且必须有数据）
-            const topShichen = list.slice(0, 3).filter(item => item.target > 0);
-            if (topShichen.some(item => item.key === currentShichen)) {
-                isTriggered = true;
-                warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
-            }
-        } else {
-            // 取按概率排序的前 10 名（且必须有数据）
-            const topMinutes = list.slice(0, 10).filter(item => item.target > 0);
-            if (topMinutes.some(item => item.key === currentMinute)) {
-                isTriggered = true;
-                warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
-            }
-        }
-
-        // 触发动画
-        if (isTriggered) {
-            warningEl.style.display = 'inline-block';
-            warningEl.textContent = warningText;
-            warningEl.style.background = '#c0392b';
-            warningEl.style.color = '#fff';
-            
-            // 🆕 改用 classList 控制，避免 style 属性覆盖
-            warningEl.classList.add('radar-pulse-active');
-            
-            // 顺便把整个头部背景稍微染红
-            headerEl.style.background = '#fff5f5';
-            headerEl.style.transition = 'background 0.3s';
-        } else {
-            warningEl.style.display = 'none';
-            // 🆕 移除动画类
-            warningEl.classList.remove('radar-pulse-active');
-            headerEl.style.background = 'transparent';
-        }
+        // 🆕 渲染完立刻更新一次预警状态
+        this.updateRadarWarning();
     },
     
 
