@@ -180,13 +180,12 @@ const PetRingModule = {
         }, 200);
     },
 
-    // 🆕 独立的高发预警更新器（支持狙击重合高亮）
+    // 🆕 独立的高发预警更新器（支持双闪狙击）
     updateRadarWarning() {
         const warningEl = document.getElementById('radarWarning');
         const headerEl = document.getElementById('radarHeader');
         const radarResults = document.getElementById('radarResults');
         
-        // 卡片元素
         const shichenCard = document.getElementById('prCurrentShichenCard');
         const shichenBestMinEl = document.getElementById('prCurrentShichenBestMin');
         const timeCard = document.getElementById('prCurrentTimeCard');
@@ -211,15 +210,13 @@ const PetRingModule = {
             startTs = this.getThisTuesday9am() - n * weekMs;
         }
 
-        const nowD = new Date();
         const currentShichen = this.getShichen(Date.now()).name;
-        const currentMinute = nowD.getMinutes();
+        const currentMinute = new Date().getMinutes();
 
         const scoreMap = { find: 1, ring60: 2, ring70: 3, ring80: 5, flower: 4, cook: 2, medicine: 2, furn1: 2, furn2: 5, var_common: 5, var_spec: 10 };
         const shichenStats = {};
         const minuteStats = {};
 
-        // 初始化
         ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'].forEach(n => shichenStats[n] = { total: 0, target: 0 });
         for (let i = 0; i < 60; i++) minuteStats[i] = { total: 0, target: 0 };
 
@@ -244,7 +241,7 @@ const PetRingModule = {
             }
         }
 
-        // 2. 判定时辰前 4 和分钟前 10
+        // 2. 判定时辰前 4 和 分钟前 10
         const shichenList = Object.entries(shichenStats).map(([k, v]) => ({ key: k, pct: v.total > 0 ? v.target / v.total : 0 })).sort((a, b) => b.pct - a.pct);
         const shichenTop4 = shichenList.slice(0, 4).map(i => i.key);
         const isShichenHigh = shichenTop4.includes(currentShichen) && (shichenStats[currentShichen].target / (shichenStats[currentShichen].total || 1) > 0.08);
@@ -253,14 +250,30 @@ const PetRingModule = {
         const minuteTop10 = minuteList.slice(0, 10).map(i => i.key);
         const isMinuteHigh = minuteTop10.includes(currentMinute) && (minuteStats[currentMinute].target / (minuteStats[currentMinute].total || 1) > 0.08);
 
-        // 🆕 新增：判断是否触发了“专属狙击”
-        let isSniperTriggered = false;
-        
-        // 提取最佳分钟段（只算当前时辰内部）
+        // 🆕 3. 判定狙击时刻：时辰亮 且 时间亮
+        const isSniperTriggered = isShichenHigh && isMinuteHigh;
+
+        // 4. 组装报警文案
+        let isTriggered = false;
+        let warningText = '';
+        let isDoubleTriggered = false;
+
+        if (isSniperTriggered) {
+            isTriggered = true;
+            isDoubleTriggered = true;
+            warningText = `🎯 狙击时刻！高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分`;
+        } else if (isShichenHigh) {
+            isTriggered = true;
+            warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
+        } else if (isMinuteHigh) {
+            isTriggered = true;
+            warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
+        }
+
+        // 5. 提取当前时辰内的最佳分钟（保持原有逻辑）
         let bestMins = [];
         const currentShichenMins = {};
         for (let i = 0; i < 60; i++) currentShichenMins[i] = { total: 0, target: 0 };
-        
         for (let h of this.history) {
             if (h.hidden) continue;
             for (let r of h.rings || []) {
@@ -280,38 +293,10 @@ const PetRingModule = {
             }
         }
         bestMins.sort((a, b) => b.pct - a.pct);
-        
-        // 只要当前分钟命中了专属前3名，就触发狙击
-        const top3Mins = bestMins.slice(0, 3).map(m => m.min);
-        if (isShichenHigh && top3Mins.includes(currentMinute)) {
-            isSniperTriggered = true;
-        }
 
-        // 3. 组装报警文案
-        let isTriggered = false;
-        let warningText = '';
-        let isDoubleTriggered = false;
-
-        if (isSniperTriggered) {
-            isTriggered = true;
-            isDoubleTriggered = true;
-            warningText = `🎯 狙击时刻！${currentShichen}时专属高发 ${currentMinute}分`;
-        } else if (isShichenHigh && isMinuteHigh) {
-            isTriggered = true;
-            isDoubleTriggered = true;
-            warningText = `⚡ 双发共振！高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分`;
-        } else if (isShichenHigh) {
-            isTriggered = true;
-            warningText = `🔥 当前是高发时辰: ${currentShichen}时`;
-        } else if (isMinuteHigh) {
-            isTriggered = true;
-            warningText = `🔥 当前是高发分钟: ${currentMinute}分`;
-        }
-
-        // 4. 渲染【当前时辰】卡片
+        // 6. 渲染【当前时辰】卡片
         if (shichenCard && shichenBestMinEl) {
             if (isShichenHigh) {
-                // 文字显示
                 const bestMinsStr = bestMins.slice(0, 3).map(m => `${m.min}分`).join(' ');
                 if (bestMinsStr) {
                     shichenBestMinEl.textContent = `👉 ${bestMinsStr}`;
@@ -320,13 +305,14 @@ const PetRingModule = {
                     shichenBestMinEl.style.display = 'none';
                 }
 
-                // 样式高亮：狙击是红色，普通是金色
                 if (isSniperTriggered) {
+                    // 🎯 狙击时刻：红色
                     shichenCard.style.background = '#ffebeb';
                     shichenCard.style.border = '2px solid #c0392b';
                     shichenCard.style.boxShadow = '0 0 15px rgba(192, 57, 43, 0.6)';
                     shichenBestMinEl.style.color = '#c0392b';
                 } else {
+                    // 🔥 普通高发：金色
                     shichenCard.style.background = '#fff3cd';
                     shichenCard.style.border = '2px solid #f0d060';
                     shichenCard.style.boxShadow = '0 0 15px rgba(240, 208, 96, 0.6)';
@@ -334,7 +320,6 @@ const PetRingModule = {
                 }
                 shichenCard.classList.add('radar-pulse-active');
             } else {
-                // 解除高亮
                 shichenCard.style.background = '';
                 shichenCard.style.border = '';
                 shichenCard.style.boxShadow = '';
@@ -343,22 +328,21 @@ const PetRingModule = {
             }
         }
 
-        // 5. 渲染【当前时间】卡片
+        // 7. 渲染【当前时间】卡片
         if (timeCard) {
             if (isSniperTriggered) {
-                // 狙击时刻：红色闪烁
+                // 🎯 狙击时刻：红色
                 timeCard.style.background = '#ffebeb';
                 timeCard.style.border = '2px solid #c0392b';
                 timeCard.style.boxShadow = '0 0 15px rgba(192, 57, 43, 0.6)';
                 timeCard.classList.add('radar-pulse-active');
             } else if (isMinuteHigh) {
-                // 普通命中：金色闪烁
+                // 🔥 普通高发：金色
                 timeCard.style.background = '#fff3cd';
                 timeCard.style.border = '2px solid #f0d060';
                 timeCard.style.boxShadow = '0 0 15px rgba(240, 208, 96, 0.6)';
                 timeCard.classList.add('radar-pulse-active');
             } else {
-                // 解除高亮
                 timeCard.style.background = '';
                 timeCard.style.border = '';
                 timeCard.style.boxShadow = '';
@@ -366,14 +350,13 @@ const PetRingModule = {
             }
         }
 
-        // 6. 顶部雷达文字闪烁
+        // 8. 顶部雷达文字闪烁
         if (isTriggered) {
             if (warningEl.style.display !== 'inline-block' || warningEl.textContent !== warningText) {
                 warningEl.style.display = 'inline-block';
                 warningEl.textContent = warningText;
                 
                 if (isDoubleTriggered) {
-                    // 狙击/双发：红金流光极速闪烁
                     warningEl.style.background = 'linear-gradient(90deg, #ff0000, #ff8c00, #ff0000)';
                     warningEl.style.backgroundSize = '200% 100%';
                     warningEl.style.color = '#fff';
@@ -382,7 +365,6 @@ const PetRingModule = {
                     warningEl.style.animation = 'radarPulse 0.5s infinite alternate, gradientShift 1.5s infinite linear';
                     headerEl.style.background = '#fff3cd';
                 } else {
-                    // 普通单发：红色背景普通闪烁
                     warningEl.style.background = '#c0392b';
                     warningEl.style.color = '#fff';
                     warningEl.style.fontSize = '0.7rem';
