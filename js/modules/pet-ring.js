@@ -2083,9 +2083,16 @@ document.getElementById('prCancelRelogBtn').addEventListener('click', function()
             body.classList.toggle('hidden');
             this.textContent = body.classList.contains('hidden') ? '👁️ 显示' : '👁️ 隐藏';
         });
-                // 🆕 高发雷达刷新按钮
+        // 🆕 高发雷达刷新按钮
         document.getElementById('radarRefreshBtn').addEventListener('click', function() {
             PetRingModule.renderRadar();
+        });
+
+        // 🆕 下拉框改变时，自动刷新雷达
+        ['radarTimeRange', 'radarScoreType', 'radarViewMode'].forEach(id => {
+            document.getElementById(id).addEventListener('change', function() {
+                PetRingModule.renderRadar();
+            });
         });
         document.getElementById('prTogglePriceBtn').addEventListener('click', function() {
             const body = document.getElementById('prPriceBody');
