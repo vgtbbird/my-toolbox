@@ -1728,8 +1728,9 @@ showFullSettleModal(stats) {
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 12px;background:#f0f5fb;border-radius:12px;border:1px solid #dce5ef;">
                         <div style="display:flex;align-items:center;gap:4px;">
                             <label style="font-weight:600;font-size:0.75rem;color:#1f3b53;">时间范围</label>
-                            <select id="radarTimeRange" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
-                                <option value="thisWeek">🔥 本周</option>
+                        <select id="radarTimeRange" style="font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid #bccad9;">
+                            <option value="default_170" selected>📌 默认基准(前170轮)</option>
+                            <option value="thisWeek">🔥 本周</option>
                                 <optgroup label="最近 N 周">
                                     <option value="recent_1">最近 1 周</option>
                                     <option value="recent_2">最近 2 周</option>
@@ -3947,7 +3948,7 @@ updateHistoryTable() {
 },
 
 
-        // 🆕 高发雷达统计
+    // 🆕 高发雷达统计
     renderRadar() {
         const timeRange = document.getElementById('radarTimeRange').value;
         const scoreType = parseInt(document.getElementById('radarScoreType').value);
@@ -3964,20 +3965,7 @@ updateHistoryTable() {
         const thisTue = this.getThisTuesday9am();
         const weekMs = 7 * 24 * 3600 * 1000;
 
-        // 1. 确定时间范围
-        let startTs = 0, endTs = now;
-        if (timeRange === 'thisWeek') {
-            startTs = this.getThisTuesday9am();
-        } else if (timeRange.startsWith('recent_')) {
-            const n = parseInt(timeRange.split('_')[1]);
-            startTs = this.getThisTuesday9am() - (n - 1) * weekMs;
-        } else if (timeRange.startsWith('past_')) {
-            const n = parseInt(timeRange.split('_')[1]);
-            endTs = this.getThisTuesday9am() - (n - 1) * weekMs;
-            startTs = this.getThisTuesday9am() - n * weekMs;
-        }
-        
-        // 2. 初始化统计结构
+        // 🆕 2. 初始化统计结构（必须放在最前面！）
         const scoreMap = { find: 1, ring60: 2, ring70: 3, ring80: 5, flower: 4, cook: 2, medicine: 2, furn1: 2, furn2: 5, var_common: 5, var_spec: 10 };
         const stats = {};
         let totalTasks = 0;
@@ -3990,38 +3978,104 @@ updateHistoryTable() {
             for (let i = 0; i < 60; i++) stats[i] = { total: 0, target: 0 };
         }
 
-        // 3. 遍历历史数据 & 当前正在跑的 records
-        const processRing = (r) => {
-            if (!r.timestamp || r.isDeduct) return;
-            if (r.timestamp < startTs || r.timestamp > endTs) return;
+        // 1. 确定时间范围（及 170 轮基准逻辑）
+        let startTs = 0, endTs = now;
+        let isDefault170 = (timeRange === 'default_170');
 
-            const date = new Date(r.timestamp);
-            let key;
+        if (isDefault170) {
+            // 🆕 如果选了默认 170 轮基准
+            if (!this._default170Stats) {
+                // 抓取历史记录里最早的 170 轮（按时间升序取前 170 个）
+                const sortedHistory = [...this.history].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 170);
+                
+                const shichenStats170 = {};
+                const minuteStats170 = {};
+                
+                // 初始化 170 轮基准的临时统计
+                ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'].forEach(n => shichenStats170[n] = { total: 0, target: 0 });
+                for (let i = 0; i < 60; i++) minuteStats170[i] = { total: 0, target: 0 };
+
+                // 遍历这 170 轮
+                for (let h of sortedHistory) {
+                    if (h.hidden) continue;
+                    for (let r of h.rings || []) {
+                        if (!r.timestamp || r.isDeduct) continue;
+                        const sch = this.getShichen(r.timestamp).name;
+                        const min = new Date(r.timestamp).getMinutes();
+                        const sc = scoreMap[r.typeKey] || 0;
+
+                        shichenStats170[sch].total++;
+                        minuteStats170[min].total++;
+                        if (sc >= scoreType) {
+                            shichenStats170[sch].target++;
+                            minuteStats170[min].target++;
+                        }
+                    }
+                }
+                // 存入缓存，以后就不重复计算了
+                this._default170Stats = { shichenStats170, minuteStats170 };
+            }
+            
+            // 直接将缓存的数据塞进 stats 里
             if (viewMode === 'shichen') {
-                key = this.getShichen(r.timestamp).name;
+                for (let k in this._default170Stats.shichenStats170) {
+                    stats[k] = { ...this._default170Stats.shichenStats170[k] };
+                }
             } else {
-                key = date.getMinutes();
+                for (let k in this._default170Stats.minuteStats170) {
+                    stats[k] = { ...this._default170Stats.minuteStats170[k] };
+                }
             }
-
-            const sc = scoreMap[r.typeKey] || 0;
-            if (!stats[key]) stats[key] = { total: 0, target: 0 };
-            stats[key].total++;
-            totalTasks++;
-            if (sc >= scoreType) {
-                stats[key].target++;
-                targetTasks++;
-            }
-        };
-
-        // 统计已结算
-        for (let h of this.history) {
-            if (h.hidden) continue;
-            for (let r of h.rings || []) processRing(r);
+            
+            // 重新计算总数
+            totalTasks = Object.values(stats).reduce((sum, cur) => sum + cur.total, 0);
+            targetTasks = Object.values(stats).reduce((sum, cur) => sum + cur.target, 0);
+            
+        } else if (timeRange === 'thisWeek') {
+            startTs = this.getThisTuesday9am();
+        } else if (timeRange.startsWith('recent_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            startTs = this.getThisTuesday9am() - (n - 1) * weekMs;
+        } else if (timeRange.startsWith('past_')) {
+            const n = parseInt(timeRange.split('_')[1]);
+            endTs = this.getThisTuesday9am() - (n - 1) * weekMs;
+            startTs = this.getThisTuesday9am() - n * weekMs;
         }
-        // 🆕 统计当前未结算
-        for (let r of this.records) {
-            if (r.deleted) continue;
-            processRing(r);
+
+        // 3. 遍历历史数据 & 当前正在跑的 records（如果选了基准，就不走了）
+        if (!isDefault170) {
+            const processRing = (r) => {
+                if (!r.timestamp || r.isDeduct) return;
+                if (r.timestamp < startTs || r.timestamp > endTs) return;
+
+                const date = new Date(r.timestamp);
+                let key;
+                if (viewMode === 'shichen') {
+                    key = this.getShichen(r.timestamp).name;
+                } else {
+                    key = date.getMinutes();
+                }
+
+                const sc = scoreMap[r.typeKey] || 0;
+                if (!stats[key]) stats[key] = { total: 0, target: 0 };
+                stats[key].total++;
+                totalTasks++;
+                if (sc >= scoreType) {
+                    stats[key].target++;
+                    targetTasks++;
+                }
+            };
+
+            // 统计已结算
+            for (let h of this.history) {
+                if (h.hidden) continue;
+                for (let r of h.rings || []) processRing(r);
+            }
+            // 统计当前未结算
+            for (let r of this.records) {
+                if (r.deleted) continue;
+                processRing(r);
+            }
         }
 
         // 4. 排序并生成 HTML
@@ -4044,6 +4098,7 @@ updateHistoryTable() {
         let rangeLabel = '';
         if (timeRange === 'thisWeek') rangeLabel = '本周';
         else if (timeRange === 'all') rangeLabel = '全部历史';
+        else if (timeRange === 'default_170') rangeLabel = '前170轮(基准)'; // 🆕 就是加这一行
         else if (timeRange.startsWith('recent_')) rangeLabel = '最近' + timeRange.split('_')[1] + '周';
         else if (timeRange.startsWith('past_')) rangeLabel = '前' + timeRange.split('_')[1] + '周';
 
