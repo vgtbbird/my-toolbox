@@ -438,26 +438,20 @@ const PetRingModule = {
             }
         }
         
-        // 🆕 如果触发预警，且当前不在 PWA 窗口内，则触发任务栏闪烁
-        if (isTriggered && !document.hasFocus()) {
-            let notifyTitle = '🔥 卡符卡高发预警';
-            let notifyBody = '';
-
-            if (isSniperTriggered) {
-                notifyTitle = '🎯 狙击时刻！';
-                notifyBody = `高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分！快上号！`;
-            } else if (isShichenHigh) {
-                notifyTitle = '🔥 高发时辰';
-                notifyBody = `当前是 ${currentShichen}时，爆率极高！`;
-            } else if (isMinuteHigh) {
-                notifyTitle = '🔥 高发分钟';
-                notifyBody = `当前第 ${currentMinute} 分，容易出高分！`;
+              // 🆕 极简防打扰通知：仅分钟前10名触发，且同分钟段内只弹一次
+        if (isMinuteHigh && !document.hasFocus()) {
+            // 记录上次弹出的分钟和小时，防止同一分钟内连续弹窗
+            const nowD = new Date();
+            const currentMinuteKey = nowD.getHours() + '_' + nowD.getMinutes();
+            
+            if (this._lastNotifyMinute !== currentMinuteKey) {
+                this._lastNotifyMinute = currentMinuteKey;
+                
+                // 发送极简通知，标题和内容都是三个星星
+                this.sendSystemNotification('⭐⭐⭐', '⭐⭐⭐');
             }
-
-            this.sendSystemNotification(notifyTitle, notifyBody);
         }
-   
-    }, 
+    },
     
 
     updateTimeAndShichen() {
