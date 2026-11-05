@@ -3984,7 +3984,8 @@ updateHistoryTable() {
 
         if (isDefault170) {
             // 🆕 如果选了默认 170 轮基准
-            if (!this._default170Stats) {
+            // 🆕 加上缓存校验：如果缓存不存在，或者缓存的分数档位跟当前选的分数档位不一样，就重新计算
+            if (!this._default170Stats || this._default170Stats.scoreType !== scoreType) {
                 // 抓取历史记录里最早的 170 轮（按时间升序取前 170 个）
                 const sortedHistory = [...this.history].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 170);
                 
@@ -4012,8 +4013,8 @@ updateHistoryTable() {
                         }
                     }
                 }
-                // 存入缓存，以后就不重复计算了
-                this._default170Stats = { shichenStats170, minuteStats170 };
+                // 存入缓存，以后就不重复计算了（把 scoreType 也存进去）
+                this._default170Stats = { shichenStats170, minuteStats170, scoreType };
             }
             
             // 直接将缓存的数据塞进 stats 里
