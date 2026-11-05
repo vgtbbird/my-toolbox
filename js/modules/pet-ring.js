@@ -135,6 +135,11 @@ const PetRingModule = {
         }, 1000);
         this.updateTimeAndShichen();
 
+          // 🆕 申请系统通知权限
+        if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+
         // 🆕 延迟加载雷达
         setTimeout(() => {
             this.renderRadar();
@@ -178,6 +183,39 @@ const PetRingModule = {
                 this.renderRadar();
             }
         }, 200);
+    },
+
+        // 🆕 发送静默系统通知（触发任务栏闪烁/提示，无横幅无声音）
+    sendSystemNotification(title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        
+        // 🆕 冷却时间：30秒内只闪一次，防止疯狂骚扰
+        const now = Date.now();
+        if (this._lastNotifyTime && now - this._lastNotifyTime < 30000) return;
+        this._lastNotifyTime = now;
+
+        try {
+            const notification = new Notification(title, {
+                body: body,
+                icon: 'icons/icon-128.png', // 确保你的 PWA 有这个图标
+                silent: true,               // 静音
+                requireInteraction: false,  // 不要求用户交互
+                tag: 'radar-alert'          // 相同 tag 覆盖旧通知
+            });
+
+            // 点击通知时，把 PWA 窗口拉到最前
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
+
+            // 3秒后自动关闭通知
+            setTimeout(() => {
+                notification.close();
+            }, 3000);
+        } catch (e) {
+            console.log('通知发送失败:', e);
+        }
     },
 
     // 🆕 独立的高发预警更新器（支持双闪狙击）
@@ -399,7 +437,27 @@ const PetRingModule = {
                 headerEl.style.background = 'transparent';
             }
         }
-    },
+        
+        // 🆕 如果触发预警，且当前不在 PWA 窗口内，则触发任务栏闪烁
+        if (isTriggered && !document.hasFocus()) {
+            let notifyTitle = '🔥 卡符卡高发预警';
+            let notifyBody = '';
+
+            if (isSniperTriggered) {
+                notifyTitle = '🎯 狙击时刻！';
+                notifyBody = `高发时辰 ${currentShichen}时 + 高发分钟 ${currentMinute}分！快上号！`;
+            } else if (isShichenHigh) {
+                notifyTitle = '🔥 高发时辰';
+                notifyBody = `当前是 ${currentShichen}时，爆率极高！`;
+            } else if (isMinuteHigh) {
+                notifyTitle = '🔥 高发分钟';
+                notifyBody = `当前第 ${currentMinute} 分，容易出高分！`;
+            }
+
+            this.sendSystemNotification(notifyTitle, notifyBody);
+        }
+   
+    }, 
     
 
     updateTimeAndShichen() {
